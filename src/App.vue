@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import HeaderBar from "./components/HeaderBar.vue";
+import Synth from "./components/Synth.vue";
 </script>
 
 <template>
-  <HelloWorld />
+  <div class="container mx-auto">
+    <HeaderBar />
+    <Synth class="mt-3" />
+  </div>
 </template>
