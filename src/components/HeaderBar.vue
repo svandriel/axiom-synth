@@ -1,8 +1,8 @@
 <template>
   <div class="flex justify-between items-center">
-    <h1 class="text-3xl tracking-tight">
-      Axiom <span class="text-pink-600 font-mono">xs</span>
-      <span class="text-slate-500">&raquo;</span> poly synthesizer
+    <h1 class="text-3xl tracking-tight select-none">
+      Axiom <span class="text-accent-600 font-mono">xs</span>
+      <span class="text-primary-500">&raquo;</span> poly synthesizer
     </h1>
     <div>
       <Toggle
