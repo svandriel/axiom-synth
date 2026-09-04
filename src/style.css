@@ -3,30 +3,91 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 body {
-  @apply bg-gray-200 dark:bg-gray-800 text-slate-700 dark:text-slate-300  p-3;
+  @apply bg-primary-300 dark:bg-primary-700 text-primary-700 dark:text-primary-300 p-3;
 }
 
 html {
-  margin: 0;
   touch-action: manipulation;
 }
 
 :root {
-  --alu-1: var(--color-slate-800);
-  --alu-2: var(--color-slate-600);
-  --alu-3: var(--color-slate-800);
-  --rubber: #2a2c30;
-  --rubber-hi: #3d4046;
-  --light: #ffffff;
-  --dark: #a3b1c6;
-
-  --out: 9px 9px 18px var(--dark), -9px -9px 18px var(--light);
-  --out-sm: 5px 5px 10px var(--dark), -5px -5px 10px var(--light);
-  --in: inset 6px 6px 12px var(--dark), inset -6px -6px 12px var(--light);
-  --in-sm: inset 3px 3px 6px var(--dark), inset -3px -3px 6px var(--light);
 }
 
 @theme {
   --font-sans: system-ui, sans-serif;
   --text-2xs: 0.625rem;
+}
+
+@theme inline {
+  --color-primary-50: var(--color-slate-50);
+  --color-primary-100: var(--color-slate-100);
+  --color-primary-200: var(--color-slate-200);
+  --color-primary-300: var(--color-slate-300);
+  --color-primary-400: var(--color-slate-400);
+  --color-primary-500: var(--color-slate-500);
+  --color-primary-600: var(--color-slate-600);
+  --color-primary-700: var(--color-slate-700);
+  --color-primary-800: var(--color-slate-800);
+  --color-primary-900: var(--color-slate-900);
+  --color-primary-950: var(--color-slate-950);
+
+  --color-accent-50: var(--color-pink-50);
+  --color-accent-100: var(--color-pink-100);
+  --color-accent-200: var(--color-pink-200);
+  --color-accent-300: var(--color-pink-300);
+  --color-accent-400: var(--color-pink-400);
+  --color-accent-500: var(--color-pink-500);
+  --color-accent-600: var(--color-pink-600);
+  --color-accent-700: var(--color-pink-700);
+  --color-accent-800: var(--color-pink-800);
+  --color-accent-900: var(--color-pink-900);
+  --color-accent-950: var(--color-pink-950);
+
+  --glow-transparancy: 80%;
+
+  --color-farside: color-mix(
+    in srgb,
+    var(--color-primary-400) var(--glow-transparancy),
+    transparent
+  );
+  --color-farside-dark: color-mix(
+    in srgb,
+    var(--color-primary-800) var(--glow-transparancy),
+    transparent
+  );
+  --color-nearside: color-mix(
+    in srgb,
+    var(--color-primary-200) var(--glow-transparancy),
+    transparent
+  );
+  --color-nearside-dark: color-mix(
+    in srgb,
+    var(--color-primary-600) var(--glow-transparancy),
+    transparent
+  );
+  --shadow-out:
+    9px 9px 18px var(--color-farside), -9px -9px 18px var(--color-nearside);
+  --shadow-out-dark:
+    9px 9px 18px var(--color-farside-dark),
+    -9px -9px 18px var(--color-nearside-dark);
+
+  --shadow-in:
+    inset 6px 6px 12px var(--color-farside),
+    inset -6px -6px 12px var(--color-nearside);
+  --shadow-in-sm:
+    inset 3px 3px 6px var(--color-farside),
+    inset -3px -3px 6px var(--color-nearside);
+  --shadow-in-xs:
+    inset 1px 1px 1px var(--color-farside),
+    inset -1px -1px 1px var(--color-nearside);
+
+  --shadow-in-dark:
+    inset 6px 6px 12px var(--color-farside-dark),
+    inset -6px -6px 12px var(--color-nearside-dark);
+  --shadow-in-sm-dark:
+    inset 3px 3px 6px var(--color-farside-dark),
+    inset -3px -3px 6px var(--color-nearside);
+  --shadow-in-xs-dark:
+    inset 1px 1px 1px var(--color-farside-dark),
+    inset -1px -1px 1px var(--color-nearside-dark);
 }
