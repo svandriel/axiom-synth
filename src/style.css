@@ -16,6 +16,10 @@ html {
   --text-2xs: 0.625rem;
 }
 
+@utility section {
+  @apply rounded-sm p-3 shadow-out-xs dark:shadow-out-xs-dark;
+}
+
 @theme inline {
   /* Surface background and text color */
   --color-default: var(--color-primary-200);
@@ -74,15 +78,18 @@ html {
   );
   --shadow-out:
     9px 9px 18px var(--color-farside), -9px -9px 18px var(--color-nearside);
+  --shadow-out-sm:
+    4.5px 4.5px 9px var(--color-farside),
+    -4.5px -4.5px 9px var(--color-nearside);
+  --shadow-out-xs:
+    1px 1px 1px var(--color-farside), -1px -1px 1px var(--color-nearside);
+
   --shadow-out-dark:
     9px 9px 18px var(--color-farside-dark),
     -9px -9px 18px var(--color-nearside-dark);
-  --shadow-out-xs:
-    4.5px 4.5px 9px var(--color-farside),
-    -4.5px -4.5px 9px var(--color-nearside);
   --shadow-out-xs-dark:
-    4.5px 4.5px 9px var(--color-farside-dark),
-    -4.5px -4.5px 9px var(--color-nearside-dark);
+    1px 1px 1px var(--color-farside-dark),
+    -1px -1px 1px var(--color-nearside-dark);
 
   --shadow-in:
     inset 6px 6px 12px var(--color-farside),
