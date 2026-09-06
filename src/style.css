@@ -1,16 +1,15 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 body {
-  @apply bg-primary-300 dark:bg-primary-700 text-primary-700 dark:text-primary-300 p-3;
+  @apply bg-default dark:bg-default-dark text-default-text dark:text-default-text-dark;
+  @apply font-sans p-3;
+  /*@apply bg-primary-300 dark:bg-primary-700 text-primary-700 dark:text-primary-300 p-3;*/
 }
 
 html {
   touch-action: manipulation;
-}
-
-:root {
 }
 
 @theme {
@@ -19,6 +18,14 @@ html {
 }
 
 @theme inline {
+  /* Surface background and text color */
+  --color-default: var(--color-primary-300);
+  --color-default-text: var(--color-primary-700);
+  /* ...same, but dark mode */
+  --color-default-dark: var(--color-primary-700);
+  --color-default-text-dark: var(--color-primary-300);
+
+  /* Primary color */
   --color-primary-50: var(--color-slate-50);
   --color-primary-100: var(--color-slate-100);
   --color-primary-200: var(--color-slate-200);
@@ -31,6 +38,7 @@ html {
   --color-primary-900: var(--color-slate-900);
   --color-primary-950: var(--color-slate-950);
 
+  /* Accent color */
   --color-accent-50: var(--color-pink-50);
   --color-accent-100: var(--color-pink-100);
   --color-accent-200: var(--color-pink-200);
