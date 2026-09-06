@@ -1,6 +1,6 @@
 <template>
   <button
-    class="osc-button flex flex-row items-center justify-center m-5 p-3 rounded-sm"
+    class="osc-button m-5 flex h-16 w-16 flex-row items-center justify-center rounded-lg p-3 text-sm shadow-out-xs dark:shadow-out-xs-dark"
     type="button"
     aria-pressed="false"
     aria-label="Oscillator 1"
@@ -13,15 +13,9 @@
       </svg>
     </span> -->
 
-    <span class="label"><slot /></span>
+    <div class="label">
+      <slot />
+    </div>
     <!-- <span class="underline"></span> -->
   </button>
 </template>
-<style scoped>
-button {
-  height: 5rem;
-  width: 5rem;
-  /* background-color: var(--color-red-300); */
-  box-shadow: var(--shadow-out);
-}
-</style>

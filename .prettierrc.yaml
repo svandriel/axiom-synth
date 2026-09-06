@@ -4,3 +4,6 @@ printWidth: 80
 trailingComma: 'all'
 arrowParens: 'avoid'
 htmlWhitespaceSensitivity: 'ignore'
+plugins:
+  - prettier-plugin-tailwindcss
+tailwindStylesheet: ./src/style.css

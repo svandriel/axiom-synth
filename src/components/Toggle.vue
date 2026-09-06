@@ -1,12 +1,12 @@
 <template>
   <div
-    class="toggle-container inline-flex px-1 py-1 rounded-md gap-1 shadow-in-xs dark:shadow-in-xs-dark"
+    class="toggle-container inline-flex gap-1 rounded-md px-1 py-1 shadow-in-xs dark:shadow-in-xs-dark"
   >
     <div v-for="value in values" :key="value.id">
       <button
         @click="onClicked(value.id)"
         :aria-pressed="isPressed(value.id)"
-        class="inline-flex px-2 py-1.5 rounded-md font-mono tracking-widest text-primary-400 dark:text-primary-500 aria-pressed:text-primary-900 dark:aria-pressed:text-primary-100 cursor-pointer uppercase text-2xs"
+        class="inline-flex cursor-pointer rounded-md px-2 py-1.5 font-mono text-2xs tracking-widest text-primary-400 uppercase aria-pressed:text-primary-900 dark:text-primary-500 dark:aria-pressed:text-primary-100"
       >
         {{ value.label }}
       </button>
