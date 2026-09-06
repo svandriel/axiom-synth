@@ -1,18 +1,18 @@
 <template>
   <div
-    class="synth bg-primary-300 dark:bg-primary-700 min-h-100 p-3 rounded-2xl b-3 shadow-out dark:shadow-out-dark"
+    class="synth b-3 min-h-100 rounded-2xl bg-default p-3 shadow-out dark:bg-default-dark dark:shadow-out-dark"
   >
     <div class="flex flex-col">
       <Toggle
         :values="[
           { id: 'sine', label: 'Sin' },
           { id: 'square', label: 'Square' },
-          { id: 'triangle', label: 'Triangle' }
+          { id: 'triangle', label: 'Triangle' },
         ]"
         v-model="waveForm"
       />
 
-      <div class="flex flex-row gap-5 items-center ml-3">
+      <div class="ml-3 flex flex-row items-center gap-5">
         <SynthButton>osc 1</SynthButton>
         <SynthButton>osc 2</SynthButton>
       </div>
@@ -20,11 +20,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue'
-import Toggle from './Toggle.vue'
-import SynthButton from './SynthButton.vue'
+import { ref } from 'vue';
+import Toggle from './Toggle.vue';
+import SynthButton from './SynthButton.vue';
 
-const waveForm = ref('sine')
+const waveForm = ref('sine');
 </script>
 
 <style lang="css" scoped>
