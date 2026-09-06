@@ -39,7 +39,7 @@ button {
 button:active {
   transform: translateY(2px);
 }
-button[aria-pressed="true"] {
+button[aria-pressed='true'] {
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
   transform: none;
 }
