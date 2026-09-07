@@ -17,7 +17,7 @@ html {
 }
 
 @utility section {
-  @apply rounded-sm p-3 shadow-out-xs dark:shadow-out-xs-dark;
+  @apply rounded-lg p-3 shadow-out-xs dark:shadow-out-xs-dark;
 }
 
 @theme inline {
@@ -54,16 +54,11 @@ html {
   --color-accent-900: var(--color-pink-900);
   --color-accent-950: var(--color-pink-950);
 
+  /* Light theme colors */
   --glow-transparancy: 100%;
-
   --color-farside: color-mix(
     in srgb,
     var(--color-primary-400) var(--glow-transparancy),
-    transparent
-  );
-  --color-farside-dark: color-mix(
-    in srgb,
-    var(--color-primary-200) var(--glow-transparancy),
     transparent
   );
   --color-nearside: color-mix(
@@ -71,9 +66,17 @@ html {
     var(--color-white) var(--glow-transparancy),
     transparent
   );
+
+  /* Dark theme colors */
+  --glow-transparancy-dark: 100%;
+  --color-farside-dark: color-mix(
+    in srgb,
+    var(--color-primary-900) var(--glow-transparancy-dark),
+    transparent
+  );
   --color-nearside-dark: color-mix(
     in srgb,
-    var(--color-primary-600) var(--glow-transparancy),
+    var(--color-primary-500) var(--glow-transparancy-dark),
     transparent
   );
   --shadow-out:
@@ -106,7 +109,7 @@ html {
     inset -6px -6px 12px var(--color-nearside-dark);
   --shadow-in-sm-dark:
     inset 3px 3px 6px var(--color-farside-dark),
-    inset -3px -3px 6px var(--color-nearside);
+    inset -3px -3px 6px var(--color-nearside-dark);
   --shadow-in-xs-dark:
     inset 1px 1px 1px var(--color-farside-dark),
     inset -1px -1px 1px var(--color-nearside-dark);
