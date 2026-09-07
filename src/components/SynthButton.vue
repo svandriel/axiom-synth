@@ -2,8 +2,11 @@
   <button
     class="osc-button m-5 flex h-16 w-16 flex-row items-center justify-center rounded-lg p-3 text-sm shadow-out-xs dark:shadow-out-xs-dark"
     type="button"
+    ref="button"
     aria-pressed="false"
     aria-label="Oscillator 1"
+    @pointerdown="onPointerDown"
+    @pointerup="onPointerUp"
   >
     <!-- <span class="led" aria-hidden="true"></span>
 
@@ -19,3 +22,24 @@
     <!-- <span class="underline"></span> -->
   </button>
 </template>
+
+<script setup lang="ts">
+import { useTemplateRef } from 'vue';
+
+const buttonRef = useTemplateRef('button');
+
+const emit = defineEmits<{
+  (e: 'noteOn'): void;
+  (e: 'noteOff'): void;
+}>();
+
+function onPointerDown(e: PointerEvent) {
+  buttonRef.value?.setPointerCapture(e.pointerId);
+  emit('noteOn');
+}
+
+function onPointerUp(e: PointerEvent) {
+  buttonRef.value?.releasePointerCapture(e.pointerId);
+  emit('noteOff');
+}
+</script>

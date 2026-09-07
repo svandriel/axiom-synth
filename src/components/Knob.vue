@@ -208,6 +208,8 @@ function resetToDefault() {
   background: var(--color-accent-500);
   box-shadow: 0 0 3px
     color-mix(in srgb, var(--color-accent-500) 60%, transparent);
+
+  transition: transform 0.01s ease-in-out;
 }
 
 .knob .arc {
