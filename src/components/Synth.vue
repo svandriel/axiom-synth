@@ -8,6 +8,8 @@
       <OscillatorPanel class="col-span-4 row-start-3" v-model="osc3" />
     </div>
 
+    <Keyboard />
+
     <div class="flex flex-col">
       <div class="ml-3 flex flex-row items-center gap-5">
         <SynthButton @note-on="noteOn" @note-off="noteOff">osc 1</SynthButton>
@@ -22,23 +24,24 @@ import { useAudioEngine } from '../composables/use-audio-context.ts';
 import type { OscillatorConfig } from '../types/oscillator-config.ts';
 import OscillatorPanel from './OscillatorPanel.vue';
 import SynthButton from './SynthButton.vue';
+import Keyboard from './Keyboard.vue';
 
 const osc1 = reactive<OscillatorConfig>({
-  label: 'Osc 1',
+  label: 'VCO 1',
   detune: -0.1,
   pitch: 0,
   gain: 1,
   waveform: 'saw',
 });
 const osc2 = reactive<OscillatorConfig>({
-  label: 'Osc 2',
+  label: 'VCO 2',
   detune: 0.1,
   pitch: 0,
   gain: 1,
   waveform: 'saw',
 });
 const osc3 = reactive<OscillatorConfig>({
-  label: 'Osc 3',
+  label: 'VCO 3',
   detune: 0,
   pitch: -12,
   gain: 0.75,
@@ -47,16 +50,15 @@ const osc3 = reactive<OscillatorConfig>({
 
 const engine = useAudioEngine();
 
-onUnmounted(() => {
-  console.log('unmounting');
-  engine.value.destroy();
-});
-
 function noteOn() {
   engine.value.noteOn(-12);
 }
 
 function noteOff() {
-  engine.value.noteOff();
+  engine.value.noteOff(-12);
 }
+
+onUnmounted(() => {
+  engine.value.destroy();
+});
 </script>

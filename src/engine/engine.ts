@@ -60,11 +60,18 @@ export class AudioEngine {
   }
 
   public noteOn(semi: number) {
+    console.log('noteOn', semi);
     this.ensureStarted();
     this.voice.noteOn(semi);
   }
 
-  public noteOff() {
+  public noteOff(semi: number) {
+    console.log('noteOff', semi);
+    this.voice.noteOff();
+  }
+
+  public allNotesOff() {
+    console.log('allNotesOff');
     this.voice.noteOff();
   }
 
