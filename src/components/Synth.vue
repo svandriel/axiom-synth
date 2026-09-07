@@ -10,14 +10,15 @@
 
     <div class="flex flex-col">
       <div class="ml-3 flex flex-row items-center gap-5">
-        <SynthButton>osc 1</SynthButton>
+        <SynthButton @note-on="noteOn" @note-off="noteOff">osc 1</SynthButton>
         <SynthButton>osc 2</SynthButton>
       </div>
     </div>
   </div>
 </template>
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { onUnmounted, reactive } from 'vue';
+import { useAudioEngine } from '../composables/use-audio-context.ts';
 import type { OscillatorConfig } from '../types/oscillator-config.ts';
 import OscillatorPanel from './OscillatorPanel.vue';
 import SynthButton from './SynthButton.vue';
@@ -44,7 +45,18 @@ const osc3 = reactive<OscillatorConfig>({
   waveform: 'sine',
 });
 
-watch([osc1, osc2, osc3], () => {
-  console.log('Oscillator configs changed:', osc1, osc2, osc3);
+const engine = useAudioEngine();
+
+onUnmounted(() => {
+  console.log('unmounting');
+  engine.value.destroy();
 });
+
+function noteOn() {
+  engine.value.noteOn(-12);
+}
+
+function noteOff() {
+  engine.value.noteOff();
+}
 </script>
