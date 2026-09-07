@@ -1,4 +1,5 @@
 export interface OscillatorConfig {
+  label?: string;
   waveform: WaveFormType;
   pitch: number;
   detune: number;
