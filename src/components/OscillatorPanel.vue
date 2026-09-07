@@ -1,13 +1,15 @@
 <template>
   <div class="section">
     <div class="flex flex-row items-center justify-between">
-      <div class="text-sm tracking-wide uppercase">osc 1</div>
-      <Toggle :values="waveForms" v-model="config.waveform" />
+      <div class="text-sm tracking-wide uppercase">
+        {{ modelValue.label ?? 'osc' }}
+      </div>
+      <Toggle :values="waveForms" v-model="modelValue.waveform" />
     </div>
     <div class="mt-3 flex flex-row gap-10">
       <Knob
         label="Pitch"
-        v-model="config.pitch"
+        v-model="modelValue.pitch"
         class="mt-3"
         :from="-36"
         :to="36"
@@ -16,7 +18,7 @@
       />
       <Knob
         label="Detune"
-        v-model="config.detune"
+        v-model="modelValue.detune"
         class="mt-3"
         :from="-100"
         :to="100"
@@ -25,12 +27,12 @@
       />
       <Knob
         label="Gain"
-        v-model="config.gain"
+        v-model="modelValue.gain"
         class="mt-3"
         :from="0"
-        :to="100"
-        :default="50"
-        :format="v => `${v.toFixed(1)}%`"
+        :to="2"
+        :default="1"
+        :format="v => dbDisplay(v)"
       />
     </div>
   </div>
@@ -38,10 +40,11 @@
 
 <script setup lang="ts">
 import type { OscillatorConfig } from '../types';
+import { dbDisplay } from '../utils/db-display.ts';
 import Knob from './Knob.vue';
 import Toggle from './Toggle.vue';
 
-const config = defineModel<OscillatorConfig>({
+defineModel<OscillatorConfig>({
   required: true,
 });
 

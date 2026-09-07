@@ -17,27 +17,34 @@
   </div>
 </template>
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, watch } from 'vue';
 import type { OscillatorConfig } from '../types/oscillator-config.ts';
 import OscillatorPanel from './OscillatorPanel.vue';
 import SynthButton from './SynthButton.vue';
 
 const osc1 = reactive<OscillatorConfig>({
+  label: 'Osc 1',
   detune: -0.1,
   pitch: 0,
-  gain: 75,
+  gain: 1,
   waveform: 'saw',
 });
 const osc2 = reactive<OscillatorConfig>({
+  label: 'Osc 2',
   detune: 0.1,
   pitch: 0,
-  gain: 75,
+  gain: 1,
   waveform: 'saw',
 });
 const osc3 = reactive<OscillatorConfig>({
+  label: 'Osc 3',
   detune: 0,
   pitch: -12,
-  gain: 42.6,
+  gain: 0.75,
   waveform: 'sine',
+});
+
+watch([osc1, osc2, osc3], () => {
+  console.log('Oscillator configs changed:', osc1, osc2, osc3);
 });
 </script>

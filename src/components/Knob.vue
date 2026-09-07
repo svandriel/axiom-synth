@@ -8,7 +8,7 @@
     @dblclick="resetToDefault"
   >
     <div
-      class="knob dark:shadow-out-sm-dark relative h-18 w-18 cursor-ns-resize rounded-full shadow-out-sm duration-200 ease-in-out outline-none"
+      class="knob relative h-18 w-18 cursor-ns-resize rounded-full shadow-out-sm duration-200 ease-in-out outline-none dark:shadow-out-sm-dark"
       :class="{ active }"
       role="slider"
       tabindex="0"
@@ -81,9 +81,8 @@ const angle = computed(() => normalizedValue.value * 270);
 const active = ref(false);
 let startY = 0;
 let startV = 0;
-let dragging = false;
+
 function onPointerDown(e: PointerEvent) {
-  dragging = true;
   startY = e.clientY;
   startV = normalizedValue.value;
   active.value = true;
@@ -92,7 +91,7 @@ function onPointerDown(e: PointerEvent) {
 }
 
 function onPointerMove(e: PointerEvent) {
-  if (!dragging) return;
+  if (!active.value) return;
   var dy = startY - e.clientY;
   set(startV + dy / (e.shiftKey ? 600 : 180));
 }
@@ -112,7 +111,6 @@ function clamp(value: number) {
 }
 
 function release() {
-  dragging = false;
   active.value = false;
 }
 
@@ -128,16 +126,10 @@ function resetToDefault() {
 .knob {
   background: linear-gradient(
     145deg,
-    var(--color-default),
-    var(--color-default-light)
-  ); /* #d3d9e2 */
+    var(--color-primary-200),
+    var(--color-primary-300)
+  );
   transition-property: box-shadow, transform;
-}
-
-@variant dark {
-  .knob {
-    background: linear-gradient(145deg, var(--color-default-dark), #d3d9e2);
-  }
 }
 
 .knob:focus-visible {
@@ -156,10 +148,45 @@ function resetToDefault() {
   position: absolute;
   inset: 10px;
   border-radius: 50%;
-  background: linear-gradient(145deg, #d6dce5, var(--color-default));
+  background: linear-gradient(
+    145deg,
+    var(--color-primary-300),
+    var(--color-primary-100)
+  );
   box-shadow:
     inset 2px 2px 4px var(--color-primary-400),
     inset -2px -2px 4px var(--color-primary-100);
+}
+
+@variant dark {
+  .knob {
+    background: linear-gradient(
+      145deg,
+      var(--color-primary-300),
+      var(--color-primary-700),
+      var(--color-primary-800)
+    );
+  }
+
+  .knob:focus-visible {
+    box-shadow:
+      var(--shadow-out-sm-dark),
+      0 0 0 3px var(--color-accent-500);
+  }
+  .knob.active {
+    box-shadow: var(--shadow-in-sm-dark);
+  }
+  .knob::before {
+    background: linear-gradient(
+      145deg,
+      var(--color-primary-700),
+      var(--color-primary-600),
+      var(--color-primary-400)
+    );
+    box-shadow:
+      inset 2px 2px 4px var(--color-primary-900),
+      inset -2px -2px 4px var(--color-primary-500);
+  }
 }
 
 .knob .pointer {

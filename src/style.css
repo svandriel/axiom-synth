@@ -20,6 +20,32 @@ html {
   @apply rounded-lg p-3 shadow-out-xs dark:shadow-out-xs-dark;
 }
 
+:root {
+  --color-rose-bud-50: #fef5f2;
+  --color-rose-bud-100: #fee9e2;
+  --color-rose-bud-200: #ffd6c9;
+  --color-rose-bud-300: #fdae94;
+  --color-rose-bud-400: #fa916f;
+  --color-rose-bud-500: #f26d41;
+  --color-rose-bud-600: #df5223;
+  --color-rose-bud-700: #bb421a;
+  --color-rose-bud-800: #9b3919;
+  --color-rose-bud-900: #80351c;
+  --color-rose-bud-950: #461809;
+
+  --color-shamrock-50: #edfcf6;
+  --color-shamrock-100: #d4f7e7;
+  --color-shamrock-200: #aceed4;
+  --color-shamrock-300: #58d8ae;
+  --color-shamrock-400: #3fc89f;
+  --color-shamrock-500: #1bae87;
+  --color-shamrock-600: #0f8c6e;
+  --color-shamrock-700: #0c705a;
+  --color-shamrock-800: #0c5949;
+  --color-shamrock-900: #0b493d;
+  --color-shamrock-950: #052923;
+}
+
 @theme inline {
   /* Surface background and text color */
   --color-default: var(--color-primary-200);
@@ -42,17 +68,17 @@ html {
   --color-primary-950: var(--color-slate-950);
 
   /* Accent color */
-  --color-accent-50: var(--color-pink-50);
-  --color-accent-100: var(--color-pink-100);
-  --color-accent-200: var(--color-pink-200);
-  --color-accent-300: var(--color-pink-300);
-  --color-accent-400: var(--color-pink-400);
-  --color-accent-500: var(--color-pink-500);
-  --color-accent-600: var(--color-pink-600);
-  --color-accent-700: var(--color-pink-700);
-  --color-accent-800: var(--color-pink-800);
-  --color-accent-900: var(--color-pink-900);
-  --color-accent-950: var(--color-pink-950);
+  --color-accent-50: var(--color-rose-bud-50);
+  --color-accent-100: var(--color-rose-bud-100);
+  --color-accent-200: var(--color-rose-bud-200);
+  --color-accent-300: var(--color-rose-bud-300);
+  --color-accent-400: var(--color-rose-bud-400);
+  --color-accent-500: var(--color-rose-bud-500);
+  --color-accent-600: var(--color-rose-bud-600);
+  --color-accent-700: var(--color-rose-bud-700);
+  --color-accent-800: var(--color-rose-bud-800);
+  --color-accent-900: var(--color-rose-bud-900);
+  --color-accent-950: var(--color-rose-bud-950);
 
   /* Light theme colors */
   --glow-transparancy: 100%;
@@ -90,6 +116,9 @@ html {
   --shadow-out-dark:
     9px 9px 18px var(--color-farside-dark),
     -9px -9px 18px var(--color-nearside-dark);
+  --shadow-out-sm-dark:
+    4.5px 4.5px 9px var(--color-farside-dark),
+    -4.5px -4.5px 9px var(--color-nearside-dark);
   --shadow-out-xs-dark:
     1px 1px 1px var(--color-farside-dark),
     -1px -1px 1px var(--color-nearside-dark);
