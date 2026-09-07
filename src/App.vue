@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import HeaderBar from "./components/HeaderBar.vue";
-import Synth from "./components/Synth.vue";
+import HeaderBar from './components/HeaderBar.vue';
+import Synth from './components/Synth.vue';
 </script>
 
 <template>
