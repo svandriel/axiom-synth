@@ -1,17 +1,14 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 body {
-  @apply bg-primary-300 dark:bg-primary-700 text-primary-700 dark:text-primary-300;
-  @apply p-3;
+  @apply bg-default text-default-text dark:bg-default-dark dark:text-default-text-dark;
+  @apply p-3 font-sans;
 }
 
 html {
   touch-action: manipulation;
-}
-
-:root {
 }
 
 @theme {
@@ -19,7 +16,19 @@ html {
   --text-2xs: 0.625rem;
 }
 
+@utility section {
+  @apply rounded-sm p-3 shadow-out-xs dark:shadow-out-xs-dark;
+}
+
 @theme inline {
+  /* Surface background and text color */
+  --color-default: var(--color-primary-200);
+  --color-default-text: var(--color-primary-700);
+  /* ...same, but dark mode */
+  --color-default-dark: var(--color-primary-700);
+  --color-default-text-dark: var(--color-primary-300);
+
+  /* Primary color */
   --color-primary-50: var(--color-slate-50);
   --color-primary-100: var(--color-slate-100);
   --color-primary-200: var(--color-slate-200);
@@ -32,6 +41,7 @@ html {
   --color-primary-900: var(--color-slate-900);
   --color-primary-950: var(--color-slate-950);
 
+  /* Accent color */
   --color-accent-50: var(--color-pink-50);
   --color-accent-100: var(--color-pink-100);
   --color-accent-200: var(--color-pink-200);
@@ -44,7 +54,7 @@ html {
   --color-accent-900: var(--color-pink-900);
   --color-accent-950: var(--color-pink-950);
 
-  --glow-transparancy: 70%;
+  --glow-transparancy: 100%;
 
   --color-farside: color-mix(
     in srgb,
@@ -53,12 +63,12 @@ html {
   );
   --color-farside-dark: color-mix(
     in srgb,
-    var(--color-primary-800) var(--glow-transparancy),
+    var(--color-primary-200) var(--glow-transparancy),
     transparent
   );
   --color-nearside: color-mix(
     in srgb,
-    var(--color-primary-200) var(--glow-transparancy),
+    var(--color-white) var(--glow-transparancy),
     transparent
   );
   --color-nearside-dark: color-mix(
@@ -68,9 +78,18 @@ html {
   );
   --shadow-out:
     9px 9px 18px var(--color-farside), -9px -9px 18px var(--color-nearside);
+  --shadow-out-sm:
+    4.5px 4.5px 9px var(--color-farside),
+    -4.5px -4.5px 9px var(--color-nearside);
+  --shadow-out-xs:
+    1px 1px 1px var(--color-farside), -1px -1px 1px var(--color-nearside);
+
   --shadow-out-dark:
     9px 9px 18px var(--color-farside-dark),
     -9px -9px 18px var(--color-nearside-dark);
+  --shadow-out-xs-dark:
+    1px 1px 1px var(--color-farside-dark),
+    -1px -1px 1px var(--color-nearside-dark);
 
   --shadow-in:
     inset 6px 6px 12px var(--color-farside),
