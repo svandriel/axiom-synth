@@ -8,27 +8,34 @@
     @dblclick="resetToDefault"
   >
     <div
-      class="knob relative h-18 w-18 cursor-ns-resize rounded-full shadow-out-sm duration-200 ease-in-out outline-none dark:shadow-out-sm-dark"
-      :class="{ active }"
+      class="knob relative cursor-ns-resize rounded-full shadow-out-sm duration-200 ease-in-out outline-none dark:shadow-out-sm-dark"
+      :class="{
+        active,
+        'h-18 w-18': size === 'lg',
+        'h-12 w-12': size === 'md',
+      }"
       role="slider"
       tabindex="0"
       :aria-label="label"
       :aria-valuemin="from"
       :aria-valuemax="to"
       :aria-valuenow="value"
+      :data-size="size"
       ref="knob"
       :style="{
         '--angle': `${angle - 135}deg`,
         '--sweep': `${angle}deg`,
       }"
     >
-      <div class="arc absolute"></div>
+      <div class="arc absolute rounded-full"></div>
       <div class="pointer absolute"></div>
     </div>
     <div class="knob-label text-primary-500 dark:text-primary-400">
       {{ label }}
     </div>
-    <div class="knob-value p-1 font-mono shadow-in-sm dark:shadow-in-sm-dark">
+    <div
+      class="knob-value rounded-lg p-1 font-mono text-2xs text-primary-700 shadow-in-sm dark:text-primary-300 dark:shadow-in-sm-dark"
+    >
       {{ displayValue }}
     </div>
   </div>
@@ -205,7 +212,6 @@ function resetToDefault() {
 
 .knob .arc {
   inset: -6px;
-  border-radius: 50%;
   background: conic-gradient(
     from 225deg,
     var(--color-accent-300) 0deg,
@@ -228,10 +234,16 @@ function resetToDefault() {
 }
 
 .knob-value {
-  font-size: 12px;
   min-width: 58px;
   text-align: center;
-  border-radius: 8px;
-  /* box-shadow: var(--in-sm); */
+}
+
+.knob[data-size='md']::before {
+  inset: 5px;
+}
+.knob[data-size='md'] .pointer {
+  width: 3px;
+  height: 15px;
+  transform: translateY(-100%) rotate(var(--angle)) translateY(-6px);
 }
 </style>
