@@ -63,7 +63,7 @@ const blackNotes = notes.filter(note => note.black);
 const pressed = ref<{ [semi: number]: boolean }>({});
 
 function onPianoKeyDown(semi: number) {
-  engine.value.noteOn(semi + (octave.value - 4) * 12);
+  engine.value.noteOn(semi + (octave.value - 4) * 12, 127);
   pressed.value[semi] = true;
 }
 

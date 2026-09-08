@@ -1,3 +1,4 @@
+import type { EnvelopeConfig } from './envelope';
 import { Voice } from './voice';
 
 export class AudioEngine {
@@ -9,6 +10,13 @@ export class AudioEngine {
   private readonly comp: DynamicsCompressorNode;
 
   private readonly voice: Voice;
+
+  public settings: EnvelopeConfig = {
+    attackSeconds: 0.04, // 40ms exponential rise
+    decaySeconds: 0.25, // 250ms decay
+    sustainLevel: 0.4, // Sustain floor level target
+    releaseSeconds: 0.35, // Release phase drop
+  };
 
   constructor(ctxt: AudioContext) {
     this.ctxt = ctxt;
@@ -50,7 +58,7 @@ export class AudioEngine {
     this.comp.connect(this.analyser);
     this.analyser.connect(ctxt.destination);
 
-    this.voice = new Voice(this);
+    this.voice = new Voice(this.ctxt, this.filter);
   }
 
   public ensureStarted() {
@@ -59,22 +67,77 @@ export class AudioEngine {
     }
   }
 
-  public noteOn(semi: number) {
+  private findVoice(noteNumber: number): Voice | null {
+    if (this.voice.currentNote === noteNumber) {
+      return this.voice;
+    }
+    return null;
+  }
+
+  public noteOn(noteNumber: number, velocity: number) {
     this.ensureStarted();
-    this.voice.noteOn(semi);
+    const now = this.ctxt.currentTime;
+
+    const activeVoice = this.findVoice(noteNumber);
+    if (activeVoice) {
+      this.noteOff(noteNumber);
+    }
+
+    // 1. Evaluate channel openings using the hardware clock instead of JS state trackers
+    // let targetVoice = this.voicePool.find(v => v.isAvailable(now));
+    // Normally, find available voice from a pool of voices, but we only have one for now
+    let targetVoice: Voice | null = null;
+    let startDelay = 0;
+
+    // 2. Thread-Safe Voice Stealing Logic
+    if (!targetVoice) {
+      console.log(
+        `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber}`,
+      );
+      // let oldestTime = Infinity;
+      let oldestVoice: Voice | null = null;
+
+      // for (const voice of this.voicePool) {
+      //   if (voice.lastUsed < oldestTime) {
+      //     oldestTime = voice.lastUsed;
+      //     oldestVoice = voice;
+      //   }
+      // }
+      oldestVoice = this.voice; // Since we only have one voice for now
+
+      if (oldestVoice) {
+        targetVoice = oldestVoice;
+
+        // for (const [note, voice] of this.noteToVoiceMap.entries()) {
+        //   if (voice === targetVoice) {
+        //     this.noteToVoiceMap.delete(note);
+        //   }
+        // }
+
+        // Choke the stolen voice instantly over a 3ms window
+        targetVoice.fastChoke(now);
+        // Fixed: Delays the new note's execution by 3ms to allow the old note to fade completely
+        startDelay = 0.003;
+      }
+    }
+
+    if (targetVoice) {
+      targetVoice.noteOn(noteNumber, velocity, this.settings, startDelay);
+      // this.noteToVoiceMap.set(noteNumber, targetVoice);
+    }
   }
 
   public noteOff(semi: number) {
     console.log('noteOff', semi);
     const activeVoice = this.voice.currentNote === semi ? this.voice : null;
     if (activeVoice) {
-      this.voice.noteOff();
+      this.voice.noteOff(this.settings);
     }
   }
 
   public allNotesOff() {
     console.log('allNotesOff');
-    this.voice.noteOff();
+    this.voice.noteOff(this.settings);
   }
 
   public get noteSignalSink() {
