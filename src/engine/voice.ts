@@ -49,7 +49,7 @@ export class Voice {
    * Evaluates voice availability based purely on the audio hardware clock pipeline state
    */
   isAvailable(now: number): boolean {
-    return this.currentNote !== null || now >= this.endTime;
+    return this.currentNote === null || now >= this.endTime;
   }
 
   /**
