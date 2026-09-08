@@ -4,7 +4,7 @@ import Synth from './components/Synth.vue';
 </script>
 
 <template>
-  <div class="container mx-auto">
+  <div class="mx-auto max-w-275">
     <HeaderBar />
     <Synth class="mt-3" />
   </div>

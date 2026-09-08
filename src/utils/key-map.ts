@@ -24,10 +24,6 @@ export const notes = [
   { n: 'A#', k: '7', semi: 22, black: true },
   { n: 'B', k: 'u', semi: 23 },
   { n: 'C', k: 'i', semi: 24 },
-  { n: 'C#', k: '9', semi: 25, black: true },
-  { n: 'D', k: 'o', semi: 26 },
-  { n: 'D#', k: '0', semi: 27, black: true },
-  { n: 'E', k: 'p', semi: 28 },
 ];
 const keyMap = notes.reduce<Record<string, number>>((acc, n) => {
   acc[n.k] = n.semi;

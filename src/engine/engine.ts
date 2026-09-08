@@ -19,7 +19,7 @@ export class AudioEngine {
     this.master.gain.value = 0.5;
     this.filter = ctxt.createBiquadFilter();
     this.filter.type = 'lowpass';
-    this.filter.frequency.value = 1000;
+    this.filter.frequency.value = 2000;
     this.filter.Q.value = 3;
     this.analyser = ctxt.createAnalyser();
     this.analyser.fftSize = 2048;
@@ -60,14 +60,16 @@ export class AudioEngine {
   }
 
   public noteOn(semi: number) {
-    console.log('noteOn', semi);
     this.ensureStarted();
     this.voice.noteOn(semi);
   }
 
   public noteOff(semi: number) {
     console.log('noteOff', semi);
-    this.voice.noteOff();
+    const activeVoice = this.voice.currentSemi === semi ? this.voice : null;
+    if (activeVoice) {
+      this.voice.noteOff();
+    }
   }
 
   public allNotesOff() {
