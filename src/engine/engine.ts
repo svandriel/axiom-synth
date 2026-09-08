@@ -1,6 +1,8 @@
 import type { EnvelopeConfig } from './envelope';
 import { Voice } from './voice';
 
+const MAX_VOICES = 16;
+
 export class AudioEngine {
   public readonly ctxt: AudioContext;
   private readonly master: GainNode;
@@ -12,6 +14,8 @@ export class AudioEngine {
   private readonly voice: Voice;
 
   private readonly noteToVoiceMap: Map<number, Voice> = new Map();
+
+  private readonly voicePool: Voice[] = [];
 
   public settings: EnvelopeConfig = {
     attackSeconds: 0.04, // 40ms exponential rise
@@ -61,6 +65,11 @@ export class AudioEngine {
     this.analyser.connect(ctxt.destination);
 
     this.voice = new Voice(this.ctxt, this.filter);
+
+    this.voicePool = Array.from(
+      { length: MAX_VOICES },
+      () => new Voice(this.ctxt, this.filter),
+    );
   }
 
   public ensureStarted() {
@@ -80,12 +89,8 @@ export class AudioEngine {
       this.noteOff(noteNumber);
     }
 
-    // 1. Evaluate channel openings using the hardware clock instead of JS state trackers
-    // let targetVoice = this.voicePool.find(v => v.isAvailable(now));
-    // Normally, find available voice from a pool of voices, but we only have one for now
-    let targetVoice: Voice | null = this.voice.isAvailable(now)
-      ? this.voice
-      : null;
+    // 1. Evaluate available voices in the pool
+    let targetVoice = this.voicePool.find(v => v.isAvailable(now));
     let startDelay = 0;
 
     if (targetVoice) {
@@ -101,8 +106,7 @@ export class AudioEngine {
       let oldestVoice: Voice | null = null;
 
       // Since we only have one voice for now
-      const voicePool = [this.voice];
-      for (const voice of voicePool) {
+      for (const voice of this.voicePool) {
         if (this.voice.lastUsed < oldestTime) {
           oldestTime = voice.lastUsed;
           oldestVoice = voice;
