@@ -6,7 +6,7 @@
       <!-- white keys -->
       <div
         v-for="note in whiteNotes"
-        class="key white flex flex-1 items-end justify-center rounded-b-lg bg-linear-to-b from-white via-[#f4f1ea] via-85% to-[#cfcac0] pb-2 text-2xs uppercase select-none"
+        class="key white flex flex-1 cursor-pointer items-end justify-center rounded-b-lg bg-linear-to-b from-white via-[#f4f1ea] via-85% to-[#cfcac0] pb-2 text-2xs uppercase select-none"
         :class="{
           on: pressed[note.semi],
         }"
@@ -24,7 +24,7 @@
       <!-- black keys -->
       <div
         v-for="note in blackNotes"
-        class="key black absolute top-0 left-0 flex h-[60%] flex-1 items-end justify-center rounded-b-sm bg-linear-to-b from-black to-gray-700 text-2xs text-gray-400 uppercase select-none"
+        class="key black absolute top-0 left-0 flex h-[60%] flex-1 cursor-pointer items-end justify-center rounded-b-sm bg-linear-to-b from-black to-gray-700 text-2xs text-gray-400 uppercase select-none"
         :data-semi="note.semi"
         :class="{
           on: pressed[note.semi],

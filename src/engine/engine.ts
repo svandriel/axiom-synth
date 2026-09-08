@@ -66,7 +66,7 @@ export class AudioEngine {
 
   public noteOff(semi: number) {
     console.log('noteOff', semi);
-    const activeVoice = this.voice.currentSemi === semi ? this.voice : null;
+    const activeVoice = this.voice.currentNote === semi ? this.voice : null;
     if (activeVoice) {
       this.voice.noteOff();
     }
