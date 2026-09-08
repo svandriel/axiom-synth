@@ -24,9 +24,8 @@
 import { onUnmounted, reactive } from 'vue';
 import { useAudioEngine } from '../composables/use-audio-context.ts';
 import type { OscillatorConfig } from '../types/oscillator-config.ts';
-import OscillatorPanel from './OscillatorPanel.vue';
-import SynthButton from './SynthButton.vue';
 import Keyboard from './Keyboard.vue';
+import OscillatorPanel from './OscillatorPanel.vue';
 
 const osc1 = reactive<OscillatorConfig>({
   label: 'VCO 1',
@@ -51,14 +50,6 @@ const osc3 = reactive<OscillatorConfig>({
 });
 
 const engine = useAudioEngine();
-
-function noteOn() {
-  engine.value.noteOn(-12);
-}
-
-function noteOff() {
-  engine.value.noteOff(-12);
-}
 
 onUnmounted(() => {
   engine.value.destroy();
