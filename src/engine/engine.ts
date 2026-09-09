@@ -161,7 +161,10 @@ export class AudioEngine {
 
   allNotesOff() {
     console.log('allNotesOff');
-    this.voicePool.forEach(voice => voice.noteOff(this.ampEnvelope));
+    for (const [note, voice] of this.noteToVoiceMap.entries()) {
+      voice.noteOff(this.ampEnvelope);
+      this.noteToVoiceMap.delete(note);
+    }
   }
 
   destroy() {
