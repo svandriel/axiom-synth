@@ -12,6 +12,8 @@ export class Voice {
   public endTime = 0;
   public lastUsed = 0;
 
+  private readonly maxVolume = 0.2;
+
   constructor(ctxt: AudioContext, audioSink: AudioNode) {
     this.ctxt = ctxt;
     this.audioSink = audioSink;
@@ -80,7 +82,7 @@ export class Voice {
 
     // Fixed: Pitch shift & envelope execution begin exactly at scheduled timeline sequence position
     const frequency = freqOf(noteNumber);
-    const targetVolume = (velocity / 127) * 0.12; // Adjusted output ceiling allocation
+    const targetVolume = (velocity / 127) * this.maxVolume; // Adjusted output ceiling allocation
 
     this.ampEnv.gain.cancelScheduledValues(now);
     // this.filter.frequency.cancelScheduledValues(now);
