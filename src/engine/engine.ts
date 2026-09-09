@@ -1,4 +1,5 @@
 import type { EnvelopeConfig, FilterConfig } from '../types';
+import { AxiomVoice } from './axiom-voice';
 import { Voice } from './voice';
 
 const MAX_VOICES = 16;
@@ -69,7 +70,7 @@ export class AudioEngine {
 
     this.voicePool = Array.from(
       { length: MAX_VOICES },
-      () => new Voice(this.ctxt, this.filter),
+      () => new AxiomVoice(this.ctxt, this.filter),
     );
   }
 

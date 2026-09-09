@@ -1,12 +1,11 @@
 import type { EnvelopeConfig } from '../types/envelope-config';
 
-export class Voice {
-  private readonly ctxt: AudioContext;
-  private readonly audioSink: AudioNode;
+export abstract class Voice {
+  protected readonly ctxt: AudioContext;
+  protected readonly audioSink: AudioNode;
 
-  private readonly ampEnv: GainNode;
+  protected readonly ampEnv: GainNode;
   // private readonly filterEnv: GainNode;
-  private oscillators: OscillatorNode[] = [];
   private oscillatorsActive = false;
   private cleanupTimer: ReturnType<typeof setTimeout> | null = null;
   // private readonly filter: BiquadFilterNode;
@@ -25,6 +24,12 @@ export class Voice {
 
     this.ampEnv.connect(this.audioSink);
   }
+
+  protected abstract createOscillators(now: number): void;
+
+  protected abstract destroyOscillators(): void;
+
+  protected abstract setOscillatorNote(noteNumber: number, now: number): void;
 
   /**
    * Evaluates voice availability based purely on the audio hardware clock pipeline state
@@ -65,21 +70,16 @@ export class Voice {
     }
 
     if (this.oscillatorsActive) {
-      this.oscillators.forEach(osc => osc.stop());
-      this.oscillators.forEach(osc => osc.disconnect());
-      this.oscillators = [];
+      this.destroyOscillators();
     }
 
     this.createOscillators(now);
 
-    const frequency = freqOf(noteNumber);
     const targetVolume = (velocity / 127) * this.maxVolume;
 
     this.ampEnv.gain.cancelScheduledValues(now);
 
-    this.oscillators.forEach(osc => {
-      osc.frequency.setValueAtTime(frequency, now);
-    });
+    this.setOscillatorNote(noteNumber, now);
 
     this.ampEnv.gain.setValueAtTime(this.ampEnv.gain.value, now);
     this.ampEnv.gain.setTargetAtTime(
@@ -98,27 +98,6 @@ export class Voice {
 
     this.oscillatorsActive = true;
     this.endTime = Infinity;
-  }
-
-  private createOscillators(now: number): void {
-    const osc1 = this.ctxt.createOscillator();
-    osc1.type = 'sawtooth';
-    osc1.detune.value = -12;
-
-    const osc2 = this.ctxt.createOscillator();
-    osc2.type = 'sawtooth';
-    osc2.detune.value = 0;
-
-    const osc3 = this.ctxt.createOscillator();
-    osc3.type = 'triangle';
-    osc3.detune.value = 11;
-
-    this.oscillators.push(osc1);
-    this.oscillators.push(osc2);
-    this.oscillators.push(osc3);
-
-    this.oscillators.forEach(osc => osc.connect(this.ampEnv));
-    this.oscillators.forEach(osc => osc.start(now));
   }
 
   noteOff(ampEnvelope: EnvelopeConfig) {
@@ -140,9 +119,7 @@ export class Voice {
     this.cleanupTimer = setTimeout(
       () => {
         if (!this.oscillatorsActive) return;
-        this.oscillators.forEach(osc => osc.stop());
-        this.oscillators.forEach(osc => osc.disconnect());
-        this.oscillators = [];
+        this.destroyOscillators();
         this.oscillatorsActive = false;
         this.currentNote = null;
         this.cleanupTimer = null;
@@ -157,17 +134,11 @@ export class Voice {
       this.cleanupTimer = null;
     }
     if (this.oscillatorsActive) {
-      this.oscillators.forEach(osc => osc.stop());
-      this.oscillators.forEach(osc => osc.disconnect());
-      this.oscillators = [];
+      this.destroyOscillators();
       this.oscillatorsActive = false;
     }
     this.ampEnv.disconnect();
     // this.filterEnv.disconnect();
     // this.filter.disconnect();
   }
-}
-
-function freqOf(semi: number) {
-  return 261.6256 * Math.pow(2, semi / 12);
 }
