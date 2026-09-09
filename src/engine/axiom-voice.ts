@@ -18,14 +18,14 @@ export class AxiomVoice extends Voice {
     osc2.detune.value = 0;
 
     const osc3 = this.ctxt.createOscillator();
-    osc3.type = 'triangle';
+    osc3.type = 'sawtooth';
     osc3.detune.value = 11;
 
     this.oscillators.push(osc1);
     this.oscillators.push(osc2);
     this.oscillators.push(osc3);
 
-    this.oscillators.forEach(osc => osc.connect(this.ampEnv));
+    this.oscillators.forEach(osc => osc.connect(this.ampEnvelope.node));
     this.oscillators.forEach(osc => osc.start(now));
   }
 
@@ -42,5 +42,10 @@ export class AxiomVoice extends Voice {
       this.oscillators.forEach(osc => osc.disconnect());
       this.oscillators = [];
     }
+  }
+
+  override destroy(): void {
+    console.log(`[${this.ctxt.currentTime.toFixed(4)}] AxiomVoice.destroy()`);
+    super.destroy();
   }
 }
