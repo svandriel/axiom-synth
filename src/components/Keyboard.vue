@@ -1,6 +1,6 @@
 <template>
   <div
-    class="keyboard-container rounded-md p-3 shadow-in-sm dark:shadow-in-sm-dark"
+    class="keyboard-container rounded-md p-3 shadow-in-sm select-none dark:shadow-in-sm-dark"
   >
     <div class="keyboard relative flex gap-0.5">
       <!-- white keys -->
