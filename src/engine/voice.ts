@@ -1,5 +1,4 @@
 import type { EnvelopeConfig } from '../types/envelope-config';
-import { Envelope } from './envelope';
 
 export abstract class Voice {
   protected readonly ctxt: AudioContext;
@@ -7,7 +6,6 @@ export abstract class Voice {
 
   private readonly chokeTime = 0.003;
 
-  protected readonly ampEnvelope: Envelope;
   private cleanupTimer: ReturnType<typeof setTimeout> | null = null;
   public currentNote: number | null = null;
   public endTime = 0;
@@ -16,8 +14,6 @@ export abstract class Voice {
   constructor(ctxt: AudioContext, audioSink: AudioNode) {
     this.ctxt = ctxt;
     this.audioSink = audioSink;
-
-    this.ampEnvelope = new Envelope(ctxt, audioSink);
   }
 
   protected abstract destroyOscillators(): void;
@@ -33,9 +29,11 @@ export abstract class Voice {
    * Executes a micro-fade parameter envelope to truncate a stolen note cleanly
    */
   fastChoke(now: number): void {
-    this.ampEnvelope.fastChoke(this.chokeTime, now);
+    this.internalFastChoke(this.chokeTime, now);
     this.endTime = now + this.chokeTime;
   }
+
+  protected abstract internalFastChoke(chokeTime: number, now: number): void;
 
   noteOn(
     noteNumber: number,
@@ -101,6 +99,5 @@ export abstract class Voice {
       clearTimeout(this.cleanupTimer);
       this.cleanupTimer = null;
     }
-    this.ampEnvelope.disconnect();
   }
 }
