@@ -23,8 +23,9 @@
       :data-size="size"
       ref="knob"
       :style="{
-        '--angle': `${angle - 135}deg`,
-        '--sweep': `${angle}deg`,
+        '--angle': `${angle}deg`,
+        '--sweep-start': `${sweepStart}deg`,
+        '--sweep': `${sweep}deg`,
       }"
     >
       <div class="arc absolute rounded-full"></div>
@@ -62,6 +63,13 @@ const props = withDefaults(
     size: 'lg',
   },
 );
+const angleMin = -135; // corresponds to normalized 0
+const angleRange = 270;
+
+const normalizedZeroValue = convertValueToNormalized(0);
+const sweepZero = convertNormalizedToAngle(normalizedZeroValue);
+
+console.log(`${props.label}: zero = ${normalizedZeroValue}`);
 const displayValue = computed(() => {
   return props.format(value.value);
 });
@@ -69,21 +77,40 @@ const value = defineModel<number>({ required: true });
 
 // Range: 0..1
 const normalizedValue = computed({
-  get: () => toNormalized(value.value),
+  get: () => convertValueToNormalized(value.value),
   set(normalized: number) {
-    value.value = fromNormalized(normalized);
+    value.value = convertNormalizedToValue(normalized);
   },
 });
 
-function toNormalized(value: number) {
+// Start angle of the sweep
+const sweepStart = computed(() => {
+  const valueAngle = convertNormalizedToAngle(normalizedValue.value);
+  return Math.min(sweepZero, valueAngle);
+});
+
+// The sweep angle of the knob, representing the difference between the current value angle and the zero angle
+const sweep = computed(() => {
+  const valueAngle = convertNormalizedToAngle(normalizedValue.value);
+  return Math.abs(valueAngle - sweepZero);
+});
+
+// Converts a value from the component's range to a normalized 0..1 range
+function convertValueToNormalized(value: number) {
   return (value - props.from) / (props.to - props.from);
 }
 
-function fromNormalized(normalized: number) {
+// Converts a normalized 0..1 value back to the component's range
+function convertNormalizedToValue(normalized: number) {
   return normalized * (props.to - props.from) + props.from;
 }
 
-const angle = computed(() => normalizedValue.value * 270);
+// Converts a normalized 0..1 value to the corresponding angle on the knob
+function convertNormalizedToAngle(normalized: number) {
+  return angleMin + normalized * angleRange;
+}
+
+const angle = computed(() => angleMin + normalizedValue.value * angleRange);
 
 const active = ref(false);
 let startY = 0;
@@ -104,7 +131,7 @@ function onPointerMove(e: PointerEvent) {
 }
 
 function set(newNormalizedValue: number) {
-  const newValue = fromNormalized(clamp(newNormalizedValue));
+  const newValue = convertNormalizedToValue(clamp(newNormalizedValue));
   let newValueTickApplied = newValue;
   if (props.tickSize) {
     const ticks = Math.round(newValueTickApplied / props.tickSize);
@@ -122,7 +149,7 @@ function release() {
 }
 
 function resetToDefault() {
-  set(toNormalized(props.default));
+  set(convertValueToNormalized(props.default));
 }
 </script>
 
@@ -215,10 +242,10 @@ function resetToDefault() {
 .knob .arc {
   inset: -6px;
   background: conic-gradient(
-    from 225deg,
+    from var(--sweep-start),
     var(--color-accent-300) 0deg,
-    var(--color-accent-700) var(--sweep, 0deg),
-    transparent var(--sweep, 0deg)
+    var(--color-accent-700) var(--sweep),
+    transparent var(--sweep)
   );
   mask: radial-gradient(
     farthest-side,

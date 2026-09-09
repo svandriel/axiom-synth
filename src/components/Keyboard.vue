@@ -11,8 +11,8 @@
           on: pressed[note.semi],
         }"
         :data-semi="note.semi"
-        @pointerdown="() => onPianoKeyDown(note.semi)"
-        @pointerup="() => onPianoKeyUp(note.semi)"
+        @pointerdown="e => onPianoKeyDown(note.semi, e)"
+        @pointerup="e => onPianoKeyUp(note.semi, e)"
       >
         <span class="name absolute top-2.5 font-mono text-primary-500">
           {{ note.n }}
@@ -29,8 +29,8 @@
         :class="{
           on: pressed[note.semi],
         }"
-        @pointerdown="() => onPianoKeyDown(note.semi)"
-        @pointerup="() => onPianoKeyUp(note.semi)"
+        @pointerdown="e => onPianoKeyDown(note.semi, e)"
+        @pointerup="e => onPianoKeyUp(note.semi, e)"
         :style="{
           '--width': '3.1%',
           '--location': pianoKeyLocations[note.semi],
@@ -62,14 +62,20 @@ const blackNotes = notes.filter(note => note.black);
 
 const pressed = ref<{ [semi: number]: boolean }>({});
 
-function onPianoKeyDown(semi: number) {
+function onPianoKeyDown(semi: number, e?: PointerEvent) {
   engine.value.noteOn(semi + (octave.value - 4) * 12, 127);
   pressed.value[semi] = true;
+  if (e?.currentTarget && e.currentTarget instanceof HTMLDivElement) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
 }
 
-function onPianoKeyUp(semi: number) {
+function onPianoKeyUp(semi: number, e?: PointerEvent) {
   engine.value.noteOff(semi + (octave.value - 4) * 12);
   pressed.value[semi] = false;
+  if (e?.currentTarget && e.currentTarget instanceof HTMLDivElement) {
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  }
 }
 
 function onKeyDown(e: KeyboardEvent) {
