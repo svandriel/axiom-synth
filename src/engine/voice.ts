@@ -125,6 +125,11 @@ export class Voice {
     const now = this.ctxt.currentTime;
     console.log(`[${now.toFixed(4)}] noteOff()`);
 
+    if (this.cleanupTimer !== null) {
+      clearTimeout(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+
     this.ampEnv.gain.cancelScheduledValues(now);
     this.ampEnv.gain.setValueAtTime(this.ampEnv.gain.value, now);
     this.ampEnv.gain.setTargetAtTime(0, now, ampEnvelope.releaseSeconds / 3);
