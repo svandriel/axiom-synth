@@ -6,7 +6,9 @@ export class Voice {
 
   private readonly ampEnv: GainNode;
   // private readonly filterEnv: GainNode;
-  private readonly oscillators: OscillatorNode[] = [];
+  private oscillators: OscillatorNode[] = [];
+  private oscillatorsActive = false;
+  private cleanupTimer: ReturnType<typeof setTimeout> | null = null;
   // private readonly filter: BiquadFilterNode;
   public currentNote: number | null = null;
   public endTime = 0;
@@ -20,29 +22,6 @@ export class Voice {
 
     this.ampEnv = this.ctxt.createGain();
     this.ampEnv.gain.setValueAtTime(0, this.ctxt.currentTime);
-    // this.filterEnv = this.ctxt.createGain();
-    // this.filter = this.ctxt.createBiquadFilter();
-
-    // this.filterEnv.connect(this.filter.frequency);
-
-    const osc1 = this.ctxt.createOscillator();
-    osc1.type = 'sawtooth';
-    osc1.detune.value = -12;
-
-    const osc2 = this.ctxt.createOscillator();
-    osc2.type = 'sawtooth';
-    osc2.detune.value = 0;
-
-    const osc3 = this.ctxt.createOscillator();
-    osc3.type = 'triangle';
-    osc3.detune.value = 11;
-
-    this.oscillators.push(osc1);
-    this.oscillators.push(osc2);
-    this.oscillators.push(osc3);
-
-    this.oscillators.forEach(osc => osc.connect(this.ampEnv));
-    this.oscillators.forEach(osc => osc.start(this.ctxt.currentTime));
 
     this.ampEnv.connect(this.audioSink);
   }
@@ -80,20 +59,28 @@ export class Voice {
 
     console.log(`[${now.toFixed(4)}] noteOn(${noteNumber})`);
 
-    // Fixed: Pitch shift & envelope execution begin exactly at scheduled timeline sequence position
+    if (this.cleanupTimer !== null) {
+      clearTimeout(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+
+    if (this.oscillatorsActive) {
+      this.oscillators.forEach(osc => osc.stop());
+      this.oscillators.forEach(osc => osc.disconnect());
+      this.oscillators = [];
+    }
+
+    this.createOscillators(now);
+
     const frequency = freqOf(noteNumber);
-    const targetVolume = (velocity / 127) * this.maxVolume; // Adjusted output ceiling allocation
+    const targetVolume = (velocity / 127) * this.maxVolume;
 
     this.ampEnv.gain.cancelScheduledValues(now);
-    // this.filter.frequency.cancelScheduledValues(now);
 
-    // Fixed: Repitch oscillators precisely when the choke period completes
     this.oscillators.forEach(osc => {
       osc.frequency.setValueAtTime(frequency, now);
     });
 
-    // Fixed: Replaced linear curves with true Exponential ADSR Envelopes
-    // setTargetAtTime avoids click artifacts by calculating curves based on current parameters
     this.ampEnv.gain.setValueAtTime(this.ampEnv.gain.value, now);
     this.ampEnv.gain.setTargetAtTime(
       targetVolume,
@@ -109,16 +96,29 @@ export class Voice {
       ampEnvelope.decaySeconds / 3,
     );
 
-    // Exponential Filter Sweep Execution
-    // const peakCutoff = Math.min(19000, ampEnvelope.cutoff + ampEnvelope.filterEnvAmt);
-    // const sustainCutoff = Math.max(20, ampEnvelope.cutoff + (ampEnvelope.filterEnvAmt * ampEnvelope.sustain));
-
-    // this.filter.frequency.setValueAtTime(this.filter.frequency.value, now);
-    // this.filter.frequency.setTargetAtTime(peakCutoff, now, ampEnvelope.attack / 3);
-    // this.filter.frequency.setTargetAtTime(sustainCutoff, decayStartTime, ampEnvelope.decay / 3);
-
-    // Mark endTime as Infinity until explicit noteOff release occurs
+    this.oscillatorsActive = true;
     this.endTime = Infinity;
+  }
+
+  private createOscillators(now: number): void {
+    const osc1 = this.ctxt.createOscillator();
+    osc1.type = 'sawtooth';
+    osc1.detune.value = -12;
+
+    const osc2 = this.ctxt.createOscillator();
+    osc2.type = 'sawtooth';
+    osc2.detune.value = 0;
+
+    const osc3 = this.ctxt.createOscillator();
+    osc3.type = 'triangle';
+    osc3.detune.value = 11;
+
+    this.oscillators.push(osc1);
+    this.oscillators.push(osc2);
+    this.oscillators.push(osc3);
+
+    this.oscillators.forEach(osc => osc.connect(this.ampEnv));
+    this.oscillators.forEach(osc => osc.start(now));
   }
 
   noteOff(ampEnvelope: EnvelopeConfig) {
@@ -127,20 +127,36 @@ export class Voice {
 
     this.ampEnv.gain.cancelScheduledValues(now);
     this.ampEnv.gain.setValueAtTime(this.ampEnv.gain.value, now);
-    // Exponential fade toward a non-zero floor value to prevent math calculation faults
     this.ampEnv.gain.setTargetAtTime(0, now, ampEnvelope.releaseSeconds / 3);
 
-    // this.filter.frequency.cancelScheduledValues(now);
-    // this.filter.frequency.setValueAtTime(this.filter.frequency.value, now);
-    // this.filter.frequency.setTargetAtTime(ampEnvelope.cutoff, now, ampEnvelope.release / 3);
+    // 5 time-constants completely flattens setTargetAtTime
+    this.endTime = now + ampEnvelope.releaseSeconds * 5;
 
-    // Fixed: Eliminated the flaky JavaScript setTimeout state machine wrapper
-    // The voice boundary availability checks now reference this absolute time parameter
-    this.endTime = now + ampEnvelope.releaseSeconds * 5; // 5 time-constants completely flattens setTargetAtTime
+    this.cleanupTimer = setTimeout(
+      () => {
+        if (!this.oscillatorsActive) return;
+        this.oscillators.forEach(osc => osc.stop());
+        this.oscillators.forEach(osc => osc.disconnect());
+        this.oscillators = [];
+        this.oscillatorsActive = false;
+        this.currentNote = null;
+        this.cleanupTimer = null;
+      },
+      ampEnvelope.releaseSeconds * 5 * 1000,
+    );
   }
 
   destroy() {
-    this.oscillators.forEach(osc => osc.stop());
+    if (this.cleanupTimer !== null) {
+      clearTimeout(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+    if (this.oscillatorsActive) {
+      this.oscillators.forEach(osc => osc.stop());
+      this.oscillators.forEach(osc => osc.disconnect());
+      this.oscillators = [];
+      this.oscillatorsActive = false;
+    }
     this.ampEnv.disconnect();
     // this.filterEnv.disconnect();
     // this.filter.disconnect();
