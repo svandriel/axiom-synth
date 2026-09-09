@@ -8,10 +8,7 @@ export abstract class Voice {
   private readonly chokeTime = 0.003;
 
   protected readonly ampEnvelope: Envelope;
-  // private readonly filterEnv: GainNode;
-  private oscillatorsActive = false;
   private cleanupTimer: ReturnType<typeof setTimeout> | null = null;
-  // private readonly filter: BiquadFilterNode;
   public currentNote: number | null = null;
   public endTime = 0;
   public lastUsed = 0;
@@ -23,11 +20,7 @@ export abstract class Voice {
     this.ampEnvelope = new Envelope(ctxt, audioSink);
   }
 
-  protected abstract createOscillators(now: number): void;
-
   protected abstract destroyOscillators(): void;
-
-  protected abstract setOscillatorNote(noteNumber: number, now: number): void;
 
   /**
    * Evaluates voice availability based purely on the audio hardware clock pipeline state
@@ -39,15 +32,15 @@ export abstract class Voice {
   /**
    * Executes a micro-fade parameter envelope to truncate a stolen note cleanly
    */
-  fastChoke(time: number): void {
-    this.ampEnvelope.fastChoke(this.chokeTime, time);
-    this.endTime = time + this.chokeTime;
+  fastChoke(now: number): void {
+    this.ampEnvelope.fastChoke(this.chokeTime, now);
+    this.endTime = now + this.chokeTime;
   }
 
   noteOn(
     noteNumber: number,
     velocity: number,
-    ampEnvelope: EnvelopeConfig,
+    ampEnvelopeConfig: EnvelopeConfig,
     startTimeOffset: number,
   ) {
     const now = this.ctxt.currentTime + startTimeOffset;
@@ -62,20 +55,19 @@ export abstract class Voice {
       this.cleanupTimer = null;
     }
 
-    if (this.oscillatorsActive) {
-      this.destroyOscillators();
-    }
+    this.internalNoteOn(noteNumber, velocity, ampEnvelopeConfig, now);
 
-    this.createOscillators(now);
-    this.setOscillatorNote(noteNumber, now);
-
-    this.ampEnvelope.noteOn(velocity, ampEnvelope, now);
-
-    this.oscillatorsActive = true;
     this.endTime = Infinity;
   }
 
-  noteOff(ampEnvelope: EnvelopeConfig) {
+  protected abstract internalNoteOn(
+    noteNumber: number,
+    velocity: number,
+    ampEnvelopeConfig: EnvelopeConfig,
+    now: number,
+  ): void;
+
+  noteOff(ampEnvelopeConfig: EnvelopeConfig) {
     const now = this.ctxt.currentTime;
     console.log(`[${now.toFixed(4)}] noteOff()`);
 
@@ -84,34 +76,31 @@ export abstract class Voice {
       this.cleanupTimer = null;
     }
 
-    this.ampEnvelope.noteOff(ampEnvelope, now);
+    const { silentAt } = this.internalNoteOff(ampEnvelopeConfig, now);
 
     // 5 time-constants completely flattens setTargetAtTime
-    this.endTime = now + ampEnvelope.releaseSeconds * 5;
+    this.endTime = now + silentAt * 5;
 
     this.cleanupTimer = setTimeout(
       () => {
-        if (!this.oscillatorsActive) return;
         this.destroyOscillators();
-        this.oscillatorsActive = false;
         this.currentNote = null;
         this.cleanupTimer = null;
       },
-      ampEnvelope.releaseSeconds * 5 * 1000,
+      silentAt * 5 * 1000,
     );
   }
+
+  protected abstract internalNoteOff(
+    ampEnvelopeConfig: EnvelopeConfig,
+    now: number,
+  ): { silentAt: number };
 
   destroy() {
     if (this.cleanupTimer !== null) {
       clearTimeout(this.cleanupTimer);
       this.cleanupTimer = null;
     }
-    if (this.oscillatorsActive) {
-      this.destroyOscillators();
-      this.oscillatorsActive = false;
-    }
     this.ampEnvelope.disconnect();
-    // this.filterEnv.disconnect();
-    // this.filter.disconnect();
   }
 }
