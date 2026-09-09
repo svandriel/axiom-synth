@@ -12,6 +12,7 @@
         class="mt-3"
         :from="20"
         :to="20000"
+        :log-base="2"
         :default="20000"
         :format="v => `${v.toFixed(0)} Hz`"
       />

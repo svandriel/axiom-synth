@@ -11,22 +11,20 @@ export class AudioEngine {
   private readonly dry: GainNode;
   private readonly comp: DynamicsCompressorNode;
 
-  private readonly voice: Voice;
-
   private readonly noteToVoiceMap: Map<number, Voice> = new Map();
 
   private readonly voicePool: Voice[] = [];
 
   public ampEnvelope: EnvelopeConfig = {
-    attackSeconds: 0.04, // 40ms exponential rise
-    decaySeconds: 0.25, // 250ms decay
-    sustainLevel: 0.4, // Sustain floor level target
-    releaseSeconds: 0.35, // Release phase drop
+    attackSeconds: 0.01,
+    decaySeconds: 0.3,
+    sustainLevel: 0.6,
+    releaseSeconds: 0.5,
   };
 
   public filterConfig: FilterConfig = {
-    frequency: 3000,
-    resonance: 3,
+    frequency: 1500,
+    resonance: 5,
   };
 
   constructor(ctxt: AudioContext) {
@@ -68,8 +66,6 @@ export class AudioEngine {
     this.master.connect(this.comp);
     this.comp.connect(this.analyser);
     this.analyser.connect(ctxt.destination);
-
-    this.voice = new Voice(this.ctxt, this.filter);
 
     this.voicePool = Array.from(
       { length: MAX_VOICES },
@@ -119,9 +115,8 @@ export class AudioEngine {
       let oldestTime = Infinity;
       let oldestVoice: Voice | null = null;
 
-      // Since we only have one voice for now
       for (const voice of this.voicePool) {
-        if (this.voice.lastUsed < oldestTime) {
+        if (voice.lastUsed < oldestTime) {
           oldestTime = voice.lastUsed;
           oldestVoice = voice;
         }
@@ -166,11 +161,11 @@ export class AudioEngine {
 
   allNotesOff() {
     console.log('allNotesOff');
-    this.voice.noteOff(this.ampEnvelope);
+    this.voicePool.forEach(voice => voice.noteOff(this.ampEnvelope));
   }
 
   destroy() {
-    this.voice.destroy();
+    this.voicePool.forEach(voice => voice.destroy());
     this.comp.disconnect();
     this.analyser.disconnect();
     this.master.disconnect();

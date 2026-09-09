@@ -1,6 +1,6 @@
 <template>
   <div
-    class="knob-block flex flex-col items-center gap-2"
+    class="knob-block flex touch-none flex-col items-center gap-2"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
     @pointerup="release"
@@ -52,6 +52,7 @@ const props = withDefaults(
     default?: number;
     label: string;
     tickSize?: number;
+    logBase?: number;
     format?: (value: number) => string;
     size?: 'md' | 'lg';
   }>(),
@@ -59,6 +60,7 @@ const props = withDefaults(
     from: 0,
     to: 1,
     default: 0,
+    logBase: 0,
     format: (value: number) => `${value}`,
     size: 'lg',
   },
@@ -66,10 +68,9 @@ const props = withDefaults(
 const angleMin = -135; // corresponds to normalized 0
 const angleRange = 270;
 
-const normalizedZeroValue = convertValueToNormalized(0);
+const normalizedZeroValue = convertValueToNormalized(Math.max(0, props.from));
 const sweepZero = convertNormalizedToAngle(normalizedZeroValue);
 
-console.log(`${props.label}: zero = ${normalizedZeroValue}`);
 const displayValue = computed(() => {
   return props.format(value.value);
 });
@@ -82,6 +83,8 @@ const normalizedValue = computed({
     value.value = convertNormalizedToValue(normalized);
   },
 });
+
+const angle = computed(() => angleMin + normalizedValue.value * angleRange);
 
 // Start angle of the sweep
 const sweepStart = computed(() => {
@@ -97,11 +100,28 @@ const sweep = computed(() => {
 
 // Converts a value from the component's range to a normalized 0..1 range
 function convertValueToNormalized(value: number) {
+  if (props.logBase !== 0) {
+    const minExponent = Math.log(props.from) / Math.log(props.logBase);
+    const maxExponent = Math.log(props.to) / Math.log(props.logBase);
+    return (
+      (Math.log(value) / Math.log(props.logBase) - minExponent) /
+      (maxExponent - minExponent)
+    );
+  }
+
   return (value - props.from) / (props.to - props.from);
 }
 
 // Converts a normalized 0..1 value back to the component's range
 function convertNormalizedToValue(normalized: number) {
+  if (props.logBase !== 0) {
+    const minExponent = Math.log(props.from) / Math.log(props.logBase);
+    const maxExponent = Math.log(props.to) / Math.log(props.logBase);
+    return Math.pow(
+      props.logBase,
+      minExponent + normalized * (maxExponent - minExponent),
+    );
+  }
   return normalized * (props.to - props.from) + props.from;
 }
 
@@ -109,8 +129,6 @@ function convertNormalizedToValue(normalized: number) {
 function convertNormalizedToAngle(normalized: number) {
   return angleMin + normalized * angleRange;
 }
-
-const angle = computed(() => angleMin + normalizedValue.value * angleRange);
 
 const active = ref(false);
 let startY = 0;
@@ -175,6 +193,7 @@ function resetToDefault() {
 .knob.active {
   box-shadow: var(--shadow-in-sm);
   transform: scale(0.97);
+  cursor: none;
 }
 
 .knob::before {
