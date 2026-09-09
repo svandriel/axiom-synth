@@ -1,4 +1,5 @@
 import type { EnvelopeConfig } from '../types';
+import { Envelope } from './envelope';
 import { freqOf } from './helpers';
 import { Voice } from './voice';
 
@@ -6,8 +7,11 @@ export class AxiomVoice extends Voice {
   private areOscillatorsActive = false;
   private oscillators: OscillatorNode[] = [];
 
+  protected readonly ampEnvelope: Envelope;
+
   constructor(ctxt: AudioContext, audioSink: AudioNode) {
     super(ctxt, audioSink);
+    this.ampEnvelope = new Envelope(ctxt, audioSink);
   }
 
   override internalNoteOn(
@@ -28,6 +32,13 @@ export class AxiomVoice extends Voice {
     return {
       silentAt: ampEnvelopeConfig.releaseSeconds,
     };
+  }
+
+  /**
+   * Executes a micro-fade parameter envelope to truncate a stolen note cleanly
+   */
+  override internalFastChoke(chokeTime: number, now: number): void {
+    this.ampEnvelope.fastChoke(chokeTime, now);
   }
 
   private createOscillators(noteNumber: number, now: number): void {
@@ -76,6 +87,7 @@ export class AxiomVoice extends Voice {
 
   override destroy(): void {
     this.destroyOscillators();
+    this.ampEnvelope.disconnect();
     super.destroy();
   }
 }
