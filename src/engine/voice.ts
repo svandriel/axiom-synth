@@ -1,4 +1,4 @@
-import type { EnvelopeConfig } from './envelope';
+import type { EnvelopeConfig } from '../types/envelope-config';
 
 export class Voice {
   private readonly ctxt: AudioContext;
@@ -68,7 +68,7 @@ export class Voice {
   noteOn(
     noteNumber: number,
     velocity: number,
-    settings: EnvelopeConfig,
+    ampEnvelope: EnvelopeConfig,
     startTimeOffset: number,
   ) {
     const now = this.ctxt.currentTime + startTimeOffset;
@@ -96,45 +96,45 @@ export class Voice {
     this.ampEnv.gain.setTargetAtTime(
       targetVolume,
       now,
-      settings.attackSeconds / 3,
+      ampEnvelope.attackSeconds / 3,
     );
 
-    const decayStartTime = now + settings.attackSeconds;
-    const sustainVolume = targetVolume * settings.sustainLevel;
+    const decayStartTime = now + ampEnvelope.attackSeconds;
+    const sustainVolume = targetVolume * ampEnvelope.sustainLevel;
     this.ampEnv.gain.setTargetAtTime(
       sustainVolume,
       decayStartTime,
-      settings.decaySeconds / 3,
+      ampEnvelope.decaySeconds / 3,
     );
 
     // Exponential Filter Sweep Execution
-    // const peakCutoff = Math.min(19000, settings.cutoff + settings.filterEnvAmt);
-    // const sustainCutoff = Math.max(20, settings.cutoff + (settings.filterEnvAmt * settings.sustain));
+    // const peakCutoff = Math.min(19000, ampEnvelope.cutoff + ampEnvelope.filterEnvAmt);
+    // const sustainCutoff = Math.max(20, ampEnvelope.cutoff + (ampEnvelope.filterEnvAmt * ampEnvelope.sustain));
 
     // this.filter.frequency.setValueAtTime(this.filter.frequency.value, now);
-    // this.filter.frequency.setTargetAtTime(peakCutoff, now, settings.attack / 3);
-    // this.filter.frequency.setTargetAtTime(sustainCutoff, decayStartTime, settings.decay / 3);
+    // this.filter.frequency.setTargetAtTime(peakCutoff, now, ampEnvelope.attack / 3);
+    // this.filter.frequency.setTargetAtTime(sustainCutoff, decayStartTime, ampEnvelope.decay / 3);
 
     // Mark endTime as Infinity until explicit noteOff release occurs
     this.endTime = Infinity;
   }
 
-  noteOff(settings: EnvelopeConfig) {
+  noteOff(ampEnvelope: EnvelopeConfig) {
     const now = this.ctxt.currentTime;
     console.log(`[${now.toFixed(4)}] noteOff()`);
 
     this.ampEnv.gain.cancelScheduledValues(now);
     this.ampEnv.gain.setValueAtTime(this.ampEnv.gain.value, now);
     // Exponential fade toward a non-zero floor value to prevent math calculation faults
-    this.ampEnv.gain.setTargetAtTime(0, now, settings.releaseSeconds / 3);
+    this.ampEnv.gain.setTargetAtTime(0, now, ampEnvelope.releaseSeconds / 3);
 
     // this.filter.frequency.cancelScheduledValues(now);
     // this.filter.frequency.setValueAtTime(this.filter.frequency.value, now);
-    // this.filter.frequency.setTargetAtTime(settings.cutoff, now, settings.release / 3);
+    // this.filter.frequency.setTargetAtTime(ampEnvelope.cutoff, now, ampEnvelope.release / 3);
 
     // Fixed: Eliminated the flaky JavaScript setTimeout state machine wrapper
     // The voice boundary availability checks now reference this absolute time parameter
-    this.endTime = now + settings.releaseSeconds * 5; // 5 time-constants completely flattens setTargetAtTime
+    this.endTime = now + ampEnvelope.releaseSeconds * 5; // 5 time-constants completely flattens setTargetAtTime
   }
 
   destroy() {

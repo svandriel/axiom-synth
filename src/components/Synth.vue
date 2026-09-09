@@ -15,17 +15,24 @@
         class="col-span-12 row-start-3 sm:col-span-6 lg:col-span-4"
         v-model="osc3"
       />
+      <FilterPanel
+        class="col-span-12 col-start-5 row-start-1 sm:col-span-6 lg:col-span-4"
+        v-model:cutoff="cutoff"
+      />
     </div>
 
     <Keyboard class="mt-3" />
   </div>
 </template>
 <script setup lang="ts">
-import { onUnmounted, reactive } from 'vue';
+import { onUnmounted, reactive, ref, watch } from 'vue';
 import { useAudioEngine } from '../composables/use-audio-context.ts';
 import type { OscillatorConfig } from '../types/oscillator-config.ts';
 import Keyboard from './Keyboard.vue';
 import OscillatorPanel from './OscillatorPanel.vue';
+import FilterPanel from './FilterPanel.vue';
+
+const cutoff = ref(2000);
 
 const osc1 = reactive<OscillatorConfig>({
   label: 'VCO 1',
@@ -50,6 +57,11 @@ const osc3 = reactive<OscillatorConfig>({
 });
 
 const engine = useAudioEngine();
+
+watch(cutoff, newCutoff => {
+  console.log(`Filter cutoff changed to ${newCutoff} Hz`);
+  engine.value.filterCutoff = newCutoff;
+});
 
 onUnmounted(() => {
   engine.value.destroy();

@@ -1,4 +1,4 @@
-import type { EnvelopeConfig } from './envelope';
+import type { EnvelopeConfig, FilterConfig } from '../types';
 import { Voice } from './voice';
 
 const MAX_VOICES = 16;
@@ -17,11 +17,16 @@ export class AudioEngine {
 
   private readonly voicePool: Voice[] = [];
 
-  public settings: EnvelopeConfig = {
+  public ampEnvelope: EnvelopeConfig = {
     attackSeconds: 0.04, // 40ms exponential rise
     decaySeconds: 0.25, // 250ms decay
     sustainLevel: 0.4, // Sustain floor level target
     releaseSeconds: 0.35, // Release phase drop
+  };
+
+  public filterConfig: FilterConfig = {
+    frequency: 3000,
+    resonance: 3,
   };
 
   constructor(ctxt: AudioContext) {
@@ -33,8 +38,8 @@ export class AudioEngine {
     this.master.gain.value = 0.5;
     this.filter = ctxt.createBiquadFilter();
     this.filter.type = 'lowpass';
-    this.filter.frequency.value = 2000;
-    this.filter.Q.value = 3;
+    this.filter.frequency.value = this.filterConfig.frequency;
+    this.filter.Q.value = this.filterConfig.resonance;
     this.analyser = ctxt.createAnalyser();
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.82;
@@ -72,13 +77,22 @@ export class AudioEngine {
     );
   }
 
-  public ensureStarted() {
+  get filterCutoff(): number {
+    return this.filter.frequency.value;
+  }
+
+  set filterCutoff(value: number) {
+    this.filter.frequency.value = value;
+    this.filterConfig.frequency = value;
+  }
+
+  ensureStarted() {
     if (this.ctxt.state === 'suspended') {
       this.ctxt.resume();
     }
   }
 
-  public noteOn(noteNumber: number, velocity: number) {
+  noteOn(noteNumber: number, velocity: number) {
     this.ensureStarted();
     const now = this.ctxt.currentTime;
 
@@ -130,19 +144,18 @@ export class AudioEngine {
     }
 
     if (targetVoice) {
-      targetVoice.noteOn(noteNumber, velocity, this.settings, startDelay);
+      targetVoice.noteOn(noteNumber, velocity, this.ampEnvelope, startDelay);
       this.noteToVoiceMap.set(noteNumber, targetVoice);
     }
   }
 
-  public noteOff(noteNumber: number) {
-    console.log('noteToVoiceMap', this.noteToVoiceMap);
+  noteOff(noteNumber: number) {
     const voice = this.noteToVoiceMap.get(noteNumber);
     if (voice) {
       console.log(
         `[${this.ctxt.currentTime.toFixed(4)}] noteOff(${noteNumber}) - releasing voice`,
       );
-      voice.noteOff(this.settings);
+      voice.noteOff(this.ampEnvelope);
       this.noteToVoiceMap.delete(noteNumber);
     } else {
       console.log(
@@ -151,16 +164,12 @@ export class AudioEngine {
     }
   }
 
-  public allNotesOff() {
+  allNotesOff() {
     console.log('allNotesOff');
-    this.voice.noteOff(this.settings);
+    this.voice.noteOff(this.ampEnvelope);
   }
 
-  public get noteSignalSink() {
-    return this.filter;
-  }
-
-  public destroy() {
+  destroy() {
     this.voice.destroy();
     this.comp.disconnect();
     this.analyser.disconnect();
