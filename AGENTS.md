@@ -17,6 +17,11 @@ Linting is done in the pre-commit hook, no need to run `pnpm lint` manually.
 
 There is no test runner configured.
 
+## Way of working
+
+- Always work on a feature branch; ask the user if a worktree is needed.
+- Do not commit directly to the main branch; always go through a pull request.
+
 ## Conventions
 
 - **Package manager:** pnpm (lockfile: `pnpm-lock.yaml`)
