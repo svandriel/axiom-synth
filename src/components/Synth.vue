@@ -32,7 +32,9 @@ import Keyboard from './Keyboard.vue';
 import OscillatorPanel from './OscillatorPanel.vue';
 import FilterPanel from './FilterPanel.vue';
 
-const cutoff = ref(2000);
+const engine = useAudioEngine();
+
+const cutoff = ref(engine.value.filterConfig.frequency);
 
 const osc1 = reactive<OscillatorConfig>({
   label: 'VCO 1',
@@ -56,10 +58,7 @@ const osc3 = reactive<OscillatorConfig>({
   waveform: 'sine',
 });
 
-const engine = useAudioEngine();
-
 watch(cutoff, newCutoff => {
-  console.log(`Filter cutoff changed to ${newCutoff} Hz`);
   engine.value.filterCutoff = newCutoff;
 });
 
