@@ -134,6 +134,10 @@ export class AudioEngine {
     );
   }
 
+  getScopeData(buffer: Float32Array<ArrayBuffer>) {
+    this.analyser.getFloatTimeDomainData(buffer);
+  }
+
   get filterCutOff(): number {
     return this.filterConfig.frequency;
   }
