@@ -4,7 +4,7 @@
       <div class="text-sm tracking-wide uppercase">Scope</div>
     </div>
     <h2>Scope Component</h2>
-    <div class="relative rounded-lg bg-black">
+    <div class="relative overflow-hidden rounded-2xl bg-black">
       <canvas ref="scope" class="block h-full w-full" />
     </div>
   </div>
@@ -20,12 +20,11 @@ const engine = useAudioEngine();
 
 const styles = getComputedStyle(document.documentElement);
 
+const scopeBackground = styles.getPropertyValue('--color-primary-800');
 const scopeGridColor = styles.getPropertyValue('--color-accent-100');
 const scopeColor1 = styles.getPropertyValue('--color-accent-300');
 const scopeColor2 = styles.getPropertyValue('--color-accent-500');
 const scopeColor3 = styles.getPropertyValue('--color-accent-900');
-
-console.log('accentColor', scopeColor1);
 
 let rafId: number | undefined = undefined;
 var timeData = new Float32Array(2048);
@@ -75,7 +74,10 @@ function render(scope: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
   const d = fit(scope);
   const w = d.w;
   const h = d.h;
-  sctx.clearRect(0, 0, w, h);
+  // Set background color
+  sctx.fillStyle = scopeBackground;
+  sctx.fillRect(0, 0, w, h);
+  // sctx.clearRect(0, 0, w, h);
   sctx.strokeStyle = scopeGridColor;
   sctx.globalAlpha = 0.2;
   sctx.lineWidth = 1;
