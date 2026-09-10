@@ -2,7 +2,7 @@
   <div
     class="synth b-3 min-h-100 rounded-2xl bg-default p-3 shadow-out dark:bg-default-dark dark:shadow-out-dark"
   >
-    <div class="grid grid-cols-12 grid-rows-3 gap-3">
+    <div class="grid grid-cols-12 grid-rows-5 gap-3 sm:grid-rows-3">
       <OscillatorPanel
         class="col-span-12 row-start-1 sm:col-span-6 lg:col-span-4"
         label="vco1"
@@ -19,10 +19,13 @@
         v-model="osc3"
       />
       <FilterPanel
-        class="col-span-12 col-start-5 row-start-1 sm:col-span-6 lg:col-span-4"
+        class="col-span-12 row-start-4 sm:col-span-6 sm:col-start-7 sm:row-start-1 lg:col-span-4"
         v-model:cutoff="cutoff"
         v-model:resonance="resonance"
         v-model:envAmount="envAmount"
+      />
+      <ScopePanel
+        class="col-span-12 row-start-5 sm:col-span-6 sm:col-start-7 sm:row-start-2 lg:col-span-4"
       />
     </div>
 
@@ -35,6 +38,7 @@ import { useAudioEngine } from '../composables/use-audio-context.ts';
 import FilterPanel from './FilterPanel.vue';
 import Keyboard from './Keyboard.vue';
 import OscillatorPanel from './OscillatorPanel.vue';
+import ScopePanel from './ScopePanel.vue';
 
 const engine = useAudioEngine();
 const filterQ = Math.log2(2 * engine.value.filterConfig.q) / Math.log2(40);
