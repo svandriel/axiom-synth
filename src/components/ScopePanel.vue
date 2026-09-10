@@ -20,6 +20,7 @@ const engine = useAudioEngine();
 
 const styles = getComputedStyle(document.documentElement);
 
+const scopeGridColor = styles.getPropertyValue('--color-accent-100');
 const scopeColor1 = styles.getPropertyValue('--color-accent-300');
 const scopeColor2 = styles.getPropertyValue('--color-accent-500');
 const scopeColor3 = styles.getPropertyValue('--color-accent-900');
@@ -75,7 +76,8 @@ function render(scope: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
   const w = d.w;
   const h = d.h;
   sctx.clearRect(0, 0, w, h);
-  sctx.strokeStyle = 'rgba(183,139,255,.08)';
+  sctx.strokeStyle = scopeGridColor;
+  sctx.globalAlpha = 0.2;
   sctx.lineWidth = 1;
   for (var g = 1; g < 8; g++) {
     sctx.beginPath();
@@ -88,6 +90,8 @@ function render(scope: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
   sctx.lineTo(w, h / 2);
   sctx.stroke();
 
+  sctx.globalAlpha = 1;
+
   engine.value.getScopeData(timeData);
   const grad = sctx.createLinearGradient(0, 0, w, 0);
   grad.addColorStop(0, scopeColor1);
@@ -96,10 +100,11 @@ function render(scope: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
   sctx.lineWidth = 2.2 * d.dpr;
   sctx.lineJoin = 'round';
   sctx.shadowBlur = 18 * d.dpr;
-  sctx.shadowColor = 'rgba(255,45,149,.6)';
+  sctx.shadowColor = 'rgba(255,45,149,1)';
   sctx.strokeStyle = grad;
   sctx.beginPath();
 
+  // Find index of zero crossing
   let start = 0;
   for (let i = 1; i < timeData.length / 2; i++) {
     if (timeData[i - 1] < 0 && timeData[i] >= 0) {
