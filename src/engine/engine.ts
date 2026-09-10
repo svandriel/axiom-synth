@@ -7,7 +7,6 @@ const MAX_VOICES = 16;
 export class AudioEngine {
   public readonly ctxt: AudioContext;
   private readonly master: GainNode;
-  private readonly filter: BiquadFilterNode;
   private readonly analyser: AnalyserNode;
   private readonly dry: GainNode;
   private readonly comp: DynamicsCompressorNode;
@@ -16,16 +15,34 @@ export class AudioEngine {
 
   private readonly voicePool: Voice[] = [];
 
+  private readonly filterCutOffSource: ConstantSourceNode;
+  private readonly filterQSource: ConstantSourceNode;
+  private readonly filterEnvAmountSource: ConstantSourceNode;
+
   public ampEnvelope: EnvelopeConfig = {
-    attackSeconds: 0.01,
+    attackSeconds: 0.02,
+    attackCurve: 'analog',
     decaySeconds: 0.3,
+    decayCurve: 'analog',
     sustainLevel: 0.6,
-    releaseSeconds: 0.5,
+    releaseSeconds: 0.12,
+    releaseCurve: 'analog',
   };
 
   public filterConfig: FilterConfig = {
-    frequency: 1500,
-    resonance: 5,
+    frequency: 46,
+    q: 4,
+    envAmount: 3600, // cents, -9600 to 9600
+  };
+
+  public filterEnvelope: EnvelopeConfig = {
+    attackSeconds: 0.01,
+    attackCurve: 'linear',
+    decaySeconds: 0.2,
+    decayCurve: 'analog',
+    sustainLevel: 0.4,
+    releaseSeconds: 3,
+    releaseCurve: 'analog',
   };
 
   constructor(ctxt: AudioContext) {
@@ -35,52 +52,82 @@ export class AudioEngine {
 
     this.master = ctxt.createGain();
     this.master.gain.value = 0.5;
-    this.filter = ctxt.createBiquadFilter();
-    this.filter.type = 'lowpass';
-    this.filter.frequency.value = this.filterConfig.frequency;
-    this.filter.Q.value = this.filterConfig.resonance;
     this.analyser = ctxt.createAnalyser();
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.82;
-    //   const delay = ctx.createDelay(1.0);
-    //   delay.delayTime.value = 0.32;
-    //   const feedback = ctx.createGain();
-    //   feedback.gain.value = 0.42;
-    //   const delayWet = ctx.createGain();
-    //   delayWet.gain.value = 0;
     this.dry = ctxt.createGain();
-    this.dry.gain.value = 1;
+    this.dry.gain.value = 0.2;
 
     this.comp = ctxt.createDynamicsCompressor();
 
-    this.filter.connect(this.dry);
-    //   filter.connect(delay);
-
     this.dry.connect(this.master);
-
-    //   feedback.connect(delay);
-    //   delay.connect(feedback);
-
-    //   delay.connect(delayWet);
-    //   delayWet.connect(master);
 
     this.master.connect(this.comp);
     this.comp.connect(this.analyser);
     this.analyser.connect(ctxt.destination);
 
+    this.filterCutOffSource = ctxt.createConstantSource();
+    this.filterCutOffSource.offset.value = this.filterConfig.frequency;
+    this.filterCutOffSource.start();
+
+    this.filterQSource = ctxt.createConstantSource();
+    this.filterQSource.offset.value = this.filterConfig.q;
+    this.filterQSource.start();
+
+    this.filterEnvAmountSource = ctxt.createConstantSource();
+    this.filterEnvAmountSource.offset.value = this.filterConfig.envAmount;
+    this.filterEnvAmountSource.start();
+
     this.voicePool = Array.from(
       { length: MAX_VOICES },
-      () => new AxiomVoice(this.ctxt, this.filter),
+      () =>
+        new AxiomVoice(
+          this.ctxt,
+          this.dry,
+          this.ampEnvelope,
+          this.filterEnvelope,
+          this.filterCutOffSource,
+          this.filterQSource,
+          this.filterEnvAmountSource,
+        ),
     );
   }
 
-  get filterCutoff(): number {
-    return this.filter.frequency.value;
+  get filterCutOff(): number {
+    return this.filterConfig.frequency;
   }
 
-  set filterCutoff(value: number) {
-    this.filter.frequency.value = value;
+  set filterCutOff(value: number) {
+    this.filterCutOffSource.offset.exponentialRampToValueAtTime(
+      value,
+      this.ctxt.currentTime + 0.01,
+    );
     this.filterConfig.frequency = value;
+  }
+
+  get filterQ(): number {
+    return this.filterConfig.q;
+  }
+
+  set filterQ(q: number) {
+    this.filterQSource.offset.linearRampToValueAtTime(
+      q,
+      this.ctxt.currentTime + 0.01,
+    );
+    this.filterConfig.q = q;
+  }
+
+  get filterEnvAmount(): number {
+    return this.filterConfig.envAmount;
+  }
+
+  set filterEnvAmount(value: number) {
+    this.filterEnvAmountSource.offset.linearRampToValueAtTime(
+      value,
+      this.ctxt.currentTime + 0.01,
+    );
+    console.log(`Setting filterEnvAmount to ${value}`);
+    this.filterConfig.envAmount = value;
   }
 
   ensureStarted() {
@@ -140,7 +187,7 @@ export class AudioEngine {
     }
 
     if (targetVoice) {
-      targetVoice.noteOn(noteNumber, velocity, this.ampEnvelope, startDelay);
+      targetVoice.noteOn(noteNumber, velocity, startDelay);
       this.noteToVoiceMap.set(noteNumber, targetVoice);
     }
   }
@@ -151,7 +198,7 @@ export class AudioEngine {
       console.log(
         `[${this.ctxt.currentTime.toFixed(4)}] noteOff(${noteNumber}) - releasing voice`,
       );
-      voice.noteOff(this.ampEnvelope);
+      voice.noteOff();
       this.noteToVoiceMap.delete(noteNumber);
     } else {
       console.log(
@@ -163,7 +210,7 @@ export class AudioEngine {
   allNotesOff() {
     console.log('allNotesOff');
     for (const [note, voice] of this.noteToVoiceMap.entries()) {
-      voice.noteOff(this.ampEnvelope);
+      voice.noteOff();
       this.noteToVoiceMap.delete(note);
     }
   }
@@ -173,7 +220,12 @@ export class AudioEngine {
     this.comp.disconnect();
     this.analyser.disconnect();
     this.master.disconnect();
-    this.filter.disconnect();
+    this.filterCutOffSource.disconnect();
+    this.filterCutOffSource.stop();
+    this.filterQSource.disconnect();
+    this.filterQSource.stop();
+    this.filterEnvAmountSource.disconnect();
+    this.filterEnvAmountSource.stop();
     this.dry.disconnect();
     this.ctxt.close();
   }

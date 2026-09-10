@@ -4,33 +4,70 @@ import { freqOf } from './helpers';
 import { Voice } from './voice';
 
 export class AxiomVoice extends Voice {
+  private readonly ampEnvelopeConfig: EnvelopeConfig;
+  private readonly filterEnvelopeConfig: EnvelopeConfig;
+
   private areOscillatorsActive = false;
   private oscillators: OscillatorNode[] = [];
 
-  protected readonly ampEnvelope: Envelope;
+  private readonly ampEnvelope: Envelope;
+  private readonly filterCutoff: ConstantSourceNode;
+  private readonly filterResonance: ConstantSourceNode;
+  private readonly filterEnvelope: Envelope;
+  private readonly filter: BiquadFilterNode;
+  private readonly filterEnvAmount: ConstantSourceNode;
 
-  constructor(ctxt: AudioContext, audioSink: AudioNode) {
+  constructor(
+    ctxt: AudioContext,
+    audioSink: AudioNode,
+    ampEnvelopeConfig: EnvelopeConfig,
+    filterEnvelopeConfig: EnvelopeConfig,
+    filterCutoff: ConstantSourceNode,
+    filterResonance: ConstantSourceNode,
+    filterEnvAmount: ConstantSourceNode,
+  ) {
     super(ctxt, audioSink);
-    this.ampEnvelope = new Envelope(ctxt, audioSink);
+    this.ampEnvelopeConfig = ampEnvelopeConfig;
+    this.filterEnvelopeConfig = filterEnvelopeConfig;
+    this.filterCutoff = filterCutoff;
+    this.filterResonance = filterResonance;
+    this.filterEnvAmount = filterEnvAmount;
+
+    this.ampEnvelope = new Envelope(ctxt);
+    this.filterEnvelope = new Envelope(ctxt);
+
+    this.filter = ctxt.createBiquadFilter();
+    this.filter.type = 'lowpass';
+    this.filter.frequency.value = 0;
+
+    // Hook up base values
+    this.filterCutoff.connect(this.filter.frequency);
+    this.filterResonance.connect(this.filter.Q);
+
+    // Filter Env Amount -> Filter Envelope -> Filter Detune
+    this.filterEnvAmount.connect(this.filterEnvelope.node);
+    this.filterEnvelope.node.connect(this.filter.detune);
+
+    // Oscillators -> Filter -> Amp Envelope -> Audio Sink
+    this.filter.connect(this.ampEnvelope.node);
+    this.ampEnvelope.node.connect(audioSink);
   }
 
   override internalNoteOn(
     noteNumber: number,
     velocity: number,
-    ampEnvelopeConfig: EnvelopeConfig,
     now: number,
   ): void {
     this.createOscillators(noteNumber, now);
-    this.ampEnvelope.noteOn(velocity, ampEnvelopeConfig, now);
+    this.ampEnvelope.noteOn(velocity, this.ampEnvelopeConfig, now);
+    this.filterEnvelope.noteOn(velocity, this.filterEnvelopeConfig, now);
   }
 
-  override internalNoteOff(
-    ampEnvelopeConfig: EnvelopeConfig,
-    now: number,
-  ): { silentAt: number } {
-    this.ampEnvelope.noteOff(ampEnvelopeConfig, now);
+  override internalNoteOff(now: number): { silentAt: number } {
+    this.ampEnvelope.noteOff(this.ampEnvelopeConfig, now);
+    this.filterEnvelope.noteOff(this.filterEnvelopeConfig, now);
     return {
-      silentAt: ampEnvelopeConfig.releaseSeconds,
+      silentAt: this.ampEnvelopeConfig.releaseSeconds,
     };
   }
 
@@ -62,7 +99,7 @@ export class AxiomVoice extends Voice {
     this.oscillators.push(osc2);
     this.oscillators.push(osc3);
 
-    this.oscillators.forEach(osc => osc.connect(this.ampEnvelope.node));
+    this.oscillators.forEach(osc => osc.connect(this.filter));
     this.oscillators.forEach(osc => osc.start(now));
 
     const frequency = freqOf(noteNumber);
@@ -88,6 +125,8 @@ export class AxiomVoice extends Voice {
   override destroy(): void {
     this.destroyOscillators();
     this.ampEnvelope.disconnect();
+    this.filterEnvelope.disconnect;
+    this.filter.disconnect();
     super.destroy();
   }
 }
