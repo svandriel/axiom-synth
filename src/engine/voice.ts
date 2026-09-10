@@ -1,5 +1,3 @@
-import type { EnvelopeConfig } from '../types/envelope-config';
-
 export abstract class Voice {
   protected readonly ctxt: AudioContext;
   protected readonly audioSink: AudioNode;
@@ -35,12 +33,7 @@ export abstract class Voice {
 
   protected abstract internalFastChoke(chokeTime: number, now: number): void;
 
-  noteOn(
-    noteNumber: number,
-    velocity: number,
-    ampEnvelopeConfig: EnvelopeConfig,
-    startTimeOffset: number,
-  ) {
+  noteOn(noteNumber: number, velocity: number, startTimeOffset: number) {
     const now = this.ctxt.currentTime + startTimeOffset;
 
     this.currentNote = noteNumber;
@@ -53,7 +46,7 @@ export abstract class Voice {
       this.cleanupTimer = null;
     }
 
-    this.internalNoteOn(noteNumber, velocity, ampEnvelopeConfig, now);
+    this.internalNoteOn(noteNumber, velocity, now);
 
     this.endTime = Infinity;
   }
@@ -61,11 +54,10 @@ export abstract class Voice {
   protected abstract internalNoteOn(
     noteNumber: number,
     velocity: number,
-    ampEnvelopeConfig: EnvelopeConfig,
     now: number,
   ): void;
 
-  noteOff(ampEnvelopeConfig: EnvelopeConfig) {
+  noteOff() {
     const now = this.ctxt.currentTime;
     console.log(`[${now.toFixed(4)}] noteOff()`);
 
@@ -74,7 +66,7 @@ export abstract class Voice {
       this.cleanupTimer = null;
     }
 
-    const { silentAt } = this.internalNoteOff(ampEnvelopeConfig, now);
+    const { silentAt } = this.internalNoteOff(now);
 
     // 5 time-constants completely flattens setTargetAtTime
     this.endTime = now + silentAt * 5;
@@ -89,10 +81,7 @@ export abstract class Voice {
     );
   }
 
-  protected abstract internalNoteOff(
-    ampEnvelopeConfig: EnvelopeConfig,
-    now: number,
-  ): { silentAt: number };
+  protected abstract internalNoteOff(now: number): { silentAt: number };
 
   destroy() {
     if (this.cleanupTimer !== null) {
