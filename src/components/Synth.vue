@@ -18,6 +18,8 @@
       <FilterPanel
         class="col-span-12 col-start-5 row-start-1 sm:col-span-6 lg:col-span-4"
         v-model:cutoff="cutoff"
+        v-model:resonance="resonance"
+        v-model:envAmount="envAmount"
       />
     </div>
 
@@ -33,24 +35,26 @@ import OscillatorPanel from './OscillatorPanel.vue';
 import FilterPanel from './FilterPanel.vue';
 
 const engine = useAudioEngine();
-
+const filterQ = Math.log2(2 * engine.value.filterConfig.q) / Math.log2(40);
 const cutoff = ref(engine.value.filterConfig.frequency);
+const resonance = ref(filterQ);
+const envAmount = ref(engine.value.filterConfig.envAmount / 9600);
 
-const osc1 = reactive<OscillatorConfig>({
+let osc1 = reactive<OscillatorConfig>({
   label: 'VCO 1',
   detune: -0.1,
   pitch: 0,
   gain: 1,
   waveform: 'saw',
 });
-const osc2 = reactive<OscillatorConfig>({
+let osc2 = reactive<OscillatorConfig>({
   label: 'VCO 2',
   detune: 0.1,
   pitch: 0,
   gain: 1,
   waveform: 'saw',
 });
-const osc3 = reactive<OscillatorConfig>({
+let osc3 = reactive<OscillatorConfig>({
   label: 'VCO 3',
   detune: 0,
   pitch: -12,
@@ -59,7 +63,16 @@ const osc3 = reactive<OscillatorConfig>({
 });
 
 watch(cutoff, newCutoff => {
-  engine.value.filterCutoff = newCutoff;
+  engine.value.filterCutOff = newCutoff;
+});
+
+watch(resonance, newResonance => {
+  const q = 0.5 * Math.pow(40, newResonance);
+  engine.value.filterQ = q;
+});
+
+watch(envAmount, newEnvAmount => {
+  engine.value.filterEnvAmount = newEnvAmount * 9600;
 });
 
 onUnmounted(() => {
