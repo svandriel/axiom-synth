@@ -1,4 +1,4 @@
-import type { EnvelopeConfig, FilterConfig } from '../types';
+import type { EnvelopeConfig, FilterConfig, OscillatorConfig } from '../types';
 import { AxiomVoice } from './axiom-voice';
 import { Voice } from './voice';
 
@@ -18,24 +18,52 @@ export class AudioEngine {
   private readonly filterCutOffSource: ConstantSourceNode;
   private readonly filterQSource: ConstantSourceNode;
   private readonly filterEnvAmountSource: ConstantSourceNode;
+  private readonly oscillatorOctaveSources: ConstantSourceNode[];
+  private readonly oscillatorSemiSources: ConstantSourceNode[];
+  private readonly oscillatorDetuneSources: ConstantSourceNode[];
+  private readonly oscillatorGainSources: ConstantSourceNode[];
 
-  public ampEnvelope: EnvelopeConfig = {
+  public readonly oscillatorConfigs: OscillatorConfig[] = [
+    {
+      octave: 0,
+      semi: 0,
+      detune: -10,
+      waveform: 'saw',
+      gain: 1,
+    },
+    {
+      octave: 0,
+      semi: 0,
+      detune: 16.2,
+      waveform: 'saw',
+      gain: 1,
+    },
+    {
+      octave: -1,
+      semi: 0,
+      detune: 0,
+      waveform: 'saw',
+      gain: 1,
+    },
+  ];
+
+  public readonly ampEnvelope: EnvelopeConfig = {
     attackSeconds: 0.02,
     attackCurve: 'analog',
     decaySeconds: 0.3,
     decayCurve: 'analog',
     sustainLevel: 0.6,
-    releaseSeconds: 0.12,
+    releaseSeconds: 0.62,
     releaseCurve: 'analog',
   };
 
-  public filterConfig: FilterConfig = {
-    frequency: 46,
-    q: 4,
+  public readonly filterConfig: FilterConfig = {
+    frequency: 350,
+    q: 6,
     envAmount: 3600, // cents, -9600 to 9600
   };
 
-  public filterEnvelope: EnvelopeConfig = {
+  public readonly filterEnvelope: EnvelopeConfig = {
     attackSeconds: 0.01,
     attackCurve: 'linear',
     decaySeconds: 0.2,
@@ -66,17 +94,26 @@ export class AudioEngine {
     this.comp.connect(this.analyser);
     this.analyser.connect(ctxt.destination);
 
-    this.filterCutOffSource = ctxt.createConstantSource();
-    this.filterCutOffSource.offset.value = this.filterConfig.frequency;
-    this.filterCutOffSource.start();
+    this.filterCutOffSource = this.createConstantSource(
+      this.filterConfig.frequency,
+    );
+    this.filterQSource = this.createConstantSource(this.filterConfig.q);
+    this.filterEnvAmountSource = this.createConstantSource(
+      this.filterConfig.envAmount,
+    );
 
-    this.filterQSource = ctxt.createConstantSource();
-    this.filterQSource.offset.value = this.filterConfig.q;
-    this.filterQSource.start();
-
-    this.filterEnvAmountSource = ctxt.createConstantSource();
-    this.filterEnvAmountSource.offset.value = this.filterConfig.envAmount;
-    this.filterEnvAmountSource.start();
+    this.oscillatorOctaveSources = this.createConstantSources(
+      ...this.oscillatorConfigs.map(c => c.octave * 1200),
+    );
+    this.oscillatorSemiSources = this.createConstantSources(
+      ...this.oscillatorConfigs.map(c => c.semi * 100),
+    );
+    this.oscillatorDetuneSources = this.createConstantSources(
+      ...this.oscillatorConfigs.map(c => c.detune),
+    );
+    this.oscillatorGainSources = this.createConstantSources(
+      ...this.oscillatorConfigs.map(c => c.gain),
+    );
 
     this.voicePool = Array.from(
       { length: MAX_VOICES },
@@ -89,6 +126,10 @@ export class AudioEngine {
           this.filterCutOffSource,
           this.filterQSource,
           this.filterEnvAmountSource,
+          this.oscillatorOctaveSources,
+          this.oscillatorSemiSources,
+          this.oscillatorDetuneSources,
+          this.oscillatorGainSources,
         ),
     );
   }
@@ -128,6 +169,35 @@ export class AudioEngine {
     );
     console.log(`Setting filterEnvAmount to ${value}`);
     this.filterConfig.envAmount = value;
+  }
+
+  setOscillatorConfiguration(index: number, config: OscillatorConfig) {
+    const currentConfig = this.oscillatorConfigs[index];
+    if (currentConfig.octave !== config.octave) {
+      this.oscillatorOctaveSources[index].offset.linearRampToValueAtTime(
+        config.octave * 1200,
+        this.ctxt.currentTime + 0.01,
+      );
+    }
+    if (currentConfig.semi !== config.semi) {
+      this.oscillatorSemiSources[index].offset.linearRampToValueAtTime(
+        config.semi * 100,
+        this.ctxt.currentTime + 0.01,
+      );
+    }
+    if (currentConfig.detune !== config.detune) {
+      this.oscillatorDetuneSources[index].offset.linearRampToValueAtTime(
+        config.detune,
+        this.ctxt.currentTime + 0.01,
+      );
+    }
+    if (currentConfig.gain !== config.gain) {
+      this.oscillatorGainSources[index].offset.linearRampToValueAtTime(
+        config.gain,
+        this.ctxt.currentTime + 0.01,
+      );
+    }
+    this.oscillatorConfigs[index] = { ...config };
   }
 
   ensureStarted() {
@@ -226,7 +296,30 @@ export class AudioEngine {
     this.filterQSource.stop();
     this.filterEnvAmountSource.disconnect();
     this.filterEnvAmountSource.stop();
+    this.oscillatorOctaveSources.forEach(source => {
+      source.disconnect();
+      source.stop();
+    });
+    this.oscillatorSemiSources.forEach(source => {
+      source.disconnect();
+      source.stop();
+    });
+    this.oscillatorDetuneSources.forEach(source => {
+      source.disconnect();
+      source.stop();
+    });
     this.dry.disconnect();
     this.ctxt.close();
+  }
+
+  private createConstantSources(...offsets: number[]) {
+    return offsets.map(offset => this.createConstantSource(offset));
+  }
+
+  private createConstantSource(offset: number = 0) {
+    const source = this.ctxt.createConstantSource();
+    source.offset.value = offset;
+    source.start();
+    return source;
   }
 }

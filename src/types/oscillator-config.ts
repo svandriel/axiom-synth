@@ -1,7 +1,7 @@
 export interface OscillatorConfig {
-  label?: string;
   waveform: WaveFormType;
-  pitch: number;
+  octave: number;
+  semi: number;
   detune: number;
   gain: number;
 }
