@@ -43,6 +43,7 @@
         label="Gain"
         v-model="modelValue.gain"
         class="mt-3"
+        size="md"
         :from="0"
         :to="2"
         :default="1"
