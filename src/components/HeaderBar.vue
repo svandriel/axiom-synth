@@ -1,11 +1,11 @@
 <template>
   <div class="flex items-center justify-between">
-    <h1 class="text-3xl tracking-tight">
-      <span class="tracking-tighter">axiom</span>
-      <span class="font-mono text-accent-600">xs</span>
-
-      <span class="text-primary-500">&raquo;</span>
-
+    <h1 class="text-3xl tracking-tighter">
+      <span class="">axiom&nbsp;</span>
+      <span class="text-accent-600">xs</span>
+      <span>&nbsp;</span>
+      <span class="text-primary-400 dark:text-primary-500">&raquo;</span>
+      <span>&nbsp;</span>
       <span class="">poly</span>
     </h1>
     <div>

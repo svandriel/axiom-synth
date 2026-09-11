@@ -1,17 +1,15 @@
 <template>
-  <div class="section">
-    <div class="flex flex-row items-center justify-between">
-      <div class="text-sm tracking-wide uppercase">Scope</div>
-    </div>
+  <Panel label="Scope">
     <div class="relative mt-3 overflow-hidden rounded-2xl bg-black">
       <canvas ref="scope" class="block h-full w-full" />
     </div>
-  </div>
+  </Panel>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, useTemplateRef } from 'vue';
 import { useAudioEngine } from '../composables/use-audio-context';
+import Panel from './Panel.vue';
 
 const scope = useTemplateRef<HTMLCanvasElement>('scope');
 
