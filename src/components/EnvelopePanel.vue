@@ -7,24 +7,25 @@
       <Knob
         class="col-start-1 row-start-1"
         size="sm"
-        :from="0.0001"
-        :to="5"
-        :default="0.02"
+        :from="1"
+        :to="5000"
+        :default="20"
         :log-base="2"
         v-model="attack"
         label="Attack"
-        :format="timeDisplay"
+        :format="timeDisplayMs"
         :show-value="false"
       />
       <Knob
         class="col-start-2 row-start-1"
         size="sm"
-        :from="0.0001"
-        :to="5"
+        :from="1"
+        :to="5000"
+        :default="10"
         :log-base="2"
         v-model="decay"
         label="Decay"
-        :format="timeDisplay"
+        :format="timeDisplayMs"
         :show-value="false"
       />
       <Knob
@@ -32,7 +33,7 @@
         size="sm"
         :from="0"
         :to="1"
-        :default="0.5"
+        :default="0.6"
         v-model="sustain"
         label="Sustain"
         :format="dbDisplay"
@@ -41,12 +42,13 @@
       <Knob
         class="col-start-2 row-start-2"
         size="sm"
-        :from="0.001"
-        :to="10"
+        :from="1"
+        :to="10000"
         :log-base="2"
+        :default="400"
         v-model="release"
         label="Release"
-        :format="timeDisplay"
+        :format="timeDisplayMs"
         :show-value="false"
       />
       <div
@@ -60,77 +62,40 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import type { EnvelopeConfig } from '../types/envelope-config.ts';
+import type { NumericKeys } from '../types/numeric-keys.ts';
+import { dbDisplay } from '../utils/db-display.ts';
+import { timeDisplayMs } from '../utils/time-display.ts';
+import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
-import type { EnvelopeConfig } from '../types/envelope-config.ts';
-import Knob from './Knob.vue';
-import { timeDisplay } from '../utils/time-display.ts';
-import { dbDisplay } from '../utils/db-display.ts';
 
 const amp = defineModel<EnvelopeConfig>('amp', { required: true });
 const filter = defineModel<EnvelopeConfig>('filter', { required: true });
 
 const current = ref('amp');
 
-const attack = computed({
-  get() {
-    return current.value === 'amp'
-      ? amp.value.attackSeconds
-      : filter.value.attackSeconds;
-  },
-  set(value) {
-    if (current.value === 'amp') {
-      amp.value.attackSeconds = value;
-    } else {
-      filter.value.attackSeconds = value;
-    }
-  },
-});
+function makeComputed<K extends NumericKeys<EnvelopeConfig>>(
+  key: K,
+  scale: number = 1,
+) {
+  return computed({
+    get: () =>
+      scale * (current.value === 'amp' ? amp.value[key] : filter.value[key]),
+    set(value) {
+      if (current.value === 'amp') {
+        amp.value[key] = value / scale;
+      } else {
+        filter.value[key] = value / scale;
+      }
+    },
+  });
+}
 
-const decay = computed({
-  get() {
-    return current.value === 'amp'
-      ? amp.value.decaySeconds
-      : filter.value.decaySeconds;
-  },
-  set(value) {
-    if (current.value === 'amp') {
-      amp.value.decaySeconds = value;
-    } else {
-      filter.value.decaySeconds = value;
-    }
-  },
-});
-
-const sustain = computed({
-  get() {
-    return current.value === 'amp'
-      ? amp.value.sustainLevel
-      : filter.value.sustainLevel;
-  },
-  set(value) {
-    if (current.value === 'amp') {
-      amp.value.sustainLevel = value;
-    } else {
-      filter.value.sustainLevel = value;
-    }
-  },
-});
-
-const release = computed({
-  get() {
-    return current.value === 'amp'
-      ? amp.value.releaseSeconds
-      : filter.value.releaseSeconds;
-  },
-  set(value) {
-    if (current.value === 'amp') {
-      amp.value.releaseSeconds = value;
-    } else {
-      filter.value.releaseSeconds = value;
-    }
-  },
-});
+const attack = makeComputed('attackSeconds', 1000);
+const decay = makeComputed('decaySeconds', 1000);
+const sustain = makeComputed('sustainLevel');
+const release = makeComputed('releaseSeconds', 1000);
 
 const envelopes = [
   { id: 'amp', label: 'Amp' },
