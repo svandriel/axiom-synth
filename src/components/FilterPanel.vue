@@ -1,6 +1,6 @@
 <template>
   <Panel :label="label">
-    <div class="mt-3 flex flex-row gap-4">
+    <div class="mt-3 flex flex-row justify-between gap-4">
       <Knob
         label="Cutoff"
         v-model="cutoff"

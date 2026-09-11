@@ -4,7 +4,7 @@
       <Toggle :values="waveForms" v-model="modelValue.waveform" />
     </template>
 
-    <div class="mt-3 flex flex-row gap-4">
+    <div class="mt-3 flex flex-row justify-between gap-4">
       <Knob
         label="Oct"
         v-model="modelValue.octave"
