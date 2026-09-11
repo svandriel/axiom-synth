@@ -1,10 +1,5 @@
 <template>
-  <div class="section">
-    <div class="flex flex-row items-center justify-between">
-      <div class="text-sm tracking-wide uppercase">
-        {{ label }}
-      </div>
-    </div>
+  <Panel :label="label">
     <div class="mt-3 flex flex-row gap-10">
       <Knob
         label="Cutoff"
@@ -35,12 +30,13 @@
         :format="v => fractionDisplay(0)(v * 100)"
       />
     </div>
-  </div>
+  </Panel>
 </template>
 
 <script setup lang="ts">
 import { fractionDisplay } from '../utils/fraction-display.ts';
 import Knob from './Knob.vue';
+import Panel from './Panel.vue';
 
 const cutoff = defineModel<number>('cutoff', {
   required: true,
