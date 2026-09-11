@@ -26,6 +26,7 @@ export class AudioEngine {
   private readonly filterCutOffSource: ConstantSourceNode;
   private readonly filterQSource: ConstantSourceNode;
   private readonly filterEnvAmountSource: ConstantSourceNode;
+  private readonly filterKeyTrackSource: ConstantSourceNode;
   private readonly oscillatorDetuneSources: FixedArray<
     ConstantSourceNode,
     OscillatorCount
@@ -76,6 +77,7 @@ export class AudioEngine {
     frequency: 350,
     q: 6,
     envAmount: 3600, // cents, -9600 to 9600
+    tracking: 0.5,
   };
 
   public readonly filterEnvelope: EnvelopeConfig = {
@@ -103,7 +105,7 @@ export class AudioEngine {
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.82;
     this.dry = ctxt.createGain();
-    this.dry.gain.value = 0.5;
+    this.dry.gain.value = 0.2;
 
     this.comp = ctxt.createDynamicsCompressor();
 
@@ -119,6 +121,9 @@ export class AudioEngine {
     this.filterQSource = this.createConstantSource(this.filterConfig.q);
     this.filterEnvAmountSource = this.createConstantSource(
       this.filterConfig.envAmount,
+    );
+    this.filterKeyTrackSource = this.createConstantSource(
+      this.filterConfig.tracking,
     );
 
     this.oscillatorDetuneSources = this.createConstantSources(
@@ -152,6 +157,7 @@ export class AudioEngine {
           this.filterCutOffSource,
           this.filterQSource,
           this.filterEnvAmountSource,
+          this.filterKeyTrackSource,
           this.oscillatorDetuneSources,
           this.oscillatorGainSources,
           this.oscillatorWaveForms,
@@ -198,6 +204,18 @@ export class AudioEngine {
     );
     console.log(`Setting filterEnvAmount to ${value}`);
     this.filterConfig.envAmount = value;
+  }
+
+  get filterKeyTrack(): number {
+    return this.filterConfig.tracking;
+  }
+
+  set filterKeyTrack(value: number) {
+    this.filterKeyTrackSource.offset.linearRampToValueAtTime(
+      value,
+      this.ctxt.currentTime + 0.01,
+    );
+    this.filterConfig.tracking = value;
   }
 
   setOscillatorConfiguration(index: OscillatorIndex, config: OscillatorConfig) {
@@ -322,6 +340,8 @@ export class AudioEngine {
     this.filterQSource.stop();
     this.filterEnvAmountSource.disconnect();
     this.filterEnvAmountSource.stop();
+    this.filterKeyTrackSource.disconnect();
+    this.filterKeyTrackSource.stop();
     this.oscillatorDetuneSources.forEach(source => {
       source.disconnect();
       source.stop();

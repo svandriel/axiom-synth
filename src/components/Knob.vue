@@ -137,7 +137,6 @@ let startV = 0;
 
 function onPointerDown(e: PointerEvent) {
   if (!knob.value) return;
-  console.log('Pointer down event:', e);
   startY = e.clientY;
   startV = normalizedValue.value;
   active.value = true;

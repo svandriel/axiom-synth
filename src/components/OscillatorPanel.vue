@@ -32,8 +32,8 @@
         v-model="modelValue.detune"
         class="mt-3"
         size="md"
-        :from="-100"
-        :to="100"
+        :from="-50"
+        :to="50"
         :default="0"
         :format="fractionDisplay(1)"
       />

@@ -1,10 +1,11 @@
 <template>
   <Panel :label="label">
-    <div class="mt-3 flex flex-row gap-10">
+    <div class="mt-3 flex flex-row gap-4">
       <Knob
         label="Cutoff"
         v-model="cutoff"
         class="mt-3"
+        size="md"
         :from="20"
         :to="20000"
         :log-base="2"
@@ -15,6 +16,7 @@
         label="Res"
         v-model="resonance"
         class="mt-3"
+        size="md"
         :from="0"
         :to="1"
         :default="0.6"
@@ -24,8 +26,19 @@
         label="Env Amt"
         v-model="envAmount"
         class="mt-3"
+        size="md"
         :from="-1"
         :to="1"
+        :default="0"
+        :format="v => fractionDisplay(0)(v * 100)"
+      />
+      <Knob
+        label="Tracking"
+        v-model="tracking"
+        class="mt-3"
+        size="md"
+        :from="0"
+        :to="2"
         :default="0"
         :format="v => fractionDisplay(0)(v * 100)"
       />
@@ -47,6 +60,10 @@ const resonance = defineModel<number>('resonance', {
 });
 
 const envAmount = defineModel<number>('envAmount', {
+  required: true,
+});
+
+const tracking = defineModel<number>('tracking', {
   required: true,
 });
 
