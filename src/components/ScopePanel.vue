@@ -1,7 +1,10 @@
 <template>
   <Panel label="Scope">
     <div class="relative mt-3 h-32 overflow-hidden rounded-2xl">
-      <canvas ref="scope" class="block h-full w-full" />
+      <canvas
+        ref="scope"
+        class="block h-full w-full bg-primary-600 dark:bg-primary-800"
+      />
     </div>
   </Panel>
 </template>
@@ -17,7 +20,6 @@ const engine = useAudioEngine();
 
 const styles = getComputedStyle(document.documentElement);
 
-const scopeBackground = styles.getPropertyValue('--color-primary-800');
 const scopeGridColor = styles.getPropertyValue('--color-accent-100');
 const scopeColor1 = styles.getPropertyValue('--color-accent-300');
 const scopeColor2 = styles.getPropertyValue('--color-accent-500');
@@ -72,9 +74,7 @@ function render(scope: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
   const w = d.w;
   const h = d.h;
   // Set background color
-  sctx.fillStyle = scopeBackground;
-  sctx.fillRect(0, 0, w, h);
-  // sctx.clearRect(0, 0, w, h);
+  sctx.clearRect(0, 0, w, h);
   sctx.strokeStyle = scopeGridColor;
   sctx.globalAlpha = 0.2;
   sctx.lineWidth = 1;
