@@ -77,7 +77,7 @@ export class AudioEngine {
     frequency: 350,
     q: 6,
     envAmount: 3600, // cents, -9600 to 9600
-    tracking: 0,
+    tracking: 0.5,
   };
 
   public readonly filterEnvelope: EnvelopeConfig = {
@@ -105,7 +105,7 @@ export class AudioEngine {
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.82;
     this.dry = ctxt.createGain();
-    this.dry.gain.value = 0.5;
+    this.dry.gain.value = 0.2;
 
     this.comp = ctxt.createDynamicsCompressor();
 
