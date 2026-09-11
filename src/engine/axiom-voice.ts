@@ -130,10 +130,21 @@ export class AxiomVoice extends Voice {
 
   override destroyOscillators(): void {
     if (this.oscillators.length > 0) {
+      // Disconnect all things connected to the oscillators
+      this.config.oscillatorDetuneSources[0].disconnect(
+        this.oscillators[0]!.detune,
+      );
+      this.config.oscillatorDetuneSources[1].disconnect(
+        this.oscillators[1]!.detune,
+      );
+      this.config.oscillatorDetuneSources[2].disconnect(
+        this.oscillators[2]!.detune,
+      );
       this.oscillators.forEach(osc => osc.stop());
       this.oscillators.forEach(osc => osc.disconnect());
       this.oscillators = [];
     }
+
     this.areOscillatorsActive = false;
   }
 

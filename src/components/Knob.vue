@@ -14,6 +14,7 @@
         active,
         'h-18 w-18': size === 'lg',
         'h-12 w-12': size === 'md',
+        'h-8 w-8': size === 'sm',
       }"
       role="slider"
       tabindex="0"
@@ -32,11 +33,19 @@
       <div class="arc absolute rounded-full"></div>
       <div class="pointer absolute"></div>
     </div>
-    <div class="knob-label text-primary-500 dark:text-primary-400">
-      {{ label }}
+    <div
+      class="knob-label mt-0 text-2xs tracking-wide text-primary-500 dark:text-primary-400"
+    >
+      <span v-if="!showValue && active">
+        {{ format(value) }}
+      </span>
+      <span v-else class="uppercase">
+        {{ label }}
+      </span>
     </div>
     <div
-      class="knob-value rounded-lg p-1 font-mono text-2xs text-primary-700 shadow-in-sm dark:text-primary-300 dark:shadow-in-sm-dark"
+      v-if="showValue"
+      class="knob-value rounded-lg p-1 font-mono text-2xs text-primary-500 shadow-in-sm dark:text-primary-300 dark:shadow-in-sm-dark"
     >
       {{ displayValue }}
     </div>
@@ -55,7 +64,8 @@ const props = withDefaults(
     tickSize?: number;
     logBase?: number;
     format?: (value: number) => string;
-    size?: 'md' | 'lg';
+    size?: 'sm' | 'md' | 'lg';
+    showValue?: boolean;
   }>(),
   {
     from: 0,
@@ -64,6 +74,7 @@ const props = withDefaults(
     logBase: 0,
     format: (value: number) => `${value}`,
     size: 'lg',
+    showValue: true,
   },
 );
 const angleMin = -135; // corresponds to normalized 0
@@ -212,6 +223,9 @@ function resetToDefault() {
     inset 2px 2px 4px var(--color-primary-400),
     inset -2px -2px 4px var(--color-primary-100);
 }
+.knob[data-size='sm']::before {
+  display: none;
+}
 
 @variant dark {
   .knob {
@@ -259,6 +273,11 @@ function resetToDefault() {
 
   transition: transform 0.01s ease-in-out;
 }
+.knob[data-size='sm'] .pointer {
+  width: 2px;
+  height: 12px;
+  transform: translateY(-100%) rotate(var(--angle)) translateY(-2px);
+}
 
 .knob .arc {
   inset: -6px;
@@ -275,12 +294,6 @@ function resetToDefault() {
   );
   opacity: 0.9;
   pointer-events: none;
-}
-
-.knob-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
 }
 
 .knob-value {
