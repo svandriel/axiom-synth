@@ -44,8 +44,14 @@ Add `tracking: number`, range 0–2, default `0`.
 - New `keyTrackGain: GainNode`, gain seeded to `0`.
 - Connect `filterKeyTrackSource → keyTrackGain → filter.detune` in the constructor,
   alongside the existing `filterEnvAmount → filterEnvelope.node → filter.detune`.
-- In `createOscillators(noteNumber, now)`:
+- In `internalNoteOn(noteNumber, velocity, now)`, after `createOscillators` and both
+  envelope note-ons:
   `keyTrackGain.gain.setValueAtTime(100 * noteNumber, now)`.
+  - `keyTrackGain` is a persistent node created once in the constructor; only its gain
+    changes per note. `createOscillators` (`src/engine/axiom-voice.ts:113`) is not touched.
+  - Note 0 = C4, so C4 → 0 cents offset, each semitone above → +100 cents at 100% tracking.
+  - Tracking stays constant through release: the gain value persists across `noteOff`,
+    matching how the held cutoff offset behaves.
 - Clean up `keyTrackGain` in `destroy`.
 
 ### FilterPanel — `src/components/FilterPanel.vue`
