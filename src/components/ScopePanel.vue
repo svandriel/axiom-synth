@@ -1,6 +1,6 @@
 <template>
   <Panel label="Scope">
-    <div class="relative mt-3 overflow-hidden rounded-2xl bg-black">
+    <div class="relative mt-3 h-32 overflow-hidden rounded-2xl bg-black">
       <canvas ref="scope" class="block h-full w-full" />
     </div>
   </Panel>
