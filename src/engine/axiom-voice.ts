@@ -1,4 +1,5 @@
-import type { EnvelopeConfig, FixedArray } from '../types';
+import type { EnvelopeConfig, FixedArray, WaveFormType } from '../types';
+import type { Observable } from '../utils/observable';
 import {
   OSCILLATOR_COUNT,
   type OscillatorCount,
@@ -30,6 +31,9 @@ export class AxiomVoice extends Voice {
     ConstantSourceNode,
     OscillatorCount
   >;
+  private readonly oscillatorWaveForms: Observable<
+    FixedArray<WaveFormType, OscillatorCount>
+  >;
 
   constructor(
     ctxt: AudioContext,
@@ -41,6 +45,7 @@ export class AxiomVoice extends Voice {
     filterEnvAmount: ConstantSourceNode,
     oscillatorDetuneSources: FixedArray<ConstantSourceNode, OscillatorCount>,
     oscillatorGainSources: FixedArray<ConstantSourceNode, OscillatorCount>,
+    oscillatorWaveForms: Observable<FixedArray<WaveFormType, OscillatorCount>>,
   ) {
     super(ctxt, audioSink);
     this.ampEnvelopeConfig = ampEnvelopeConfig;
@@ -50,6 +55,7 @@ export class AxiomVoice extends Voice {
     this.filterEnvAmount = filterEnvAmount;
     this.oscillatorDetuneSources = oscillatorDetuneSources;
     this.oscillatorGainSources = oscillatorGainSources;
+    this.oscillatorWaveForms = oscillatorWaveForms;
 
     this.ampEnvelope = new Envelope(ctxt);
     this.filterEnvelope = new Envelope(ctxt);
@@ -109,11 +115,20 @@ export class AxiomVoice extends Voice {
       this.destroyOscillators();
     }
 
-    this.oscillators = new Array(OSCILLATOR_COUNT).fill(null).map(() => {
-      const osc = this.ctxt.createOscillator();
-      osc.type = 'sawtooth';
-      return osc;
-    }) as FixedArray<OscillatorNode, OscillatorCount>;
+    this.oscillators = new Array(OSCILLATOR_COUNT)
+      .fill(null)
+      .map((_, index) => {
+        const osc = this.ctxt.createOscillator();
+        osc.type = this.oscillatorWaveForms.value[index as OscillatorIndex];
+        const { unsubscribe } = this.oscillatorWaveForms.subscribe(value => {
+          osc.type = value[index as OscillatorIndex];
+        });
+        osc.onended = () => {
+          unsubscribe();
+        };
+
+        return osc;
+      }) as FixedArray<OscillatorNode, OscillatorCount>;
 
     this.oscillatorDetuneSources[0].connect(this.oscillators[0].detune);
     this.oscillatorDetuneSources[1].connect(this.oscillators[1].detune);
@@ -133,9 +148,6 @@ export class AxiomVoice extends Voice {
   }
 
   override destroyOscillators(): void {
-    console.log(
-      `[${this.ctxt.currentTime.toFixed(4)}] AxiomVoice.destroyOscillators()`,
-    );
     if (this.oscillators.length > 0) {
       this.oscillators.forEach(osc => osc.stop());
       this.oscillators.forEach(osc => osc.disconnect());

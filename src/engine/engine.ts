@@ -3,7 +3,9 @@ import type {
   FilterConfig,
   FixedArray,
   OscillatorConfig,
+  WaveFormType,
 } from '../types';
+import { Observable } from '../utils/observable';
 import { AxiomVoice } from './axiom-voice';
 import type { OscillatorCount, OscillatorIndex } from './constants';
 import { Voice } from './voice';
@@ -41,28 +43,21 @@ export class AudioEngine {
       octave: 0,
       semi: 0,
       detune: -10,
-      waveform: 'saw',
+      waveform: 'sawtooth',
       gain: 1,
     },
     {
       octave: 0,
       semi: 0,
       detune: 16.2,
-      waveform: 'saw',
+      waveform: 'sawtooth',
       gain: 1,
     },
     {
       octave: -1,
       semi: 0,
       detune: 0,
-      waveform: 'saw',
-      gain: 1,
-    },
-    {
-      octave: -1,
-      semi: 0,
-      detune: 0,
-      waveform: 'saw',
+      waveform: 'sawtooth',
       gain: 1,
     },
   ];
@@ -92,6 +87,10 @@ export class AudioEngine {
     releaseSeconds: 3,
     releaseCurve: 'analog',
   };
+
+  private readonly oscillatorWaveForms: Observable<
+    FixedArray<WaveFormType, OscillatorCount>
+  >;
 
   constructor(ctxt: AudioContext) {
     this.ctxt = ctxt;
@@ -135,6 +134,13 @@ export class AudioEngine {
       >,
     );
 
+    this.oscillatorWaveForms = new Observable(
+      this.oscillatorConfigs.map(c => c.waveform) as FixedArray<
+        WaveFormType,
+        OscillatorCount
+      >,
+    );
+
     this.voicePool = Array.from(
       { length: MAX_VOICES },
       () =>
@@ -148,6 +154,7 @@ export class AudioEngine {
           this.filterEnvAmountSource,
           this.oscillatorDetuneSources,
           this.oscillatorGainSources,
+          this.oscillatorWaveForms,
         ),
     );
   }
@@ -204,6 +211,11 @@ export class AudioEngine {
         config.detune + config.semi * 100 + config.octave * 1200,
         this.ctxt.currentTime + 0.01,
       );
+    }
+    if (currentConfig.waveform !== config.waveform) {
+      this.oscillatorWaveForms.value = this.oscillatorWaveForms.value.map(
+        (v, i) => (i === index ? config.waveform : v),
+      ) as FixedArray<WaveFormType, OscillatorCount>;
     }
     if (currentConfig.gain !== config.gain) {
       this.oscillatorGainSources[index].offset.linearRampToValueAtTime(
