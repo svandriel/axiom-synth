@@ -6,4 +6,4 @@ export interface OscillatorConfig {
   gain: number;
 }
 
-export type WaveFormType = 'saw' | 'sine' | 'square' | 'triangle' | 'pulse';
+export type WaveFormType = 'sawtooth' | 'sine' | 'square' | 'triangle';
