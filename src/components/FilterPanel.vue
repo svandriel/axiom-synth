@@ -29,6 +29,15 @@
         :default="0"
         :format="v => fractionDisplay(0)(v * 100)"
       />
+      <Knob
+        label="Tracking"
+        v-model="tracking"
+        class="mt-3"
+        :from="0"
+        :to="2"
+        :default="0"
+        :format="v => fractionDisplay(0)(v * 100)"
+      />
     </div>
   </Panel>
 </template>
@@ -47,6 +56,10 @@ const resonance = defineModel<number>('resonance', {
 });
 
 const envAmount = defineModel<number>('envAmount', {
+  required: true,
+});
+
+const tracking = defineModel<number>('tracking', {
   required: true,
 });
 
