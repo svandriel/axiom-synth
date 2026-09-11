@@ -16,7 +16,7 @@ html {
   --text-2xs: 0.625rem;
 }
 
-@utility section {
+@utility panel {
   @apply rounded-lg p-3 shadow-out-xs dark:shadow-out-xs-dark;
 }
 

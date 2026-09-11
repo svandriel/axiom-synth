@@ -1,11 +1,9 @@
 <template>
-  <div class="section">
-    <div class="flex flex-row items-center justify-between">
-      <div class="text-sm tracking-wide uppercase">
-        {{ label ?? 'osc' }}
-      </div>
+  <Panel :label="label ?? 'osc'">
+    <template #top-right>
       <Toggle :values="waveForms" v-model="modelValue.waveform" />
-    </div>
+    </template>
+
     <div class="mt-3 flex flex-row gap-4">
       <Knob
         label="Oct"
@@ -50,7 +48,7 @@
         :format="dbDisplay"
       />
     </div>
-  </div>
+  </Panel>
 </template>
 
 <script setup lang="ts">
@@ -59,6 +57,7 @@ import { dbDisplay } from '../utils/db-display.ts';
 import { fractionDisplay } from '../utils/fraction-display.ts';
 import { semiDisplay } from '../utils/semi-display.ts';
 import Knob from './Knob.vue';
+import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
 
 defineProps<{
