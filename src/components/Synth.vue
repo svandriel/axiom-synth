@@ -23,6 +23,7 @@
         v-model:cutoff="cutoff"
         v-model:resonance="resonance"
         v-model:envAmount="envAmount"
+        v-model:tracking="tracking"
       />
       <ScopePanel
         class="col-span-12 row-start-5 sm:col-span-6 sm:col-start-7 sm:row-start-2 lg:col-span-4"
@@ -45,6 +46,7 @@ const filterQ = Math.log2(2 * engine.value.filterConfig.q) / Math.log2(40);
 const cutoff = ref(engine.value.filterConfig.frequency);
 const resonance = ref(filterQ);
 const envAmount = ref(engine.value.filterConfig.envAmount / 9600);
+const tracking = ref(engine.value.filterConfig.tracking);
 
 let osc1 = reactive({ ...engine.value.oscillatorConfigs[0] });
 let osc2 = reactive({ ...engine.value.oscillatorConfigs[1] });
@@ -61,6 +63,10 @@ watch(resonance, newResonance => {
 
 watch(envAmount, newEnvAmount => {
   engine.value.filterEnvAmount = newEnvAmount * 9600;
+});
+
+watch(tracking, newTracking => {
+  engine.value.filterKeyTrack = newTracking;
 });
 
 watch(osc1, newOsc1 => {
