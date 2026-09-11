@@ -13,6 +13,7 @@
         :data-semi="note.semi"
         @pointerdown="e => onPianoKeyDown(note.semi, e)"
         @pointerup="e => onPianoKeyUp(note.semi, e)"
+        @lostpointercapture="e => onPianoKeyUp(note.semi, e)"
       >
         <span class="name absolute top-2.5 font-mono text-primary-500">
           {{ note.n }}
@@ -31,6 +32,7 @@
         }"
         @pointerdown="e => onPianoKeyDown(note.semi, e)"
         @pointerup="e => onPianoKeyUp(note.semi, e)"
+        @lostpointercapture="e => onPianoKeyUp(note.semi, e)"
         :style="{
           '--width': '3.1%',
           '--location': pianoKeyLocations[note.semi],
