@@ -17,8 +17,6 @@ export class AxiomVoice extends Voice {
   private readonly filterEnvelope: Envelope;
   private readonly filter: BiquadFilterNode;
   private readonly filterEnvAmount: ConstantSourceNode;
-  private readonly oscillatorOctaveSources: ConstantSourceNode[];
-  private readonly oscillatorSemiSources: ConstantSourceNode[];
   private readonly oscillatorDetuneSources: ConstantSourceNode[];
   private readonly oscillatorGainSources: ConstantSourceNode[];
 
@@ -30,8 +28,6 @@ export class AxiomVoice extends Voice {
     filterCutoff: ConstantSourceNode,
     filterResonance: ConstantSourceNode,
     filterEnvAmount: ConstantSourceNode,
-    oscillatorOctaveSources: ConstantSourceNode[],
-    oscillatorSemiSources: ConstantSourceNode[],
     oscillatorDetuneSources: ConstantSourceNode[],
     oscillatorGainSources: ConstantSourceNode[],
   ) {
@@ -41,8 +37,6 @@ export class AxiomVoice extends Voice {
     this.filterCutoff = filterCutoff;
     this.filterResonance = filterResonance;
     this.filterEnvAmount = filterEnvAmount;
-    this.oscillatorOctaveSources = oscillatorOctaveSources;
-    this.oscillatorSemiSources = oscillatorSemiSources;
     this.oscillatorDetuneSources = oscillatorDetuneSources;
     this.oscillatorGainSources = oscillatorGainSources;
 
@@ -106,20 +100,14 @@ export class AxiomVoice extends Voice {
 
     const osc1 = this.ctxt.createOscillator();
     osc1.type = 'sawtooth';
-    this.oscillatorOctaveSources[0].connect(osc1.detune);
-    this.oscillatorSemiSources[0].connect(osc1.detune);
     this.oscillatorDetuneSources[0].connect(osc1.detune);
 
     const osc2 = this.ctxt.createOscillator();
     osc2.type = 'sawtooth';
-    this.oscillatorOctaveSources[1].connect(osc2.detune);
-    this.oscillatorSemiSources[1].connect(osc2.detune);
     this.oscillatorDetuneSources[1].connect(osc2.detune);
 
     const osc3 = this.ctxt.createOscillator();
     osc3.type = 'sawtooth';
-    this.oscillatorOctaveSources[2].connect(osc3.detune);
-    this.oscillatorSemiSources[2].connect(osc3.detune);
     this.oscillatorDetuneSources[2].connect(osc3.detune);
 
     this.oscillators.push(osc1);

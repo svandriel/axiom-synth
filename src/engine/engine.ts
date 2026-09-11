@@ -18,8 +18,6 @@ export class AudioEngine {
   private readonly filterCutOffSource: ConstantSourceNode;
   private readonly filterQSource: ConstantSourceNode;
   private readonly filterEnvAmountSource: ConstantSourceNode;
-  private readonly oscillatorOctaveSources: ConstantSourceNode[];
-  private readonly oscillatorSemiSources: ConstantSourceNode[];
   private readonly oscillatorDetuneSources: ConstantSourceNode[];
   private readonly oscillatorGainSources: ConstantSourceNode[];
 
@@ -102,12 +100,6 @@ export class AudioEngine {
       this.filterConfig.envAmount,
     );
 
-    this.oscillatorOctaveSources = this.createConstantSources(
-      ...this.oscillatorConfigs.map(c => c.octave * 1200),
-    );
-    this.oscillatorSemiSources = this.createConstantSources(
-      ...this.oscillatorConfigs.map(c => c.semi * 100),
-    );
     this.oscillatorDetuneSources = this.createConstantSources(
       ...this.oscillatorConfigs.map(c => c.detune),
     );
@@ -126,8 +118,6 @@ export class AudioEngine {
           this.filterCutOffSource,
           this.filterQSource,
           this.filterEnvAmountSource,
-          this.oscillatorOctaveSources,
-          this.oscillatorSemiSources,
           this.oscillatorDetuneSources,
           this.oscillatorGainSources,
         ),
@@ -177,21 +167,13 @@ export class AudioEngine {
 
   setOscillatorConfiguration(index: number, config: OscillatorConfig) {
     const currentConfig = this.oscillatorConfigs[index];
-    if (currentConfig.octave !== config.octave) {
-      this.oscillatorOctaveSources[index].offset.linearRampToValueAtTime(
-        config.octave * 1200,
-        this.ctxt.currentTime + 0.01,
-      );
-    }
-    if (currentConfig.semi !== config.semi) {
-      this.oscillatorSemiSources[index].offset.linearRampToValueAtTime(
-        config.semi * 100,
-        this.ctxt.currentTime + 0.01,
-      );
-    }
-    if (currentConfig.detune !== config.detune) {
+    if (
+      currentConfig.octave !== config.octave ||
+      currentConfig.semi !== config.semi ||
+      currentConfig.detune !== config.detune
+    ) {
       this.oscillatorDetuneSources[index].offset.linearRampToValueAtTime(
-        config.detune,
+        config.detune + config.semi * 100 + config.octave * 1200,
         this.ctxt.currentTime + 0.01,
       );
     }
@@ -300,14 +282,6 @@ export class AudioEngine {
     this.filterQSource.stop();
     this.filterEnvAmountSource.disconnect();
     this.filterEnvAmountSource.stop();
-    this.oscillatorOctaveSources.forEach(source => {
-      source.disconnect();
-      source.stop();
-    });
-    this.oscillatorSemiSources.forEach(source => {
-      source.disconnect();
-      source.stop();
-    });
     this.oscillatorDetuneSources.forEach(source => {
       source.disconnect();
       source.stop();
