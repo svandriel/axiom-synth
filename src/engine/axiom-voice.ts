@@ -1,5 +1,5 @@
-import type { EnvelopeConfig, FixedArray, WaveFormType } from '../types';
-import type { Observable } from '../utils/observable';
+import type { FixedArray } from '../types';
+import type { AxiomVoiceConfig } from './axiom-voice-config';
 import {
   OSCILLATOR_COUNT,
   type OscillatorCount,
@@ -10,54 +10,24 @@ import { freqOf } from './helpers';
 import { Voice } from './voice';
 
 export class AxiomVoice extends Voice {
-  private readonly ampEnvelopeConfig: EnvelopeConfig;
-  private readonly filterEnvelopeConfig: EnvelopeConfig;
-
   private areOscillatorsActive = false;
   private oscillators: FixedArray<OscillatorNode, OscillatorCount> | [] = [];
 
+  private readonly config: AxiomVoiceConfig;
   private readonly ampEnvelope: Envelope;
   private readonly gainNodes: FixedArray<GainNode, OscillatorCount>;
-  private readonly filterCutoff: ConstantSourceNode;
-  private readonly filterResonance: ConstantSourceNode;
   private readonly filterEnvelope: Envelope;
   private readonly filter: BiquadFilterNode;
-  private readonly filterEnvAmount: ConstantSourceNode;
   private readonly keyTrackGain: GainNode;
-  private readonly oscillatorDetuneSources: FixedArray<
-    ConstantSourceNode,
-    OscillatorCount
-  >;
-  private readonly oscillatorGainSources: FixedArray<
-    ConstantSourceNode,
-    OscillatorCount
-  >;
-  private readonly oscillatorWaveForms: Observable<
-    FixedArray<WaveFormType, OscillatorCount>
-  >;
 
   constructor(
     ctxt: AudioContext,
     audioSink: AudioNode,
-    ampEnvelopeConfig: EnvelopeConfig,
-    filterEnvelopeConfig: EnvelopeConfig,
-    filterCutoff: ConstantSourceNode,
-    filterResonance: ConstantSourceNode,
-    filterEnvAmount: ConstantSourceNode,
-    filterKeyTrack: ConstantSourceNode,
-    oscillatorDetuneSources: FixedArray<ConstantSourceNode, OscillatorCount>,
-    oscillatorGainSources: FixedArray<ConstantSourceNode, OscillatorCount>,
-    oscillatorWaveForms: Observable<FixedArray<WaveFormType, OscillatorCount>>,
+    config: AxiomVoiceConfig,
   ) {
     super(ctxt, audioSink);
-    this.ampEnvelopeConfig = ampEnvelopeConfig;
-    this.filterEnvelopeConfig = filterEnvelopeConfig;
-    this.filterCutoff = filterCutoff;
-    this.filterResonance = filterResonance;
-    this.filterEnvAmount = filterEnvAmount;
-    this.oscillatorDetuneSources = oscillatorDetuneSources;
-    this.oscillatorGainSources = oscillatorGainSources;
-    this.oscillatorWaveForms = oscillatorWaveForms;
+
+    this.config = config;
 
     this.ampEnvelope = new Envelope(ctxt);
     this.filterEnvelope = new Envelope(ctxt);
@@ -67,19 +37,19 @@ export class AxiomVoice extends Voice {
     this.filter.frequency.value = 0;
 
     // Hook up base values
-    this.filterCutoff.connect(this.filter.frequency);
-    this.filterResonance.connect(this.filter.Q);
+    this.config.filterCutoff.connect(this.filter.frequency);
+    this.config.filterResonance.connect(this.filter.Q);
 
     // Filter Env Amount -> Filter Envelope -> Filter Detune
-    this.filterEnvAmount.connect(this.filterEnvelope.node);
+    this.config.filterEnvAmount.connect(this.filterEnvelope.node);
     this.filterEnvelope.node.connect(this.filter.detune);
 
     this.keyTrackGain = ctxt.createGain();
     this.keyTrackGain.gain.value = 0;
-    filterKeyTrack.connect(this.keyTrackGain);
+    this.config.filterKeyTrack.connect(this.keyTrackGain);
     this.keyTrackGain.connect(this.filter.detune);
 
-    this.gainNodes = this.oscillatorGainSources.map(source => {
+    this.gainNodes = this.config.oscillatorGainSources.map(source => {
       const gain = ctxt.createGain();
       gain.gain.value = 0;
       source.connect(gain.gain);
@@ -98,16 +68,16 @@ export class AxiomVoice extends Voice {
     now: number,
   ): void {
     this.createOscillators(noteNumber, now);
-    this.ampEnvelope.noteOn(velocity, this.ampEnvelopeConfig, now);
-    this.filterEnvelope.noteOn(velocity, this.filterEnvelopeConfig, now);
+    this.ampEnvelope.noteOn(velocity, this.config.ampEnvelope, now);
+    this.filterEnvelope.noteOn(velocity, this.config.filterEnvelope, now);
     this.keyTrackGain.gain.setValueAtTime(100 * noteNumber, now);
   }
 
   override internalNoteOff(now: number): { silentAt: number } {
-    this.ampEnvelope.noteOff(this.ampEnvelopeConfig, now);
-    this.filterEnvelope.noteOff(this.filterEnvelopeConfig, now);
+    this.ampEnvelope.noteOff(this.config.ampEnvelope, now);
+    this.filterEnvelope.noteOff(this.config.filterEnvelope, now);
     return {
-      silentAt: this.ampEnvelopeConfig.releaseSeconds,
+      silentAt: this.config.ampEnvelope.releaseSeconds,
     };
   }
 
@@ -127,10 +97,13 @@ export class AxiomVoice extends Voice {
       .fill(null)
       .map((_, index) => {
         const osc = this.ctxt.createOscillator();
-        osc.type = this.oscillatorWaveForms.value[index as OscillatorIndex];
-        const { unsubscribe } = this.oscillatorWaveForms.subscribe(value => {
-          osc.type = value[index as OscillatorIndex];
-        });
+        osc.type =
+          this.config.oscillatorWaveForms.value[index as OscillatorIndex];
+        const { unsubscribe } = this.config.oscillatorWaveForms.subscribe(
+          value => {
+            osc.type = value[index as OscillatorIndex];
+          },
+        );
         osc.onended = () => {
           unsubscribe();
         };
@@ -138,9 +111,9 @@ export class AxiomVoice extends Voice {
         return osc;
       }) as FixedArray<OscillatorNode, OscillatorCount>;
 
-    this.oscillatorDetuneSources[0].connect(this.oscillators[0].detune);
-    this.oscillatorDetuneSources[1].connect(this.oscillators[1].detune);
-    this.oscillatorDetuneSources[2].connect(this.oscillators[2].detune);
+    this.config.oscillatorDetuneSources[0].connect(this.oscillators[0].detune);
+    this.config.oscillatorDetuneSources[1].connect(this.oscillators[1].detune);
+    this.config.oscillatorDetuneSources[2].connect(this.oscillators[2].detune);
 
     this.oscillators.forEach((osc, index) => {
       osc.connect(this.gainNodes[index as OscillatorIndex]);
