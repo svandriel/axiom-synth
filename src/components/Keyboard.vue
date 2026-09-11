@@ -125,8 +125,7 @@ onUnmounted(() => {
 // e.g. C is 0, C# is 0, D is 1, D# is 1, etc
 const pianoKeyLocations: Record<number, number> = {};
 let currentLocation = 0;
-for (let i = 0; i < notes.length; i++) {
-  const note = notes[i];
+for (const note of notes) {
   if (note.black) {
     pianoKeyLocations[note.semi] = currentLocation - 1;
   } else {

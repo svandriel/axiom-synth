@@ -1,5 +1,11 @@
-import type { EnvelopeConfig, FilterConfig, OscillatorConfig } from '../types';
+import type {
+  EnvelopeConfig,
+  FilterConfig,
+  FixedArray,
+  OscillatorConfig,
+} from '../types';
 import { AxiomVoice } from './axiom-voice';
+import type { OscillatorCount, OscillatorIndex } from './constants';
 import { Voice } from './voice';
 
 const MAX_VOICES = 16;
@@ -18,10 +24,19 @@ export class AudioEngine {
   private readonly filterCutOffSource: ConstantSourceNode;
   private readonly filterQSource: ConstantSourceNode;
   private readonly filterEnvAmountSource: ConstantSourceNode;
-  private readonly oscillatorDetuneSources: ConstantSourceNode[];
-  private readonly oscillatorGainSources: ConstantSourceNode[];
+  private readonly oscillatorDetuneSources: FixedArray<
+    ConstantSourceNode,
+    OscillatorCount
+  >;
+  private readonly oscillatorGainSources: FixedArray<
+    ConstantSourceNode,
+    OscillatorCount
+  >;
 
-  public readonly oscillatorConfigs: OscillatorConfig[] = [
+  public readonly oscillatorConfigs: FixedArray<
+    OscillatorConfig,
+    OscillatorCount
+  > = [
     {
       octave: 0,
       semi: 0,
@@ -33,6 +48,13 @@ export class AudioEngine {
       octave: 0,
       semi: 0,
       detune: 16.2,
+      waveform: 'saw',
+      gain: 1,
+    },
+    {
+      octave: -1,
+      semi: 0,
+      detune: 0,
       waveform: 'saw',
       gain: 1,
     },
@@ -101,10 +123,16 @@ export class AudioEngine {
     );
 
     this.oscillatorDetuneSources = this.createConstantSources(
-      ...this.oscillatorConfigs.map(c => c.detune),
+      this.oscillatorConfigs.map(c => c.detune) as FixedArray<
+        number,
+        OscillatorCount
+      >,
     );
     this.oscillatorGainSources = this.createConstantSources(
-      ...this.oscillatorConfigs.map(c => c.gain),
+      this.oscillatorConfigs.map(c => c.gain) as FixedArray<
+        number,
+        OscillatorCount
+      >,
     );
 
     this.voicePool = Array.from(
@@ -165,7 +193,7 @@ export class AudioEngine {
     this.filterConfig.envAmount = value;
   }
 
-  setOscillatorConfiguration(index: number, config: OscillatorConfig) {
+  setOscillatorConfiguration(index: OscillatorIndex, config: OscillatorConfig) {
     const currentConfig = this.oscillatorConfigs[index];
     if (
       currentConfig.octave !== config.octave ||
@@ -290,8 +318,12 @@ export class AudioEngine {
     this.ctxt.close();
   }
 
-  private createConstantSources(...offsets: number[]) {
-    return offsets.map(offset => this.createConstantSource(offset));
+  private createConstantSources<N extends number>(
+    offsets: FixedArray<number, N>,
+  ): FixedArray<ConstantSourceNode, N> {
+    return offsets.map(offset =>
+      this.createConstantSource(offset),
+    ) as FixedArray<ConstantSourceNode, N>;
   }
 
   private createConstantSource(offset: number = 0) {

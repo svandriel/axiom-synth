@@ -3,8 +3,7 @@
     <div class="flex flex-row items-center justify-between">
       <div class="text-sm tracking-wide uppercase">Scope</div>
     </div>
-    <h2>Scope Component</h2>
-    <div class="relative overflow-hidden rounded-2xl bg-black">
+    <div class="relative mt-3 overflow-hidden rounded-2xl bg-black">
       <canvas ref="scope" class="block h-full w-full" />
     </div>
   </div>
@@ -109,14 +108,14 @@ function render(scope: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
   // Find index of zero crossing
   let start = 0;
   for (let i = 1; i < timeData.length / 2; i++) {
-    if (timeData[i - 1] < 0 && timeData[i] >= 0) {
+    if (timeData[i - 1]! < 0 && timeData[i]! >= 0) {
       start = i;
       break;
     }
   }
   const n = Math.min(timeData.length - start, 1024);
   for (let i = 0; i < n; i++) {
-    var v = timeData[start + i] * 1.6;
+    var v = timeData[start + i]! * 1.6;
     const x = (i / (n - 1)) * w;
     const y = h / 2 - (v * h) / 2;
     if (i === 0) {
