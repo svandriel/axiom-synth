@@ -46,9 +46,9 @@ const cutoff = ref(engine.value.filterConfig.frequency);
 const resonance = ref(filterQ);
 const envAmount = ref(engine.value.filterConfig.envAmount / 9600);
 
-let osc1 = reactive(engine.value.oscillatorConfigs[0]);
-let osc2 = reactive(engine.value.oscillatorConfigs[1]);
-let osc3 = reactive(engine.value.oscillatorConfigs[2]);
+let osc1 = reactive({ ...engine.value.oscillatorConfigs[0] });
+let osc2 = reactive({ ...engine.value.oscillatorConfigs[1] });
+let osc3 = reactive({ ...engine.value.oscillatorConfigs[2] });
 
 watch(cutoff, newCutoff => {
   engine.value.filterCutOff = newCutoff;

@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import type { OscillatorConfig } from '../types';
+import type { OscillatorConfig, WaveFormType } from '../types';
 import { dbDisplay } from '../utils/db-display.ts';
 import { fractionDisplay } from '../utils/fraction-display.ts';
 import { semiDisplay } from '../utils/semi-display.ts';
@@ -69,11 +69,10 @@ defineModel<OscillatorConfig>({
   required: true,
 });
 
-const waveForms = [
-  { id: 'saw', label: 'Saw' },
+const waveForms: Array<{ id: WaveFormType; label: string }> = [
+  { id: 'sawtooth', label: 'Saw' },
   { id: 'sine', label: 'Sin' },
   { id: 'square', label: 'Sqr' },
   { id: 'triangle', label: 'Tri' },
-  { id: 'pulse', label: 'Pulse' },
 ];
 </script>

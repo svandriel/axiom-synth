@@ -21,7 +21,6 @@ export class Envelope {
     this.ampEnv.gain.cancelScheduledValues(now);
     this.ampEnv.gain.setValueAtTime(this.ampEnv.gain.value, now);
 
-    console.log(`Using ${config.attackCurve} attack`);
     switch (config.attackCurve) {
       case 'analog':
         this.ampEnv.gain.setTargetAtTime(
