@@ -6,6 +6,7 @@
     @pointerup="release"
     @pointercancel="release"
     @dblclick="resetToDefault"
+    @lostpointercapture="release"
   >
     <div
       class="knob relative cursor-ns-resize rounded-full shadow-out-sm duration-200 ease-in-out outline-none dark:shadow-out-sm-dark"
@@ -135,10 +136,12 @@ let startY = 0;
 let startV = 0;
 
 function onPointerDown(e: PointerEvent) {
+  if (!knob.value) return;
+  console.log('Pointer down event:', e);
   startY = e.clientY;
   startV = normalizedValue.value;
   active.value = true;
-  knob.value?.setPointerCapture(e.pointerId);
+  knob.value.setPointerCapture(e.pointerId);
   e.preventDefault();
 }
 
