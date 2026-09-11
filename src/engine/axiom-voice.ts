@@ -23,6 +23,7 @@ export class AxiomVoice extends Voice {
   private readonly filterEnvelope: Envelope;
   private readonly filter: BiquadFilterNode;
   private readonly filterEnvAmount: ConstantSourceNode;
+  private readonly keyTrackGain: GainNode;
   private readonly oscillatorDetuneSources: FixedArray<
     ConstantSourceNode,
     OscillatorCount
@@ -43,6 +44,7 @@ export class AxiomVoice extends Voice {
     filterCutoff: ConstantSourceNode,
     filterResonance: ConstantSourceNode,
     filterEnvAmount: ConstantSourceNode,
+    filterKeyTrack: ConstantSourceNode,
     oscillatorDetuneSources: FixedArray<ConstantSourceNode, OscillatorCount>,
     oscillatorGainSources: FixedArray<ConstantSourceNode, OscillatorCount>,
     oscillatorWaveForms: Observable<FixedArray<WaveFormType, OscillatorCount>>,
@@ -72,6 +74,11 @@ export class AxiomVoice extends Voice {
     this.filterEnvAmount.connect(this.filterEnvelope.node);
     this.filterEnvelope.node.connect(this.filter.detune);
 
+    this.keyTrackGain = ctxt.createGain();
+    this.keyTrackGain.gain.value = 0;
+    filterKeyTrack.connect(this.keyTrackGain);
+    this.keyTrackGain.connect(this.filter.detune);
+
     this.gainNodes = this.oscillatorGainSources.map(source => {
       const gain = ctxt.createGain();
       gain.gain.value = 0;
@@ -93,6 +100,7 @@ export class AxiomVoice extends Voice {
     this.createOscillators(noteNumber, now);
     this.ampEnvelope.noteOn(velocity, this.ampEnvelopeConfig, now);
     this.filterEnvelope.noteOn(velocity, this.filterEnvelopeConfig, now);
+    this.keyTrackGain.gain.setValueAtTime(100 * noteNumber, now);
   }
 
   override internalNoteOff(now: number): { silentAt: number } {
@@ -162,6 +170,7 @@ export class AxiomVoice extends Voice {
     this.filterEnvelope.disconnect;
     this.filter.disconnect();
     this.gainNodes.forEach(node => node.disconnect());
+    this.keyTrackGain.disconnect();
     super.destroy();
   }
 }
