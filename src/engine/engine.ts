@@ -7,6 +7,7 @@ import type {
 } from '../types';
 import { Observable } from '../utils/observable';
 import { AxiomVoice } from './axiom-voice';
+import type { AxiomVoiceConfig } from './axiom-voice-config';
 import type { OscillatorCount, OscillatorIndex } from './constants';
 import { Voice } from './voice';
 
@@ -146,22 +147,21 @@ export class AudioEngine {
       >,
     );
 
+    const voiceConfig: AxiomVoiceConfig = {
+      ampEnvelope: this.ampEnvelope,
+      filterEnvelope: this.filterEnvelope,
+      filterCutoff: this.filterCutOffSource,
+      filterResonance: this.filterQSource,
+      filterEnvAmount: this.filterEnvAmountSource,
+      filterKeyTrack: this.filterKeyTrackSource,
+      oscillatorDetuneSources: this.oscillatorDetuneSources,
+      oscillatorGainSources: this.oscillatorGainSources,
+      oscillatorWaveForms: this.oscillatorWaveForms,
+    };
+
     this.voicePool = Array.from(
       { length: MAX_VOICES },
-      () =>
-        new AxiomVoice(
-          this.ctxt,
-          this.dry,
-          this.ampEnvelope,
-          this.filterEnvelope,
-          this.filterCutOffSource,
-          this.filterQSource,
-          this.filterEnvAmountSource,
-          this.filterKeyTrackSource,
-          this.oscillatorDetuneSources,
-          this.oscillatorGainSources,
-          this.oscillatorWaveForms,
-        ),
+      () => new AxiomVoice(this.ctxt, this.dry, voiceConfig),
     );
   }
 
