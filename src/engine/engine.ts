@@ -253,7 +253,7 @@ export class AudioEngine {
   }
 
   set waveshaperDrive(value: number) {
-    this.waveshaperConfig.drive;
+    this.waveshaperConfig.drive = value;
     const now = this.ctxt.currentTime;
     this.waveShaperDriveSource.offset.cancelScheduledValues(now);
     this.waveShaperDriveSource.offset.linearRampToValueAtTime(
