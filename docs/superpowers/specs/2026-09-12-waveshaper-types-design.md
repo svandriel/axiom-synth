@@ -116,6 +116,10 @@ Changes:
 - Keep `config.waveshaperDrive.connect(this.waveShaper.drive)`.
 - Fix the latent bug `this.filterEnvelope.disconnect;` → call it
   (`this.filterEnvelope.disconnect()`).
+- `destroy()` must unregister the voice's node from the shared curve: it flows
+  through `this.waveShaper.destroy()`, which calls
+  `curve.unsubscribe(this.wsNode)`. A destroyed voice's node must no longer
+  receive curve re-assignments on parameter changes.
 
 `AudioEngine` (`src/engine/engine.ts`):
 
