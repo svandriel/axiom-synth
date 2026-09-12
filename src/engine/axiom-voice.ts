@@ -8,6 +8,7 @@ import {
 import { Envelope } from './envelope';
 import { freqOf } from './helpers';
 import { Voice } from './voice';
+import { Waveshaper } from './waveshaper';
 
 export class AxiomVoice extends Voice {
   private areOscillatorsActive = false;
@@ -19,6 +20,7 @@ export class AxiomVoice extends Voice {
   private readonly filterEnvelope: Envelope;
   private readonly filter: BiquadFilterNode;
   private readonly keyTrackGain: GainNode;
+  private readonly waveShaper: Waveshaper;
 
   constructor(
     ctxt: AudioContext,
@@ -31,6 +33,7 @@ export class AxiomVoice extends Voice {
 
     this.ampEnvelope = new Envelope(ctxt);
     this.filterEnvelope = new Envelope(ctxt);
+    this.waveShaper = new Waveshaper(ctxt, config.waveshaperCurve);
 
     this.filter = ctxt.createBiquadFilter();
     this.filter.type = 'lowpass';
@@ -49,16 +52,29 @@ export class AxiomVoice extends Voice {
     this.config.filterKeyTrack.connect(this.keyTrackGain);
     this.keyTrackGain.connect(this.filter.detune);
 
+    // config 1:
+    // [[ Oscillators -> Gain ]] -> Filter -> WaveShaper -> Amp Envelope -> Gain -> Audio Sink
+
+    // const oscillatorAudioSink = this.filter;
+    // this.filter.connect(this.waveShaper.input);
+    // this.waveShaper.output.connect(this.ampEnvelope.node);
+
+    // Config 2:
+    // [[ Oscillators -> Gain ]] -> WaveShaper -> Filter -> Amp Envelope -> Gain -> Audio Sink
+    const oscillatorAudioSink = this.waveShaper.input;
+    this.waveShaper.output.connect(this.filter);
+    this.filter.connect(this.ampEnvelope.node);
+
+    config.waveshaperDrive.connect(this.waveShaper.drive);
+
     this.gainNodes = this.config.oscillatorGainSources.map(source => {
       const gain = ctxt.createGain();
       gain.gain.value = 0;
       source.connect(gain.gain);
-      gain.connect(this.filter);
+      gain.connect(oscillatorAudioSink);
       return gain;
     }) as FixedArray<GainNode, OscillatorCount>;
 
-    // [[ Oscillators -> Gain ]] -> Filter -> Amp Envelope -> Gain -> Audio Sink
-    this.filter.connect(this.ampEnvelope.node);
     this.ampEnvelope.node.connect(audioSink);
   }
 
@@ -151,10 +167,11 @@ export class AxiomVoice extends Voice {
   override destroy(): void {
     this.destroyOscillators();
     this.ampEnvelope.disconnect();
-    this.filterEnvelope.disconnect;
+    this.filterEnvelope.disconnect();
     this.filter.disconnect();
     this.gainNodes.forEach(node => node.disconnect());
     this.keyTrackGain.disconnect();
+    this.waveShaper.destroy();
     super.destroy();
   }
 }

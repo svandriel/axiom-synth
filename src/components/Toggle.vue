@@ -6,7 +6,7 @@
       <button
         @click="onClicked(value.id)"
         :aria-pressed="isPressed(value.id)"
-        class="inline-flex cursor-pointer rounded-md px-2 py-1.5 font-mono text-2xs tracking-widest uppercase"
+        class="inline-flex cursor-pointer rounded-md px-1.5 py-1.5 font-mono text-2xs tracking-widest uppercase"
         :class="{
           'text-primary-400 dark:text-primary-400': !isPressed(value.id),
           'text-accent-600 dark:text-accent-300': isPressed(value.id),
