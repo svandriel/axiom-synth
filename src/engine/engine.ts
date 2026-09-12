@@ -12,6 +12,7 @@ import type { AxiomVoiceConfig } from './axiom-voice-config';
 import type { OscillatorCount, OscillatorIndex } from './constants';
 import { Voice } from './voice';
 import type { WaveshaperType } from './waveshaper';
+import { WaveshaperCurve } from './waveshaper-curve';
 
 const MAX_VOICES = 16;
 
@@ -96,7 +97,7 @@ export class AudioEngine {
   private readonly waveshaperConfig: WaveshaperConfig = {
     distortion: 0,
     drive: 0,
-    type: 'classic',
+    type: 'atan',
   };
 
   private readonly oscillatorWaveForms: Observable<
@@ -104,6 +105,7 @@ export class AudioEngine {
   >;
 
   private readonly waveShaperDriveSource: ConstantSourceNode;
+  private readonly waveshaperCurve: WaveshaperCurve;
 
   private readonly _distortionAmount: Observable<number>;
   private readonly _waveshaperType: Observable<WaveshaperType>;
@@ -166,6 +168,17 @@ export class AudioEngine {
     );
     this._waveshaperType = new Observable(this.waveshaperConfig.type);
 
+    this.waveshaperCurve = new WaveshaperCurve(
+      this.waveshaperConfig.distortion,
+      this.waveshaperConfig.type,
+    );
+    this._distortionAmount.subscribe(amount => {
+      this.waveshaperCurve.amount = amount;
+    });
+    this._waveshaperType.subscribe(type => {
+      this.waveshaperCurve.type = type;
+    });
+
     const voiceConfig: AxiomVoiceConfig = {
       ampEnvelope: this.ampEnvelope,
       filterEnvelope: this.filterEnvelope,
@@ -176,9 +189,8 @@ export class AudioEngine {
       oscillatorDetuneSources: this.oscillatorDetuneSources,
       oscillatorGainSources: this.oscillatorGainSources,
       oscillatorWaveForms: this.oscillatorWaveForms,
-      distortionAmount: this._distortionAmount,
+      waveshaperCurve: this.waveshaperCurve,
       waveshaperDrive: this.waveShaperDriveSource,
-      waveshaperType: this._waveshaperType,
     };
 
     this.voicePool = Array.from(
@@ -398,6 +410,8 @@ export class AudioEngine {
       source.disconnect();
       source.stop();
     });
+    this.waveShaperDriveSource.disconnect();
+    this.waveShaperDriveSource.stop();
     this.dry.disconnect();
     this.ctxt.close();
   }
