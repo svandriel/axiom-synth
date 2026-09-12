@@ -165,10 +165,8 @@ function renderEnv(canvas: HTMLCanvasElement, g: CanvasRenderingContext2D) {
   g.fillStyle = fill;
   g.lineTo(px(total), py(0));
   g.fill();
-  trace(g, w, h);
 
   g.globalAlpha = 1;
-
   const lineGradient = g.createLinearGradient(0, 0, 0, h);
   lineGradient.addColorStop(0, scopeColor1);
   lineGradient.addColorStop(0.5, scopeColor2);
@@ -191,8 +189,6 @@ function renderEnv(canvas: HTMLCanvasElement, g: CanvasRenderingContext2D) {
   g.shadowBlur = 0;
 }
 function grid(g: CanvasRenderingContext2D, w: number, h: number) {
-  g.fillStyle = '#06110b';
-  // g.fillRect(0, 0, w, h);
   g.strokeStyle = 'rgba(125,255,176,.12)';
   g.lineWidth = 1;
   g.beginPath();
@@ -205,12 +201,5 @@ function grid(g: CanvasRenderingContext2D, w: number, h: number) {
     g.lineTo(w, (h * i) / 4);
   }
   g.stroke();
-}
-function trace(g: CanvasRenderingContext2D, w: number, h: number) {
-  g.strokeStyle = scopeColor1;
-  g.lineWidth = Math.max(1.2, h / 40);
-  g.shadowColor = scopeColor1;
-  g.shadowBlur = h / 10;
-  g.lineJoin = 'round';
 }
 </script>
