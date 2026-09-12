@@ -35,6 +35,7 @@
         v-model:distortionAmount="waveshaperDistortion"
         v-model:drive="waveshaperDrive"
         v-model:type="waveshaperType"
+        :curve="engine.shaperCurve"
       />
       <ScopePanel
         class="col-span-12 row-start-7 sm:col-span-6 sm:col-start-7 sm:row-start-3 lg:col-span-4"
