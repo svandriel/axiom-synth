@@ -274,7 +274,7 @@ export class AudioEngine {
     );
   }
 
-  get waveshaperType() {
+  get waveshaperType(): WaveshaperType {
     return this.waveshaperConfig.type;
   }
   set waveshaperType(val: WaveshaperType) {

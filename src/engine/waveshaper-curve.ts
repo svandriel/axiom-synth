@@ -82,7 +82,7 @@ export class WaveshaperCurve {
           break;
         }
         case 'hard-clipper': {
-          const k = 1 - m * 0.95;
+          const k = Math.max(0.05, 1 - m * 0.95);
           this.curve[i] = Math.max(-k, Math.min(k, x)) / k;
           break;
         }
