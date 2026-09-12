@@ -10,7 +10,7 @@ export type WaveshaperType =
 
 export class WaveshaperCurve {
   private readonly nodes = new Set<WaveShaperNode>();
-  private readonly curve = new Float32Array(CURVE_SAMPLES);
+  private readonly samples = new Float32Array(CURVE_SAMPLES);
 
   private _amount: number;
   private _type: WaveshaperType;
@@ -21,9 +21,13 @@ export class WaveshaperCurve {
     this.computeCurve();
   }
 
+  get curve(): Float32Array {
+    return this.samples;
+  }
+
   subscribe(node: WaveShaperNode): void {
     this.nodes.add(node);
-    node.curve = this.curve;
+    node.curve = this.samples;
   }
 
   unsubscribe(node: WaveShaperNode): void {
@@ -57,7 +61,7 @@ export class WaveshaperCurve {
   private apply(): void {
     this.computeCurve();
     this.nodes.forEach(node => {
-      node.curve = this.curve;
+      node.curve = this.samples;
     });
   }
 
@@ -68,31 +72,31 @@ export class WaveshaperCurve {
       switch (this._type) {
         case 'atan': {
           const k = 1 + m * m * 24;
-          this.curve[i] = Math.atan(k * x) / Math.atan(k);
+          this.samples[i] = Math.atan(k * x) / Math.atan(k);
           break;
         }
         case 'soft-algebraic': {
           const k = m * m * 10;
-          this.curve[i] = (x * Math.sqrt(1 + k)) / Math.sqrt(1 + k * x * x);
+          this.samples[i] = (x * Math.sqrt(1 + k)) / Math.sqrt(1 + k * x * x);
           break;
         }
         case 'asymmetric-tube': {
           const k = 1 + m * 9;
-          this.curve[i] = x < 0 ? Math.tanh(k * x) : x;
+          this.samples[i] = x < 0 ? Math.tanh(k * x) : x;
           break;
         }
         case 'hard-clipper': {
           const k = Math.max(0.05, 1 - m * 0.95);
-          this.curve[i] = Math.max(-k, Math.min(k, x)) / k;
+          this.samples[i] = Math.max(-k, Math.min(k, x)) / k;
           break;
         }
         case 'sine-shaper': {
           const k = 1 + m * 4;
-          this.curve[i] = Math.sin((k * x * Math.PI) / 2);
+          this.samples[i] = Math.sin((k * x * Math.PI) / 2);
           break;
         }
         case 'chebyshev': {
-          this.curve[i] = (1 - m) * x + m * (4 * Math.pow(x, 3) - 3 * x);
+          this.samples[i] = (1 - m) * x + m * (4 * Math.pow(x, 3) - 3 * x);
           break;
         }
       }
