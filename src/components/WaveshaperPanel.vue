@@ -27,7 +27,7 @@
       >
         <canvas
           ref="shaperGraph"
-          class="block h-full w-full bg-primary-600 dark:bg-primary-800"
+          class="block h-full w-full bg-primary-500 dark:bg-primary-800"
         />
       </div>
     </div>
