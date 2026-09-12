@@ -2,9 +2,7 @@
 
 Vue 3 + TypeScript + Vite web synthesizer using the Web Audio API.
 
-Work in progress.
-
-Use the caveman skill in ultra mode.
+Work in progress. Use the caveman skill in ultra mode.
 
 ## Commands
 
@@ -13,29 +11,24 @@ Use the caveman skill in ultra mode.
 - `pnpm lint` — `prettier --check .`
 - `pnpm format` — `prettier --write .`
 
-Linting is done in the pre-commit hook, no need to run `pnpm lint` manually.
-
-There is no test runner configured.
+Linting runs in the pre-commit hook. No test runner configured.
 
 ## Way of working
 
-- Always work on a feature branch; ask the user if a worktree is needed.
-- Do not commit directly to the main branch; always go through a pull request.
+- Work on a feature branch; ask the user if a worktree is needed.
+- Never commit to `main` directly; always go through a pull request.
 
-## Conventions
+## Codebase docs
 
-- **Package manager:** pnpm (lockfile: `pnpm-lock.yaml`)
-- **Vue SFCs:** `<script setup lang="ts">` — no Options API
-- **TypeScript:** strict mode, no unused locals/params, `erasableSyntaxOnly`
-- **Formatting:** Prettier with single quotes, trailing commas, no semicolons, 80 char width, `prettier-plugin-tailwindcss`
-- **Pre-commit:** Husky + lint-staged auto-formats staged `.ts/.js/.vue/.css/.md/.json/.yml/.yaml` files
-- **CSS:** Tailwind CSS v4 with `@theme inline` custom properties — see `src/style.css` for the full color/shadow system
-- **Dark mode:** class-based via `.dark` — use `dark:` variant with `@custom-variant` in style.css
+`docs/codebase/` is the source of truth for conventions and architecture. Read
+the relevant file before deep work:
 
-## Architecture
-
-- `src/engine/` — `AudioEngine` class wrapping Web Audio API (voice pool, filter, compressor, analyser chain)
-- `src/types/` — config interfaces (`OscillatorConfig`, `EnvelopeConfig`, `FilterConfig`)
-- `src/composables/` — Vue composables (`useAudioEngine`, `useThemeMode`)
-- `src/components/` — UI components (Synth, Keyboard, Knob, OscillatorPanel, FilterPanel, etc.)
-- `src/utils/` — display helpers for dB, fractions, semitones, key mapping
+| File              | Contents                                   |
+| ----------------- | ------------------------------------------ |
+| `STACK.md`        | Tech stack, toolchain, key commands        |
+| `STRUCTURE.md`    | Directory layout, entry points, boundaries |
+| `ARCHITECTURE.md` | Audio engine graph, data flow, patterns    |
+| `CONVENTIONS.md`  | Naming, Prettier, TypeScript strictness    |
+| `INTEGRATIONS.md` | CI/CD, GitHub Pages, localStorage          |
+| `TESTING.md`      | Test setup (none — build is the gate)      |
+| `CONCERNS.md`     | Known issues, tech debt, risks             |
