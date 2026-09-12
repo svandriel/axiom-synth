@@ -100,10 +100,12 @@ function drawCurve(
   const py = (v: number) => h - 6 - ((v + 1) / 2) * (h - 12);
 
   const pointCount = 100;
+  const count = Math.min(pointCount, n);
+  const step = count > 1 ? (n - 1) / (count - 1) : 0;
   const xp: number[] = [];
   const yp: number[] = [];
-  for (let i = 0; i < pointCount; ++i) {
-    const idx = Math.round((i * (n - 1)) / (pointCount - 1));
+  for (let i = 0; i < count; ++i) {
+    const idx = Math.round(i * step);
     xp.push(px(idx));
     yp.push(py(samples[idx]!));
   }
