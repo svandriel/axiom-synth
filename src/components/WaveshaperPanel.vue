@@ -38,12 +38,28 @@ const type = defineModel<WaveshaperType>('type', { required: true });
 
 const types: Array<{ id: WaveshaperType; label: string }> = [
   {
-    id: 'classic',
-    label: 'Classic',
+    id: 'atan',
+    label: 'Arc-tan',
   },
   {
-    id: 'tanh',
-    label: 'Tanh',
+    id: 'soft-algebraic',
+    label: 'Algebraic',
+  },
+  {
+    id: 'asymmetric-tube',
+    label: 'Tube',
+  },
+  {
+    id: 'hard-clipper',
+    label: 'Clipper',
+  },
+  {
+    id: 'sine-shaper',
+    label: 'Sine',
+  },
+  {
+    id: 'chebyshev',
+    label: 'Cheby',
   },
 ];
 </script>
