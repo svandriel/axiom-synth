@@ -236,7 +236,6 @@ export class AudioEngine {
       value,
       this.ctxt.currentTime + 0.01,
     );
-    console.log(`Setting filterEnvAmount to ${value}`);
     this.filterConfig.envAmount = value;
   }
 
