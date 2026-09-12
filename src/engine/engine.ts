@@ -97,7 +97,7 @@ export class AudioEngine {
   private readonly waveshaperConfig: WaveshaperConfig = {
     distortion: 0,
     drive: 0,
-    type: 'atan',
+    type: 'soft-algebraic',
   };
 
   private readonly oscillatorWaveForms: Observable<

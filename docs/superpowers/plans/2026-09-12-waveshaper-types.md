@@ -305,13 +305,13 @@ Add field next to `waveShaperDriveSource`:
   private readonly waveshaperCurve: WaveshaperCurve;
 ```
 
-- [ ] **Step 2: Change the default type to `'atan'`**
+- [ ] **Step 2: Change the default type to `'soft-algebraic'`**
 
 ```ts
   private readonly waveshaperConfig: WaveshaperConfig = {
     distortion: 0,
     drive: 0,
-    type: 'atan',
+    type: 'soft-algebraic',
   };
 ```
 
@@ -366,7 +366,7 @@ Expected: PASS (type-check + build). The old `distortionAmount`/`waveshaperType`
 
 ```bash
 git add src/engine/engine.ts
-git commit -m "feat: engine owns shared waveshaper curve, default atan"
+git commit -m "feat: engine owns shared waveshaper curve, default soft-algebraic"
 ```
 
 ---
