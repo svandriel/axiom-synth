@@ -55,7 +55,11 @@ const scopeColor3 = styles.getPropertyValue('--color-accent-900');
 
 const shaperGraph = useTemplateRef('shaperGraph');
 
-watchEffect(render);
+watchEffect(() => {
+  void distortionAmount.value;
+  void type.value;
+  render();
+});
 
 function fit(canvas: HTMLCanvasElement) {
   if (!canvas.parentNode) return { w: 0, h: 0, dpr: 1 };
