@@ -96,15 +96,12 @@ watch(osc3, newOsc3 => {
 });
 
 watch(waveshaperDistortion, value => {
-  console.log('distortion', value);
   engine.value.distortionAmount = value;
 });
 watch(waveshaperDrive, value => {
-  console.log('drive', value);
   engine.value.waveshaperDrive = value;
 });
 watch(waveshaperType, value => {
-  console.log('type', value);
   engine.value.waveshaperType = value;
 });
 

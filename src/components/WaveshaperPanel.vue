@@ -15,10 +15,10 @@
       <Knob
         v-model="drive"
         :from="0"
-        :to="2"
+        :to="4"
         label="Drive"
         size="md"
-        :format="dbDisplay"
+        :format="d => dbDisplay(d + 1)"
       />
     </div>
   </Panel>
