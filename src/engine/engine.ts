@@ -5,11 +5,13 @@ import type {
   OscillatorConfig,
   WaveFormType,
 } from '../types';
+import type { WaveshaperConfig } from '../types/waveshaper-config';
 import { Observable } from '../utils/observable';
 import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
 import type { OscillatorCount, OscillatorIndex } from './constants';
 import { Voice } from './voice';
+import type { WaveshaperType } from './waveshaper';
 
 const MAX_VOICES = 16;
 
@@ -91,9 +93,20 @@ export class AudioEngine {
     releaseCurve: 'analog',
   };
 
+  private readonly waveshaperConfig: WaveshaperConfig = {
+    distortion: 0,
+    drive: 0,
+    type: 'classic',
+  };
+
   private readonly oscillatorWaveForms: Observable<
     FixedArray<WaveFormType, OscillatorCount>
   >;
+
+  private readonly waveShaperDriveSource: ConstantSourceNode;
+
+  private readonly _distortionAmount: Observable<number>;
+  private readonly _waveshaperType: Observable<WaveshaperType>;
 
   constructor(ctxt: AudioContext) {
     this.ctxt = ctxt;
@@ -147,6 +160,12 @@ export class AudioEngine {
       >,
     );
 
+    this._distortionAmount = new Observable(this.waveshaperConfig.distortion);
+    this.waveShaperDriveSource = this.createConstantSource(
+      this.waveshaperConfig.drive,
+    );
+    this._waveshaperType = new Observable(this.waveshaperConfig.type);
+
     const voiceConfig: AxiomVoiceConfig = {
       ampEnvelope: this.ampEnvelope,
       filterEnvelope: this.filterEnvelope,
@@ -157,6 +176,9 @@ export class AudioEngine {
       oscillatorDetuneSources: this.oscillatorDetuneSources,
       oscillatorGainSources: this.oscillatorGainSources,
       oscillatorWaveForms: this.oscillatorWaveForms,
+      distortionAmount: this._distortionAmount,
+      waveshaperDrive: this.waveShaperDriveSource,
+      waveshaperType: this._waveshaperType,
     };
 
     this.voicePool = Array.from(
@@ -216,6 +238,36 @@ export class AudioEngine {
       this.ctxt.currentTime + 0.01,
     );
     this.filterConfig.tracking = value;
+  }
+
+  get distortionAmount(): number {
+    return this._distortionAmount.value;
+  }
+
+  set distortionAmount(newValue: number) {
+    this._distortionAmount.value = newValue;
+  }
+
+  get waveshaperDrive(): number {
+    return this.waveshaperConfig.drive;
+  }
+
+  set waveshaperDrive(value: number) {
+    this.waveshaperConfig.drive;
+    const now = this.ctxt.currentTime;
+    this.waveShaperDriveSource.offset.cancelScheduledValues(now);
+    this.waveShaperDriveSource.offset.linearRampToValueAtTime(
+      value,
+      now + 0.01,
+    );
+  }
+
+  get waveshaperType() {
+    return this.waveshaperConfig.type;
+  }
+  set waveshaperType(val: WaveshaperType) {
+    this.waveshaperConfig.type = val;
+    this._waveshaperType.value = val;
   }
 
   setOscillatorConfiguration(index: OscillatorIndex, config: OscillatorConfig) {
