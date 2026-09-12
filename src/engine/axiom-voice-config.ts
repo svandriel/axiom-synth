@@ -1,7 +1,7 @@
 import type { EnvelopeConfig, FixedArray, WaveFormType } from '../types';
 import type { Observable } from '../utils/observable';
 import type { OscillatorCount } from './constants';
-import type { WaveshaperType } from './waveshaper';
+import type { WaveshaperCurve } from './waveshaper-curve';
 
 export interface AxiomVoiceConfig {
   ampEnvelope: EnvelopeConfig;
@@ -13,7 +13,6 @@ export interface AxiomVoiceConfig {
   oscillatorDetuneSources: FixedArray<ConstantSourceNode, OscillatorCount>;
   oscillatorGainSources: FixedArray<ConstantSourceNode, OscillatorCount>;
   oscillatorWaveForms: Observable<FixedArray<WaveFormType, OscillatorCount>>;
-  distortionAmount: Observable<number>;
+  waveshaperCurve: WaveshaperCurve;
   waveshaperDrive: ConstantSourceNode;
-  waveshaperType: Observable<WaveshaperType>;
 }
