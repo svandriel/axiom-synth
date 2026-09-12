@@ -1,5 +1,5 @@
 <template>
-  <Panel label="WaveShaper">
+  <Panel label="Shaper">
     <template #top-right>
       <Toggle v-model="type" :values="types" />
     </template>
@@ -39,11 +39,11 @@ const type = defineModel<WaveshaperType>('type', { required: true });
 const types: Array<{ id: WaveshaperType; label: string }> = [
   {
     id: 'atan',
-    label: 'Arc-tan',
+    label: 'Atan',
   },
   {
     id: 'soft-algebraic',
-    label: 'Algebraic',
+    label: 'Alg',
   },
   {
     id: 'asymmetric-tube',
@@ -51,7 +51,7 @@ const types: Array<{ id: WaveshaperType; label: string }> = [
   },
   {
     id: 'hard-clipper',
-    label: 'Clipper',
+    label: 'Clip',
   },
   {
     id: 'sine-shaper',
@@ -59,7 +59,7 @@ const types: Array<{ id: WaveshaperType; label: string }> = [
   },
   {
     id: 'chebyshev',
-    label: 'Cheby',
+    label: 'Cheb',
   },
 ];
 </script>
