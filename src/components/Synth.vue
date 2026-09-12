@@ -2,7 +2,7 @@
   <div
     class="synth b-3 min-h-100 rounded-2xl bg-default p-3 shadow-out dark:bg-default-dark dark:shadow-out-dark"
   >
-    <div class="grid grid-cols-12 grid-rows-6 gap-3 sm:grid-rows-3">
+    <div class="grid grid-cols-12 grid-rows-7 gap-3 sm:grid-rows-3">
       <OscillatorPanel
         class="col-span-12 row-start-1 sm:col-span-6 lg:col-span-4"
         label="vco1"
@@ -30,8 +30,14 @@
         v-model:amp="engine.ampEnvelope"
         v-model:filter="engine.filterEnvelope"
       />
+      <WaveshaperPanel
+        class="col-span-12 row-start-6 sm:col-span-6 sm:col-start-8 sm:row-start-1 lg:col-span-4"
+        v-model:distortionAmount="waveshaperDistortion"
+        v-model:drive="waveshaperDrive"
+        v-model:type="waveshaperType"
+      />
       <ScopePanel
-        class="col-span-12 row-start-6 sm:col-span-6 sm:col-start-7 sm:row-start-3 lg:col-span-4"
+        class="col-span-12 row-start-7 sm:col-span-6 sm:col-start-7 sm:row-start-3 lg:col-span-4"
       />
     </div>
 
@@ -41,11 +47,12 @@
 <script setup lang="ts">
 import { onUnmounted, reactive, ref, watch } from 'vue';
 import { useAudioEngine } from '../composables/use-audio-context.ts';
+import EnvelopePanel from './EnvelopePanel.vue';
 import FilterPanel from './FilterPanel.vue';
 import Keyboard from './Keyboard.vue';
 import OscillatorPanel from './OscillatorPanel.vue';
 import ScopePanel from './ScopePanel.vue';
-import EnvelopePanel from './EnvelopePanel.vue';
+import WaveshaperPanel from './WaveshaperPanel.vue';
 
 const engine = useAudioEngine();
 const filterQ = Math.log2(2 * engine.value.filterConfig.q) / Math.log2(40);
@@ -53,6 +60,9 @@ const cutoff = ref(engine.value.filterConfig.frequency);
 const resonance = ref(filterQ);
 const envAmount = ref(engine.value.filterConfig.envAmount / 9600);
 const tracking = ref(engine.value.filterConfig.tracking);
+const waveshaperType = ref(engine.value.waveshaperType);
+const waveshaperDistortion = ref(engine.value.distortionAmount);
+const waveshaperDrive = ref(engine.value.waveshaperDrive);
 
 let osc1 = reactive({ ...engine.value.oscillatorConfigs[0] });
 let osc2 = reactive({ ...engine.value.oscillatorConfigs[1] });
@@ -83,6 +93,19 @@ watch(osc2, newOsc2 => {
 });
 watch(osc3, newOsc3 => {
   engine.value.setOscillatorConfiguration(2, newOsc3);
+});
+
+watch(waveshaperDistortion, value => {
+  console.log('distortion', value);
+  engine.value.distortionAmount = value;
+});
+watch(waveshaperDrive, value => {
+  console.log('drive', value);
+  engine.value.waveshaperDrive = value;
+});
+watch(waveshaperType, value => {
+  console.log('type', value);
+  engine.value.waveshaperType = value;
 });
 
 onUnmounted(() => {
