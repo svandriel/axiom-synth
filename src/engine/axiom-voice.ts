@@ -33,7 +33,7 @@ export class AxiomVoice extends Voice {
 
     this.ampEnvelope = new Envelope(ctxt);
     this.filterEnvelope = new Envelope(ctxt);
-    this.waveShaper = new Waveshaper(ctxt);
+    this.waveShaper = new Waveshaper(ctxt, config.waveshaperCurve);
 
     this.filter = ctxt.createBiquadFilter();
     this.filter.type = 'lowpass';
@@ -65,13 +65,6 @@ export class AxiomVoice extends Voice {
     this.waveShaper.output.connect(this.filter);
     this.filter.connect(this.ampEnvelope.node);
 
-    const { unsubscribe: _1 } = config.distortionAmount.subscribe(newAmount => {
-      this.waveShaper.amount = newAmount;
-    });
-    const { unsubscribe: _2 } = config.waveshaperType.subscribe(newType => {
-      this.waveShaper.type = newType;
-    });
-    // TODO: actually unsubscribe
     config.waveshaperDrive.connect(this.waveShaper.drive);
 
     this.gainNodes = this.config.oscillatorGainSources.map(source => {
@@ -174,7 +167,7 @@ export class AxiomVoice extends Voice {
   override destroy(): void {
     this.destroyOscillators();
     this.ampEnvelope.disconnect();
-    this.filterEnvelope.disconnect;
+    this.filterEnvelope.disconnect();
     this.filter.disconnect();
     this.gainNodes.forEach(node => node.disconnect());
     this.keyTrackGain.disconnect();
