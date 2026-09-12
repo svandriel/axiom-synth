@@ -56,6 +56,14 @@ export class WaveshaperCurve {
 
   private apply(): void {
     this.computeCurve();
+
+    let min = Number.POSITIVE_INFINITY,
+      max = Number.NEGATIVE_INFINITY;
+    for (let i = 0; i < CURVE_SAMPLES; i++) {
+      min = Math.min(this.curve[i]!, min);
+      max = Math.max(this.curve[i]!, max);
+    }
+    console.log(`Curve [${min.toFixed(2)}, ${max.toFixed(2)}]`);
     this.nodes.forEach(node => {
       node.curve = this.curve;
     });
@@ -73,7 +81,7 @@ export class WaveshaperCurve {
         }
         case 'soft-algebraic': {
           const k = m * m * 10;
-          this.curve[i] = x / Math.sqrt(1 + k * x * x);
+          this.curve[i] = (x * Math.sqrt(1 + k)) / Math.sqrt(1 + k * x * x);
           break;
         }
         case 'asymmetric-tube': {
