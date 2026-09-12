@@ -39,7 +39,7 @@ const type = defineModel<WaveshaperType>('type', { required: true });
 const types: Array<{ id: WaveshaperType; label: string }> = [
   {
     id: 'soft-algebraic',
-    label: 'Alg',
+    label: 'Soft',
   },
   {
     id: 'atan',
