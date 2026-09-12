@@ -2,7 +2,9 @@
   <div
     class="synth b-3 min-h-100 rounded-2xl bg-default p-3 shadow-out dark:bg-default-dark dark:shadow-out-dark"
   >
-    <div class="grid grid-cols-12 grid-rows-7 gap-3 sm:grid-rows-3">
+    <div
+      class="grid grid-cols-12 grid-rows-7 gap-3 sm:grid-rows-4 lg:grid-rows-3"
+    >
       <OscillatorPanel
         class="col-span-12 row-start-1 sm:col-span-6 lg:col-span-4"
         label="vco1"
@@ -31,13 +33,14 @@
         v-model:filter="engine.filterEnvelope"
       />
       <WaveshaperPanel
-        class="col-span-12 row-start-6 sm:col-span-6 sm:col-start-8 sm:row-start-1 lg:col-span-4"
+        class="col-span-12 row-start-6 sm:col-span-6 sm:col-start-7 sm:row-start-3 lg:col-span-4 lg:col-start-9 lg:row-start-1"
         v-model:distortionAmount="waveshaperDistortion"
         v-model:drive="waveshaperDrive"
         v-model:type="waveshaperType"
+        :curve="engine.shaperCurve"
       />
       <ScopePanel
-        class="col-span-12 row-start-7 sm:col-span-6 sm:col-start-7 sm:row-start-3 lg:col-span-4"
+        class="col-span-12 row-start-7 sm:col-span-12 sm:col-start-1 sm:row-start-4 lg:col-span-4 lg:col-start-5 lg:row-start-3"
       />
     </div>
 

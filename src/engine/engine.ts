@@ -281,6 +281,10 @@ export class AudioEngine {
     this._waveshaperType.value = val;
   }
 
+  get shaperCurve(): Float32Array {
+    return this.waveshaperCurve.curve;
+  }
+
   setOscillatorConfiguration(index: OscillatorIndex, config: OscillatorConfig) {
     const currentConfig = this.oscillatorConfigs[index];
     if (
