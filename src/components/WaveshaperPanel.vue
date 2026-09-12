@@ -39,7 +39,7 @@ import { dbDisplay } from '../utils/db-display.ts';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
-import { useTemplateRef, watchEffect } from 'vue';
+import { onMounted, useTemplateRef, watch } from 'vue';
 
 const curve = defineProps<{ curve: Float32Array }>();
 const distortionAmount = defineModel<number>('distortionAmount', {
@@ -55,11 +55,8 @@ const scopeColor3 = styles.getPropertyValue('--color-accent-900');
 
 const shaperGraph = useTemplateRef('shaperGraph');
 
-watchEffect(() => {
-  void distortionAmount.value;
-  void type.value;
-  render();
-});
+watch([distortionAmount, type], render, { flush: 'post' });
+onMounted(render);
 
 function fit(canvas: HTMLCanvasElement) {
   if (!canvas.parentNode) return { w: 0, h: 0, dpr: 1 };
