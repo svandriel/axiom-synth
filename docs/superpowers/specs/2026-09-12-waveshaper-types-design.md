@@ -51,8 +51,9 @@ export type WaveshaperType =
 ```
 
 Old `'classic'` and `'tanh'` are removed. `src/engine/engine.ts` defaults the
-wave-shaper config type to `'atan'`. (No persisted config exists, so no
-migration needed.)
+wave-shaper config type to `'soft-algebraic'` (transparent at amount 0 — the
+only type besides hard-clipper/chebyshev that is exact identity). No persisted
+config exists, so no migration needed.
 
 ### 2. Shared curve provider (`src/engine/waveshaper-curve.ts`, new file)
 
