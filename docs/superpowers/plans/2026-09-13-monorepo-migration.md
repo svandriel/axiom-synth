@@ -600,12 +600,18 @@ git commit -m "docs: reflect monorepo layout"
 
 - Consumes: everything above.
 
-- [ ] **Step 1: Remove orphaned root tsconfigs**
+- [ ] **Step 1: Remove orphaned root tsconfigs and align node tsBuildInfoFile**
 
 `tsconfig.app.json` and `tsconfig.node.json` at the repo root describe the pre-migration layout (`src/**/*` at root) and are superseded by `app/tsconfig.app.json` / `app/tsconfig.node.json`:
 
 ```bash
 git rm tsconfig.app.json tsconfig.node.json
+```
+
+`app/tsconfig.node.json`'s `tsBuildInfoFile` still reads `../../node_modules/.tmp/tsconfig.node.tsbuildinfo` (one level above the repo root from `app/`). Align it with the `../` convention used in `app/tsconfig.app.json`:
+
+```bash
+sed -i 's|\.\./\.\./node_modules/.tmp/tsconfig.node.tsbuildinfo|../node_modules/.tmp/tsconfig.node.tsbuildinfo|' app/tsconfig.node.json
 ```
 
 - [ ] **Step 2: Clean-install check**
