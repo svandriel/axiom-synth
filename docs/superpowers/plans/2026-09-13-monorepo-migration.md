@@ -486,15 +486,25 @@ git commit -m "refactor: move app into @axiom/app and consume audio-engine packa
 
 `build:pages` still runs from the repo root (`pnpm run build:pages`), which delegates to `@axiom/app`; its Vite root is `app/`, so output lands in `app/dist`.
 
-- [ ] **Step 3: Verify page build output path**
+- [ ] **Step 3: Exclude the SDD scratch dir from prettier**
+
+`pnpm lint` is `prettier --check .`, and prettier does not honor `.gitignore`. The git-ignored `.superpowers/` scratch directory (agent ledger/briefs) contains unformatted files that would fail the new CI lint step. Append to `.prettierignore`:
+
+```
+.superpowers
+```
+
+Then run `pnpm lint` — it must pass clean (it will no longer scan `.superpowers/`).
+
+- [ ] **Step 4: Verify page build output path**
 
 Run: `pnpm build:pages`
 Expected: build succeeds; `app/dist/index.html` exists.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add .github/workflows/build.yml .github/workflows/deploy-pages.yml
+git add .github/workflows/build.yml .github/workflows/deploy-pages.yml .prettierignore
 git commit -m "ci: adapt workflows to monorepo layout"
 ```
 
