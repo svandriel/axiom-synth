@@ -4,27 +4,29 @@
 
 ### 1) Naming Rules
 
-| Item               | Rule                                                                                                                                                  | Example                                        | Evidence                                                                            |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Files              | PascalCase for classes/components (`Knob.vue`, `EnvelopePanel.vue`); lowercase/hyphenated for types/utils/doc (`envelope-config.ts`, `db-display.ts`) | —                                              | `src/components/`, `src/types/`, `src/utils/`                                       |
-| Functions/methods  | camelCase; `void`-returning event/key handlers named `on*`/`handle*`                                                                                  | `onPointerDown`, `noteOn`, `createOscillators` | `src/components/Knob.vue`, `src/engine/voice.ts`                                    |
-| Types/interfaces   | PascalCase (`OscillatorConfig`, `WaveshaperType`, `EnvelopeCurve`)                                                                                    | —                                              | `src/types/*`, `src/engine/waveshaper-curve.ts`                                     |
-| Constants/env vars | `UPPER_SNAKE` for module constants and types (`MAX_VOICES`, `OSCILLATOR_COUNT`, `CURVE_SAMPLES`); camelCase for exported config objects               | —                                              | `src/engine/engine.ts`, `src/engine/constants.ts`, `src/engine/waveshaper-curve.ts` |
+| Item               | Rule                                                                                                                                                  | Example                                        | Evidence                                                                                                                                              |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Files              | PascalCase for classes/components (`Knob.vue`, `EnvelopePanel.vue`); lowercase/hyphenated for types/utils/doc (`envelope-config.ts`, `db-display.ts`) | —                                              | `app/src/components/`, `packages/audio-engine/src/types/`, `app/src/utils/`                                                                           |
+| Functions/methods  | camelCase; `void`-returning event/key handlers named `on*`/`handle*`                                                                                  | `onPointerDown`, `noteOn`, `createOscillators` | `app/src/components/Knob.vue`, `packages/audio-engine/src/engine/voice.ts`                                                                            |
+| Types/interfaces   | PascalCase (`OscillatorConfig`, `WaveshaperType`, `EnvelopeCurve`)                                                                                    | —                                              | `packages/audio-engine/src/types/*`, `packages/audio-engine/src/engine/waveshaper-curve.ts`                                                           |
+| Constants/env vars | `UPPER_SNAKE` for module constants and types (`MAX_VOICES`, `OSCILLATOR_COUNT`, `CURVE_SAMPLES`); camelCase for exported config objects               | —                                              | `packages/audio-engine/src/engine/engine.ts`, `packages/audio-engine/src/engine/constants.ts`, `packages/audio-engine/src/engine/waveshaper-curve.ts` |
+| Packages           | `@axiom/*` scoped workspace packages (`@axiom/app`, `@axiom/audio-engine`)                                                                            | —                                              | `pnpm-workspace.yaml`, root `package.json`                                                                                                            |
 
 ### 2) Formatting and Linting
 
 - Formatter: Prettier 3.9.6 + `prettier-plugin-tailwindcss` — `.prettierrc.yaml`
+- Tooling scope: prettier/husky/lint-staged are **root-only** (root `package.json`); packages ship no prettier config or deps.
 - Linter: none (ESLint not configured). Type-check acts as the static quality gate via `vue-tsc`.
-- Most relevant enforced rules: `singleQuote: true`, `trailingComma: 'all'`, `arrowParens: 'avoid'`, `printWidth: 80`, and Tailwind class sorting (plugin reads `./src/style.css`).
+- Most relevant enforced rules: `singleQuote: true`, `trailingComma: 'all'`, `arrowParens: 'avoid'`, `printWidth: 80`, and Tailwind class sorting (plugin reads `./app/src/style.css`).
 - Run commands: `pnpm format` (`prettier --write .`), `pnpm lint` (`prettier --check .`). Pre-commit automatically runs `pnpm exec lint-staged` which prettier-formats staged `.ts/.js/.vue/.css/.md/.json/.yml/.yaml` (`.lintstagedrc.json`).
 
-TypeScript flags (in `tsconfig.app.json`): `strict: true`, `noUncheckedIndexedAccess: true`, `noUnusedLocals: true`, `noUnusedParameters: true`, `erasableSyntaxOnly: true`, `noFallthroughCasesInSwitch: true`. `erasableSyntaxOnly` forbids enums and namespaces — use string-literal unions and plain aliases.
+TypeScript flags (in `app/tsconfig.app.json`): `strict: true`, `noUncheckedIndexedAccess: true`, `noUnusedLocals: true`, `noUnusedParameters: true`, `erasableSyntaxOnly: true`, `noFallthroughCasesInSwitch: true`. `erasableSyntaxOnly` forbids enums and namespaces — use string-literal unions and plain aliases.
 
 ### 3) Import and Module Conventions
 
-- Import grouping/order: no enforced grouping rule; grouped type/runtime imports per file, plain relative imports. `interface`/`type` imports are marked `import type` (required by `verbatimModuleSyntax` via `@vue/tsconfig`).
-- Alias vs relative import policy: no path aliases configured (`vite.config.ts`). Imports are relative (`../types`, `./utils/observable`).
-- Public exports/barrel policy: `src/types/index.ts` re-exports config + fixed-array types; `src/utils/index.ts` barrels display helpers but **not** `observable.ts`; `src/engine/index.ts` exports the engine. Files sometimes import with explicit extension (`from '../utils/db-display.ts'`) and sometimes without (`from '../utils/observable'`) — **inconsistent across the codebase**, both compile.
+- Import grouping/order: no enforced grouping rule; grouped type/runtime imports per file, plain relative imports within a package. `interface`/`type` imports are marked `import type` (required by `verbatimModuleSyntax` via `@vue/tsconfig`).
+- Alias vs relative import policy: no path aliases configured; cross-package imports use the workspace package name — the app imports the engine via `@axiom/audio-engine` (e.g. `import { AudioEngine } from '@axiom/audio-engine'`, `import type { EnvelopeConfig } from '@axiom/audio-engine'`). App-internal imports are relative (`../types`, `./utils/observable`).
+- Public exports/barrel policy: `@axiom/audio-engine` exposes source directly via `exports` → `./src/index.ts` (no build artifacts); the package barrel exports the engine facade + config types (`AudioEngine`, `EnvelopeConfig`, `FilterConfig`, `OscillatorConfig`, `FixedArray`, `WaveFormType`, `WaveshaperConfig`, `WaveshaperType`). `Observable` (`packages/audio-engine/src/utils/observable.ts`) is internal — not exported from the barrel. In-app barrels: `app/src/types/index.ts` re-exports app types (`NumericKeys`), `app/src/utils/index.ts` barrels display helpers. Files sometimes import with explicit extension (`from '../utils/db-display.ts'`) and sometimes without (`from '../utils/observable'`) — **inconsistent across the codebase**, both compile.
 
 ### 4) Error and Logging Conventions
 
@@ -40,6 +42,7 @@ TypeScript flags (in `tsconfig.app.json`): `strict: true`, `noUncheckedIndexedAc
 
 ### 6) Evidence
 
-- `.prettierrc.yaml`, `.lintstagedrc.json`, `.husky/pre-commit`
-- `tsconfig.app.json` / `tsconfig.node.json` (strict flags, `verbatimModuleSyntax`)
-- `src/engine/envelope.ts` (throw pattern), `src/utils/index.ts` (barrel), `src/types/index.ts` (barrel split)
+- `.prettierrc.yaml`, `.lintstagedrc.json`, `.husky/pre-commit` (root-only tooling)
+- `app/tsconfig.app.json` / `app/tsconfig.node.json` (strict flags, `verbatimModuleSyntax`)
+- `packages/audio-engine/package.json` (`exports` → `./src/index.ts`), `packages/audio-engine/src/index.ts` (barrel)
+- `packages/audio-engine/src/engine/envelope.ts` (throw pattern), `app/src/utils/index.ts` (barrel), `app/src/types/index.ts` (barrel)

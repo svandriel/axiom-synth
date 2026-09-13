@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import type { OscillatorConfig, WaveFormType } from '../types';
+import type { OscillatorConfig, WaveFormType } from '@axiom/audio-engine';
 import { dbDisplay } from '../utils/db-display.ts';
 import { fractionDisplay } from '../utils/fraction-display.ts';
 import { semiDisplay } from '../utils/semi-display.ts';

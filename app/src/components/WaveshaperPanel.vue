@@ -34,7 +34,7 @@
   </Panel>
 </template>
 <script setup lang="ts">
-import { type WaveshaperType } from '../engine/waveshaper.ts';
+import { type WaveshaperType } from '@axiom/audio-engine';
 import { dbDisplay } from '../utils/db-display.ts';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';

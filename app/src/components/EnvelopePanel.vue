@@ -65,7 +65,7 @@
 
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watchEffect } from 'vue';
-import type { EnvelopeConfig } from '../types/envelope-config.ts';
+import type { EnvelopeConfig } from '@axiom/audio-engine';
 import type { NumericKeys } from '../types/numeric-keys.ts';
 import { dbDisplay } from '../utils/db-display.ts';
 import { timeDisplayMs } from '../utils/time-display.ts';
