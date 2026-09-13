@@ -7,7 +7,7 @@ Work in progress. Use the caveman skill in ultra mode.
 ## Commands
 
 - `pnpm dev` — Vite dev server on port 4000
-- `pnpm build` — `vue-tsc -b && vite build` (type-checks then builds)
+- `pnpm build` — `pnpm -r --sort build` (builds all workspace packages)
 - `pnpm lint` — `prettier --check .`
 - `pnpm format` — `prettier --write .`
 
@@ -17,6 +17,15 @@ Linting runs in the pre-commit hook. No test runner configured.
 
 - Work on a feature branch; ask the user if a worktree is needed.
 - Never commit to `main` directly; always go through a pull request.
+
+## Repo structure
+
+pnpm workspaces monorepo on branch-based workflow (PRs to `main`):
+
+- `app/` — Vite + Vue application (`@axiom/app`)
+- `packages/audio-engine/` — Web Audio engine library (`@axiom/audio-engine`),
+  internal-only, consumed as source (no build output)
+- Root owns prettier/husky/lint-staged; packages ship no prettier tooling
 
 ## Codebase docs
 

@@ -6,19 +6,19 @@
 
 The application itself has **no external service integrations** — it is a fully client-side browser app. The only external interactions are build/deploy-time and runtime Web Audio (browser-native, no network).
 
-| System                         | Type (API/DB/Queue/etc)                   | Purpose                                                                                     | Auth model                                      | Criticality         | Evidence                                                                  |
-| ------------------------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------- | ------------------------------------------------------------------------- |
-| GitHub Actions (build + Pages) | CI/CD                                     | Type-check + bundle on PR; deploy to GitHub Pages on `main` push                            | GitHub token (Pages `id-token` for OIDC deploy) | high (release path) | `.github/workflows/build.yml`, `.github/workflows/deploy-pages.yml`       |
-| GitHub Pages                   | Static hosting                            | Serves built `dist` at `https://svandriel.github.io/axiom-synth/`                           | OIDC via `actions/deploy-pages@v5`              | high (live demo)    | `deploy-pages.yml`, `vite.config.ts` (`build:pages --base=/axiom-synth/`) |
-| Web Audio API                  | Browser-native API (not a remote service) | Oscillators, `WaveShaperNode`, `BiquadFilterNode`, `DynamicsCompressorNode`, `AnalyserNode` | n/a                                             | high (core)         | `src/engine/*`                                                            |
-| Local storage                  | Browser storage                           | Persist dark/light theme preference                                                         | n/a                                             | low                 | `src/composables/use-theme-mode.ts`                                       |
+| System                         | Type (API/DB/Queue/etc)                   | Purpose                                                                                     | Auth model                                      | Criticality         | Evidence                                                                      |
+| ------------------------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------- | ----------------------------------------------------------------------------- |
+| GitHub Actions (build + Pages) | CI/CD                                     | `pnpm install --frozen-lockfile` + lint + build on PR; Pages deploy on `main` push          | GitHub token (Pages `id-token` for OIDC deploy) | high (release path) | `.github/workflows/build.yml`, `.github/workflows/deploy-pages.yml`           |
+| GitHub Pages                   | Static hosting                            | Serves built `app/dist` at `https://svandriel.github.io/axiom-synth/`                       | OIDC via `actions/deploy-pages@v5`              | high (live demo)    | `deploy-pages.yml`, `app/vite.config.ts` (`build:pages --base=/axiom-synth/`) |
+| Web Audio API                  | Browser-native API (not a remote service) | Oscillators, `WaveShaperNode`, `BiquadFilterNode`, `DynamicsCompressorNode`, `AnalyserNode` | n/a                                             | high (core)         | `packages/audio-engine/src/engine/*`                                          |
+| Local storage                  | Browser storage                           | Persist dark/light theme preference                                                         | n/a                                             | low                 | `app/src/composables/use-theme-mode.ts`                                       |
 
 ### 2) Data Stores
 
-| Store                                | Role                     | Access layer                                                          | Key risk                                                                                                 | Evidence                            |
-| ------------------------------------ | ------------------------ | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| `localStorage`                       | Persist `themeMode` only | `use-theme-mode.ts` (`fetchFromLocalStorage` / `storeInLocalStorage`) | Key name not namespaced (`'themeMode'`) could collide across sites on same origin; no validation on read | `src/composables/use-theme-mode.ts` |
-| (none — no DB, no server-side store) | —                        | —                                                                     | —                                                                                                        | —                                   |
+| Store                                | Role                     | Access layer                                                          | Key risk                                                                                                 | Evidence                                |
+| ------------------------------------ | ------------------------ | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| `localStorage`                       | Persist `themeMode` only | `use-theme-mode.ts` (`fetchFromLocalStorage` / `storeInLocalStorage`) | Key name not namespaced (`'themeMode'`) could collide across sites on same origin; no validation on read | `app/src/composables/use-theme-mode.ts` |
+| (none — no DB, no server-side store) | —                        | —                                                                     | —                                                                                                        | —                                       |
 
 ### 3) Secrets and Credentials Handling
 
@@ -30,7 +30,7 @@ The application itself has **no external service integrations** — it is a full
 
 - Retry/backoff behavior: none — no network calls to retry.
 - Timeout policy: none — no fetched resources except the app bundle itself (browser-native).
-- Circuit-breaker or fallback behavior: the optional `scope`/`override` in `useAudioEngine` re-creates the engine if the `AudioContext` was closed (`onMounted`). Keyboard notes are clamped to valid octave range (`Math.max(0,…)`, `Math.min(8,…)`), no silent-failure path.
+- Circuit-breaker or fallback behavior: the optional `scope`/`override` in `useAudioEngine` (`app/src/composables/use-audio-context.ts`) re-creates the engine if the `AudioContext` was closed (`onMounted`). Keyboard notes are clamped to valid octave range (`Math.max(0,…)`, `Math.min(8,…)`), no silent-failure path.
 
 ### 5) Observability for Integrations
 
@@ -41,5 +41,5 @@ The application itself has **no external service integrations** — it is a full
 ### 6) Evidence
 
 - `.github/workflows/build.yml`, `.github/workflows/deploy-pages.yml`
-- `src/composables/use-theme-mode.ts` (theme persistence)
-- `src/composables/use-audio-context.ts` (engine lifecycle)
+- `app/src/composables/use-theme-mode.ts` (theme persistence)
+- `app/src/composables/use-audio-context.ts` (engine lifecycle)

@@ -4,10 +4,10 @@
 
 ### 1) Architectural Style
 
-- Primary style: **layered engine/UI** — a Web Audio graph layer (`src/engine/`) exposed to a Vue UI layer (`src/components/`) through a module-singleton composable (`useAudioEngine`). UI never touches audio nodes directly.
-- Why this classification: all audio graph construction and audio-parameter automation live in `AudioEngine`/`AxiomVoice`; components only call public setters (`engine.value.filterCutOff = …`) or `noteOn`/`noteOff`/`getScopeData`. `src/engine/index.ts` re-exports the engine as the public facade.
+- Primary style: **layered engine/UI** — a Web Audio graph layer (`packages/audio-engine/src/engine/`, published as `@axiom/audio-engine`) exposed to a Vue UI layer (`app/src/components/`) through a module-singleton composable (`useAudioEngine`). UI never touches audio nodes directly.
+- Why this classification: all audio graph construction and audio-parameter automation live in `AudioEngine`/`AxiomVoice`; components only call public setters (`engine.value.filterCutOff = …`) or `noteOn`/`noteOff`/`getScopeData`. `packages/audio-engine/src/index.ts` re-exports the engine as the public facade.
 - Primary constraints:
-  1. Browser single-thread audio; voice pool is fixed at 16 (`MAX_VOICES` in `engine.ts`).
+  1. Browser single-thread audio; voice pool is fixed at 16 (`MAX_VOICES` in `packages/audio-engine/src/engine/engine.ts`).
   2. UI controls must react live (knob moves drive shared `ConstantSourceNode`s that reach already-playing voices).
   3. Shared audio state must be computed once per change and fanned out to all voices (the `WaveshaperCurve` design).
 
@@ -28,17 +28,17 @@ Note the signal chain in a voice is `Oscillator → WaveShaper → Filter → Am
 
 ### 3) Layer/Module Responsibilities
 
-| Layer or module    | Owns                                                                                     | Must not own                                         | Evidence                               |
-| ------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------- |
-| `AudioEngine`      | Master/effects chain, shared `ConstantSourceNode`s, voice pool, note routing, scope data | Per-note ADSR scheduling                             | `src/engine/engine.ts`                 |
-| `Voice` (abstract) | Note lifecycle state machine (`isAvailable`, `fastChoke`, `noteOff` cleanup timer)       | Audio graph construction beyond what subclasses wire | `src/engine/voice.ts`                  |
-| `AxiomVoice`       | Per-voice oscillators, envelopes, filter, waveshaper; wire-up to shared sources          | Voice-pool bookkeeping                               | `src/engine/axiom-voice.ts`            |
-| `WaveshaperCurve`  | One shared 1024-sample `Float32Array`, curve math, node registry                         | Drive gain (owned by `Waveshaper`)                   | `src/engine/waveshaper-curve.ts`       |
-| `Waveshaper`       | Per-voice drive gain + `WaveShaperNode`, registers with shared curve                     | Curve math                                           | `src/engine/waveshaper.ts`             |
-| `Envelope`         | ADSR scheduling on a per-voice gain node                                                 | Config storage                                       | `src/engine/envelope.ts`               |
-| `Observable`       | Tiny pub/sub value holder                                                                | Anything else                                        | `src/utils/observable.ts`              |
-| `useAudioEngine`   | Module-singleton semantics, re-create engine if `AudioContext` closed                    | UI concerns                                          | `src/composables/use-audio-context.ts` |
-| Components         | UI state, `defineModel` binds, canvas drawing                                            | Audio graph wiring                                   | `src/components/Synth.vue`             |
+| Layer or module    | Owns                                                                                     | Must not own                                         | Evidence                                                                                      |
+| ------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `AudioEngine`      | Master/effects chain, shared `ConstantSourceNode`s, voice pool, note routing, scope data | Per-note ADSR scheduling                             | `packages/audio-engine/src/engine/engine.ts`                                                  |
+| `Voice` (abstract) | Note lifecycle state machine (`isAvailable`, `fastChoke`, `noteOff` cleanup timer)       | Audio graph construction beyond what subclasses wire | `packages/audio-engine/src/engine/voice.ts`                                                   |
+| `AxiomVoice`       | Per-voice oscillators, envelopes, filter, waveshaper; wire-up to shared sources          | Voice-pool bookkeeping                               | `packages/audio-engine/src/engine/axiom-voice.ts`                                             |
+| `WaveshaperCurve`  | One shared 1024-sample `Float32Array`, curve math, node registry                         | Drive gain (owned by `Waveshaper`)                   | `packages/audio-engine/src/engine/waveshaper-curve.ts`                                        |
+| `Waveshaper`       | Per-voice drive gain + `WaveShaperNode`, registers with shared curve                     | Curve math                                           | `packages/audio-engine/src/engine/waveshaper.ts`                                              |
+| `Envelope`         | ADSR scheduling on a per-voice gain node                                                 | Config storage                                       | `packages/audio-engine/src/engine/envelope.ts`                                                |
+| `Observable`       | Tiny pub/sub value holder                                                                | Anything else                                        | `packages/audio-engine/src/utils/observable.ts`                                               |
+| `useAudioEngine`   | Module-singleton semantics, re-create engine if `AudioContext` closed                    | UI concerns                                          | `app/src/composables/use-audio-context.ts` (imports `AudioEngine` from `@axiom/audio-engine`) |
+| Components         | UI state, `defineModel` binds, canvas drawing                                            | Audio graph wiring                                   | `app/src/components/Synth.vue`                                                                |
 
 ### 4) Reused Patterns
 
@@ -53,14 +53,14 @@ Note the signal chain in a voice is `Oscillator → WaveShaper → Filter → Am
 
 ### 5) Known Architectural Risks
 
-- `use-audio-context.ts` constructs `new AudioContext()` at **module scope** (eager, on import), which can be rejected by browser autoplay policy until a user gesture; `ensureStarted()` (`engine.ts`) calls `resume()` on first note as mitigation — no graceful re-create if the first context is created suspended.
+- `use-audio-context.ts` constructs `new AudioContext()` at **module scope** (eager, on import), which can be rejected by browser autoplay policy until a user gesture; `ensureStarted()` (`packages/audio-engine/src/engine/engine.ts`) calls `resume()` on first note as mitigation — no graceful re-create if the first context is created suspended.
 - Voice-stealing uses a `Map<note, Voice>` plus a fixed 16-pool; when the pool is exhausted it steals the oldest voice by `lastUsed` and chokes it over 3ms, delaying the new note by 3ms (`startDelay = 0.003`). Chord-heavy playing (>>16 notes) at 3ms steal latency may feel laggy.
-- `src/types/index.ts` barrel excludes `numeric-keys.ts` and `waveshaper-config.ts`; those must be imported by direct path (mixed import style across files).
+- `packages/audio-engine/src/types/index.ts` barrel excludes `waveshaper-config.ts` (exported via the package barrel `src/index.ts` instead); `app/src/types/index.ts` includes `numeric-keys.ts`. Config types are consumed through the package facade.
 
 ### 6) Evidence
 
-- `src/engine/engine.ts` (sources, pool, constants)
-- `src/engine/axiom-voice.ts` (voice chain topology)
-- `src/engine/waveshaper-curve.ts` + `src/engine/waveshaper.ts` (shared-curve pattern)
-- `src/composables/use-audio-context.ts` (singleton)
-- `src/engine/voice.ts` (voice lifecycle state machine)
+- `packages/audio-engine/src/engine/engine.ts` (sources, pool, constants)
+- `packages/audio-engine/src/engine/axiom-voice.ts` (voice chain topology)
+- `packages/audio-engine/src/engine/waveshaper-curve.ts` + `waveshaper.ts` (shared-curve pattern)
+- `app/src/composables/use-audio-context.ts` (singleton, imports `@axiom/audio-engine`)
+- `packages/audio-engine/src/engine/voice.ts` (voice lifecycle state machine)

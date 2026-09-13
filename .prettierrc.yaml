@@ -6,4 +6,4 @@ arrowParens: 'avoid'
 htmlWhitespaceSensitivity: 'ignore'
 plugins:
   - prettier-plugin-tailwindcss
-tailwindStylesheet: ./src/style.css
+tailwindStylesheet: ./app/src/style.css
