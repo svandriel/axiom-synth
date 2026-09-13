@@ -20,6 +20,7 @@ export class AxiomVoice extends Voice {
   private readonly filterEnvelope: Envelope;
   private readonly filter: BiquadFilterNode;
   private readonly keyTrackGain: GainNode;
+  private readonly oscillatorNormalizeGain: GainNode;
   private readonly waveShaper: Waveshaper;
 
   constructor(
@@ -52,16 +53,12 @@ export class AxiomVoice extends Voice {
     this.config.filterKeyTrack.connect(this.keyTrackGain);
     this.keyTrackGain.connect(this.filter.detune);
 
-    // config 1:
-    // [[ Oscillators -> Gain ]] -> Filter -> WaveShaper -> Amp Envelope -> Gain -> Audio Sink
+    this.oscillatorNormalizeGain = ctxt.createGain();
+    this.oscillatorNormalizeGain.gain.value = 1 / OSCILLATOR_COUNT;
+    this.oscillatorNormalizeGain.connect(this.waveShaper.input);
 
-    // const oscillatorAudioSink = this.filter;
-    // this.filter.connect(this.waveShaper.input);
-    // this.waveShaper.output.connect(this.ampEnvelope.node);
-
-    // Config 2:
-    // [[ Oscillators -> Gain ]] -> WaveShaper -> Filter -> Amp Envelope -> Gain -> Audio Sink
-    const oscillatorAudioSink = this.waveShaper.input;
+    // [[ Oscillators -> Gain ]] Normalize -> WaveShaper -> Filter -> Amp Envelope -> Gain -> Audio Sink
+    const oscillatorAudioSink = this.oscillatorNormalizeGain;
     this.waveShaper.output.connect(this.filter);
     this.filter.connect(this.ampEnvelope.node);
 

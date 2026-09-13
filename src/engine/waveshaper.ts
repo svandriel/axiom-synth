@@ -10,7 +10,7 @@ export class Waveshaper {
   constructor(ctxt: AudioContext, curve: WaveshaperCurve) {
     this.curve = curve;
     this.driveNode = ctxt.createGain();
-    this.driveNode.gain.setValueAtTime(1, ctxt.currentTime);
+    this.driveNode.gain.value = 1;
     this.wsNode = ctxt.createWaveShaper();
     this.curve.subscribe(this.wsNode);
     this.driveNode.connect(this.wsNode);
