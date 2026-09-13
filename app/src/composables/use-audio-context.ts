@@ -1,5 +1,5 @@
 import { onMounted, ref } from 'vue';
-import { AudioEngine } from '../engine';
+import { AudioEngine } from '@axiom/audio-engine';
 
 let audioEngine = new AudioEngine(new AudioContext());
 
