@@ -375,9 +375,9 @@ import { type WaveshaperType } from '@axiom/audio-engine';
 
 ```json
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "types": ["vite/client"],
     "allowArbitraryExtensions": true
   },
@@ -390,7 +390,7 @@ import { type WaveshaperType } from '@axiom/audio-engine';
 ```json
 {
   "compilerOptions": {
-    "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "target": "es2023",
     "lib": ["ES2023"],
     "types": ["node"],
@@ -409,7 +409,7 @@ import { type WaveshaperType } from '@axiom/audio-engine';
 }
 ```
 
-`tsBuildInfoFile` paths point into the pnpm-hoisted root `node_modules` (the old `./node_modules/.tmp/...` would create a non-existent `app/node_modules`).
+`tsBuildInfoFile` paths point into the pnpm-hoisted root `node_modules` (the old `./node_modules/.tmp/...` would create a non-existent `app/node_modules`). The relative prefixes are `../` — the app is one directory below the repo root, unlike the engine which sits two levels down (`packages/audio-engine/`).
 
 - [ ] **Step 8: Rewrite root `tsconfig.json`**
 
@@ -594,13 +594,21 @@ git commit -m "docs: reflect monorepo layout"
 
 **Files:**
 
-- None (verification-only).
+- Delete: `tsconfig.app.json`, `tsconfig.node.json` (root-level orphans superseded by `app/` versions)
 
 **Interfaces:**
 
 - Consumes: everything above.
 
-- [ ] **Step 1: Clean-install check**
+- [ ] **Step 1: Remove orphaned root tsconfigs**
+
+`tsconfig.app.json` and `tsconfig.node.json` at the repo root describe the pre-migration layout (`src/**/*` at root) and are superseded by `app/tsconfig.app.json` / `app/tsconfig.node.json`:
+
+```bash
+git rm tsconfig.app.json tsconfig.node.json
+```
+
+- [ ] **Step 2: Clean-install check**
 
 Run: `rm -rf node_modules && rm -f pnpm-lock.yaml && pnpm install`
 Expected: clean install succeeds; lockfile regenerated as a workspace lockfile.
@@ -608,22 +616,22 @@ Expected: clean install succeeds; lockfile regenerated as a workspace lockfile.
 Run: `pnpm install --frozen-lockfile`
 Expected: reports "Already up to date" (lockfile clean).
 
-- [ ] **Step 2: Full gate**
+- [ ] **Step 3: Full gate**
 
 Run: `pnpm lint && pnpm build && pnpm build:pages`
 Expected: all pass; `app/dist/index.html` exists.
 
-- [ ] **Step 3: Confirm git history preserved**
+- [ ] **Step 4: Confirm git history preserved**
 
 Run: `git log --follow --oneline -- packages/audio-engine/src/engine/engine.ts | head` and `git log --follow --oneline -- app/src/components/Synth.vue | head`
 Expected: commits from before the move appear (history preserved via `git mv`).
 
-- [ ] **Step 4: Manual dev smoke**
+- [ ] **Step 5: Manual dev smoke**
 
 Run: `pnpm dev` (leave running briefly)
 Expected: opens at http://localhost:4000, synth loads, no console errors.
 
-- [ ] **Step 5: Final commit (if any stray changes)**
+- [ ] **Step 6: Final commit (if any stray changes)**
 
 ```bash
 git status --porcelain
