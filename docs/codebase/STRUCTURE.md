@@ -14,7 +14,6 @@
 | `.github/workflows/`         | CI: PR build + Pages deploy                                                                    | `.github/workflows/build.yml`, `deploy-pages.yml`      |
 | `.husky/`                    | Git hooks (pre-commit lint-staged)                                                             | `.husky/pre-commit`                                    |
 | `.vscode/`                   | Editor config (Tailwind CSS association, Volar extension rec)                                  | `.vscode/settings.json`                                |
-| `example/`                   | Early UI prototype (neumorphic button, standalone HTML) — not part of the app build            | `example/osc1-neumorphic-button.html`                  |
 
 ### 2) Entry Points
 

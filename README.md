@@ -54,7 +54,7 @@ already-playing voice live. The waveshaper curve is a single shared 1024-sample
 ```bash
 pnpm install
 pnpm dev        # dev server on http://localhost:4000
-pnpm build      # type-check + production build (vue-tsc -b && vite build)
+pnpm build      # workspaces build (pnpm -r --sort build)
 pnpm build:pages # build with the /axiom-synth/ base path (GitHub Pages)
 pnpm format     # prettier --write
 ```

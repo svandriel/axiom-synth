@@ -17,7 +17,7 @@
 - Formatter: Prettier 3.9.6 + `prettier-plugin-tailwindcss` — `.prettierrc.yaml`
 - Tooling scope: prettier/husky/lint-staged are **root-only** (root `package.json`); packages ship no prettier config or deps.
 - Linter: none (ESLint not configured). Type-check acts as the static quality gate via `vue-tsc`.
-- Most relevant enforced rules: `singleQuote: true`, `trailingComma: 'all'`, `arrowParens: 'avoid'`, `printWidth: 80`, and Tailwind class sorting (plugin reads `./src/style.css`).
+- Most relevant enforced rules: `singleQuote: true`, `trailingComma: 'all'`, `arrowParens: 'avoid'`, `printWidth: 80`, and Tailwind class sorting (plugin reads `./app/src/style.css`).
 - Run commands: `pnpm format` (`prettier --write .`), `pnpm lint` (`prettier --check .`). Pre-commit automatically runs `pnpm exec lint-staged` which prettier-formats staged `.ts/.js/.vue/.css/.md/.json/.yml/.yaml` (`.lintstagedrc.json`).
 
 TypeScript flags (in `app/tsconfig.app.json`): `strict: true`, `noUncheckedIndexedAccess: true`, `noUnusedLocals: true`, `noUnusedParameters: true`, `erasableSyntaxOnly: true`, `noFallthroughCasesInSwitch: true`. `erasableSyntaxOnly` forbids enums and namespaces — use string-literal unions and plain aliases.
