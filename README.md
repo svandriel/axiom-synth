@@ -59,9 +59,9 @@ pnpm build:pages # build with the /axiom-synth/ base path (GitHub Pages)
 pnpm format     # prettier --write
 ```
 
-Stack: Vue 3 + TypeScript (strict) + Vite + Tailwind CSS v4. The main audio
-logic lives in `src/engine/`; see `docs/codebase/` for a full map of the
-codebase.
+Stack: Vue 3 + TypeScript (strict) + Vite + Tailwind CSS v4, as a pnpm
+workspaces monorepo: the Vue app lives in `app/` and the Web Audio engine in
+`packages/audio-engine/`. See `docs/codebase/` for a full map of the codebase.
 
 ## Deployment
 
