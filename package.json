@@ -4,29 +4,20 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc -b && vite build",
-    "build:pages": "vue-tsc -b && vite build --base=/axiom-synth/",
-    "preview": "vite preview",
+    "dev": "pnpm --filter @axiom/app dev",
+    "build": "pnpm -r --sort build",
+    "build:pages": "pnpm --filter @axiom/app build:pages",
+    "preview": "pnpm --filter @axiom/app preview",
     "lint": "prettier --check .",
     "format": "prettier --write .",
     "prepare": "husky"
   },
-  "dependencies": {
-    "vue": "^3.5.41"
-  },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/node": "^24.13.3",
-    "@vitejs/plugin-vue": "^6.0.8",
     "@vue/tsconfig": "^0.9.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.0",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
-    "tailwindcss": "^4.3.3",
-    "typescript": "~6.0.2",
-    "vite": "^8.2.2",
-    "vue-tsc": "^3.3.11"
+    "typescript": "~6.0.2"
   }
 }
