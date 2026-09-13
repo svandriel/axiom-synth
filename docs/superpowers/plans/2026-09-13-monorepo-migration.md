@@ -192,9 +192,12 @@ git mv src/types/fixed-array.ts packages/audio-engine/src/types/fixed-array.ts
 git mv src/types/oscillator-config.ts packages/audio-engine/src/types/oscillator-config.ts
 git mv src/types/waveshaper-config.ts packages/audio-engine/src/types/waveshaper-config.ts
 git mv src/utils/observable.ts packages/audio-engine/src/utils/observable.ts
+git mv src/types/index.ts packages/audio-engine/src/types/index.ts
 ```
 
-No internal import rewrites are needed: engine files import `../types` and `../utils/observable`, and those relative paths stay valid inside the package (`src/engine/../types`, `src/engine/../utils`). `src/types/waveshaper-config.ts` imports `../engine/waveshaper` — also still valid.
+No internal import rewrites are needed: engine files import `../types` (the barrel file moved above) and `../utils/observable`, and those relative paths stay valid inside the package (`src/engine/../types`, `src/engine/../utils`). `src/types/waveshaper-config.ts` imports `../engine/waveshaper` — also still valid.
+
+Note for later tasks: because the barrel moved into the package, Task 3 must **create** the app's `src/types/index.ts` anew (it does not move).
 
 - [ ] **Step 3: Replace stub with real package barrel `packages/audio-engine/src/index.ts`**
 
@@ -271,7 +274,6 @@ git mv src/App.vue src/main.ts src/style.css app/src/
 git mv src/components app/src/components
 git mv src/composables app/src/composables
 git mv src/types/numeric-keys.ts app/src/types/numeric-keys.ts
-git mv src/types/index.ts app/src/types/index.ts
 git mv src/utils/db-display.ts src/utils/semi-display.ts src/utils/fraction-display.ts src/utils/time-display.ts src/utils/key-map.ts src/utils/index.ts app/src/utils/
 git mv index.html app/index.html
 git mv vite.config.ts app/vite.config.ts
@@ -290,13 +292,13 @@ tailwindStylesheet: ./app/src/style.css
 
 (Doing this here, after the file move, keeps `prettier-plugin-tailwindcss` from reading a nonexistent file during lint and the pre-commit hook.)
 
-- [ ] **Step 4: Rewrite `app/src/types/index.ts`**
+- [ ] **Step 4: Create `app/src/types/index.ts`**
+
+The old `src/types/index.ts` barrel moved into `packages/audio-engine/src/types/` in Task 2 (the engine imports `../types`). The app gets a new, slim barrel:
 
 ```ts
 export * from './numeric-keys';
 ```
-
-All other type files (`envelope-config`, `filter-config`, `fixed-array`, `oscillator-config`, `waveshaper-config`) now live in `@axiom/audio-engine`.
 
 - [ ] **Step 5: Rewrite `app/package.json`**
 
