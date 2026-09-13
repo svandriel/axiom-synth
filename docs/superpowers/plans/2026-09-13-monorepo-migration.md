@@ -133,13 +133,9 @@ Create the directory `app/` and:
 export {};
 ```
 
-- [ ] **Step 7: Fix `.prettierrc.yaml` `tailwindStylesheet` path**
+- [ ] **Step 7: Do NOT touch `.prettierrc.yaml` in this task**
 
-`tailwindStylesheet: ./src/style.css` resolves relative to the prettier config at repo root. After the app moves, the stylesheet lives at `app/src/style.css`. This path is relative to the config file, so update it:
-
-```yaml
-tailwindStylesheet: ./app/src/style.css
-```
+`tailwindStylesheet: ./src/style.css` stays as-is. `prettier-plugin-tailwindcss` hard-reads the configured file and throws `ENOENT` when it is missing, and `app/src/style.css` does not exist until Task 3. The path update moves to Task 3 (the step right after the app source moves), when `app/src/style.css` exists.
 
 - [ ] **Step 8: Install and verify workspace**
 
@@ -284,7 +280,17 @@ git mv example/osc1-neumorphic-button.html example/neumorphic-button.png app/exa
 rmdir src/types src/utils src 2>/dev/null
 ```
 
-- [ ] **Step 3: Rewrite `app/src/types/index.ts`**
+- [ ] **Step 3: Update `.prettierrc.yaml` `tailwindStylesheet` path now that `app/src/style.css` exists**
+
+`tailwindStylesheet` is relative to the prettier config at repo root. The stylesheet now lives at `app/src/style.css`:
+
+```yaml
+tailwindStylesheet: ./app/src/style.css
+```
+
+(Doing this here, after the file move, keeps `prettier-plugin-tailwindcss` from reading a nonexistent file during lint and the pre-commit hook.)
+
+- [ ] **Step 4: Rewrite `app/src/types/index.ts`**
 
 ```ts
 export * from './numeric-keys';
@@ -292,7 +298,7 @@ export * from './numeric-keys';
 
 All other type files (`envelope-config`, `filter-config`, `fixed-array`, `oscillator-config`, `waveshaper-config`) now live in `@axiom/audio-engine`.
 
-- [ ] **Step 4: Rewrite `app/package.json`**
+- [ ] **Step 5: Rewrite `app/package.json`**
 
 ```json
 {
@@ -321,7 +327,7 @@ All other type files (`envelope-config`, `filter-config`, `fixed-array`, `oscill
 }
 ```
 
-- [ ] **Step 5: Rewrite engine imports in app files**
+- [ ] **Step 6: Rewrite engine imports in app files**
 
 `app/src/composables/use-audio-context.ts` — replace `import { AudioEngine } from '../engine';` with:
 
@@ -349,7 +355,7 @@ import type { OscillatorConfig, WaveFormType } from '@axiom/audio-engine';
 import { type WaveshaperType } from '@axiom/audio-engine';
 ```
 
-- [ ] **Step 6: Create app tsconfigs**
+- [ ] **Step 7: Create app tsconfigs**
 
 `app/tsconfig.json`:
 
@@ -403,7 +409,7 @@ import { type WaveshaperType } from '@axiom/audio-engine';
 
 `tsBuildInfoFile` paths point into the pnpm-hoisted root `node_modules` (the old `./node_modules/.tmp/...` would create a non-existent `app/node_modules`).
 
-- [ ] **Step 7: Rewrite root `tsconfig.json`**
+- [ ] **Step 8: Rewrite root `tsconfig.json`**
 
 ```json
 {
@@ -414,12 +420,12 @@ import { type WaveshaperType } from '@axiom/audio-engine';
 
 The engine is type-checked by its own `tsc --noEmit` build script (Task 2), which the root `pnpm build` runs via `pnpm -r --sort build`.
 
-- [ ] **Step 8: Reinstall with workspace dependency**
+- [ ] **Step 9: Reinstall with workspace dependency**
 
 Run: `pnpm install`
 Expected: `@axiom/audio-engine` resolves via `workspace:*`; no errors.
 
-- [ ] **Step 9: Verify build and formatting**
+- [ ] **Step 10: Verify build and formatting**
 
 Run: `pnpm build`
 Expected: engine `tsc --noEmit` passes, app `vue-tsc -b` passes, `vite build` emits `app/dist/`.
@@ -431,7 +437,7 @@ Run: `pnpm dev` with a short timeout to smoke-test the dev server:
 `timeout 10 pnpm dev`
 Expected: Vite starts, prints `Local: http://localhost:4000/`; process exits via timeout (SIGTERM), no TS/plugin errors.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
 git add -A
