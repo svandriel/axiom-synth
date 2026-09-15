@@ -10,6 +10,7 @@ import { Observable } from '../utils/observable';
 import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
 import type { OscillatorCount, OscillatorIndex } from './constants';
+import { Meter } from './meter';
 import { Voice } from './voice';
 import type { WaveshaperType } from './waveshaper';
 import { WaveshaperCurve } from './waveshaper-curve';
@@ -19,6 +20,7 @@ const MAX_VOICES = 16;
 export class AudioEngine {
   public readonly ctxt: AudioContext;
   private readonly master: GainNode;
+  private readonly meter: Meter;
   private readonly analyser: AnalyserNode;
   private readonly dry: GainNode;
   private readonly comp: DynamicsCompressorNode;
@@ -117,15 +119,17 @@ export class AudioEngine {
 
     this.master = ctxt.createGain();
     this.master.gain.value = 0.5;
+    this.meter = new Meter(ctxt);
     this.analyser = ctxt.createAnalyser();
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.82;
     this.dry = ctxt.createGain();
-    this.dry.gain.value = 0.2;
+    this.dry.gain.value = 0.9;
 
     this.comp = ctxt.createDynamicsCompressor();
 
     this.dry.connect(this.master);
+    this.dry.connect(this.meter.input);
 
     this.master.connect(this.comp);
     this.comp.connect(this.analyser);
@@ -309,6 +313,10 @@ export class AudioEngine {
       );
     }
     this.oscillatorConfigs[index] = { ...config };
+  }
+
+  get meterLevel(): number {
+    return this.meter.value;
   }
 
   ensureStarted() {
