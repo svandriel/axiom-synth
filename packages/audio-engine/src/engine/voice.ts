@@ -3,7 +3,8 @@ export abstract class Voice {
   protected readonly ctxt: AudioContext;
   protected readonly audioSink: AudioNode;
 
-  private readonly chokeTime = 0.003;
+  /** Duration of the fade applied to a stolen voice before its new note attacks. */
+  public readonly chokeDuration = 0.003;
 
   private cleanupTimer: ReturnType<typeof setTimeout> | null = null;
   public currentNote: number | null = null;
@@ -29,8 +30,8 @@ export abstract class Voice {
    * Executes a micro-fade parameter envelope to truncate a stolen note cleanly
    */
   fastChoke(now: number): void {
-    this.internalFastChoke(this.chokeTime, now);
-    this.endTime = now + this.chokeTime;
+    this.internalFastChoke(this.chokeDuration, now);
+    this.endTime = now + this.chokeDuration;
   }
 
   protected abstract internalFastChoke(chokeTime: number, now: number): void;

@@ -19,7 +19,12 @@ export class Envelope {
     const targetVolume = velocity / 127;
 
     this.ampEnv.gain.cancelScheduledValues(now);
-    this.ampEnv.gain.setValueAtTime(this.ampEnv.gain.value, now);
+    // Every attack must start from silence. Re-pinning to the current gain
+    // makes stolen voices attack from the previous note's sustain level,
+    // which hides the attack phase entirely.
+    const minimumAttackValue =
+      config.attackCurve === 'exponential' ? 0.0001 : 0;
+    this.ampEnv.gain.setValueAtTime(minimumAttackValue, now);
 
     switch (config.attackCurve) {
       case 'analog':
@@ -99,10 +104,16 @@ export class Envelope {
   }
 
   fastChoke(chokeTime: number, now: number) {
+    // End the fade slightly before the steal's delayed noteOn so that
+    // noteOn's cancelScheduledValues() cannot erase the fade endpoint and
+    // leave the gain pinned at the old note's loud level.
+    const fadeLead = 0.0005;
+    const fadeDuration = Math.max(chokeTime - fadeLead, 0.0001);
+
     this.ampEnv.gain.cancelScheduledValues(now);
     this.ampEnv.gain.setValueAtTime(this.ampEnv.gain.value, now);
     // Explicit micro-ramp down to prevent audio artifacts/clicks
-    this.ampEnv.gain.linearRampToValueAtTime(0, now + chokeTime);
+    this.ampEnv.gain.linearRampToValueAtTime(0, now + fadeDuration);
   }
 
   disconnect() {
