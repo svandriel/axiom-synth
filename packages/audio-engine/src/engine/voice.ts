@@ -16,7 +16,7 @@ export abstract class Voice {
     this.audioSink = audioSink;
   }
 
-  protected abstract destroyOscillators(): void;
+  protected abstract onSoundStop(): void;
 
   /**
    * Evaluates voice availability based purely on the audio hardware clock pipeline state
@@ -81,7 +81,7 @@ export abstract class Voice {
         console.log(
           `[${this.ctxt.currentTime.toFixed(4)}] Voice ${this.id}: disconnecting`,
         );
-        this.destroyOscillators();
+        this.onSoundStop();
         this.currentNote = null;
         this.cleanupTimer = null;
       },

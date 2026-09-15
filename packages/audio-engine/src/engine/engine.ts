@@ -59,10 +59,10 @@ export class AudioEngine {
       gain: 1,
     },
     {
-      octave: -1,
+      octave: -2,
       semi: 0,
       detune: 0,
-      waveform: 'sawtooth',
+      waveform: 'triangle',
       gain: 1,
     },
   ];
@@ -349,11 +349,12 @@ export class AudioEngine {
           oldestVoice = voice;
         }
       }
-      console.log(
-        `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber} - oldest voice is ${oldestVoice?.id}`,
-      );
 
       if (oldestVoice) {
+        const age = now - oldestTime;
+        console.warn(
+          `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber} - oldest voice is ${oldestVoice?.id}, age ${oldestTime.toFixed(1)} s`,
+        );
         targetVoice = oldestVoice;
 
         for (const [note, voice] of this.noteToVoiceMap.entries()) {

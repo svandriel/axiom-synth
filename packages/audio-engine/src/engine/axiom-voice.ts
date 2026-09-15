@@ -92,7 +92,7 @@ export class AxiomVoice extends Voice {
     velocity: number,
     now: number,
   ): void {
-    this.createOscillators(noteNumber, now);
+    this.onSoundStart(noteNumber, now);
     this.ampEnvelope.noteOn(velocity, this.config.ampEnvelope, now);
     this.filterEnvelope.noteOn(velocity, this.config.filterEnvelope, now);
     this.keyTrackGain.gain.setValueAtTime(100 * noteNumber, now);
@@ -113,9 +113,9 @@ export class AxiomVoice extends Voice {
     this.ampEnvelope.fastChoke(chokeTime, now);
   }
 
-  private createOscillators(noteNumber: number, now: number): void {
+  private onSoundStart(noteNumber: number, now: number): void {
     if (this.areOscillatorsActive) {
-      this.destroyOscillators();
+      this.onSoundStop();
     }
 
     this.ampEnvelope.node.connect(this.audioSink);
@@ -126,18 +126,23 @@ export class AxiomVoice extends Voice {
     });
 
     this.areOscillatorsActive = true;
+    //
   }
 
-  override destroyOscillators(): void {
+  override onSoundStop(): void {
     this.oscillators.forEach(osc => osc.stop());
 
-    this.ampEnvelope.node.disconnect(this.audioSink);
+    try {
+      this.ampEnvelope.node.disconnect(this.audioSink);
+    } catch (exp) {
+      // Was not connected, it's ok
+    }
 
     this.areOscillatorsActive = false;
   }
 
   override destroy(): void {
-    this.destroyOscillators();
+    this.onSoundStop();
     this.ampEnvelope.disconnect();
     this.filterEnvelope.disconnect();
     this.filter.disconnect();
