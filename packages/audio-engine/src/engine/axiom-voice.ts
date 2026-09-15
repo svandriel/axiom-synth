@@ -115,10 +115,12 @@ export class AxiomVoice extends Voice {
 
   private onSoundStart(noteNumber: number, now: number): void {
     if (this.areOscillatorsActive) {
-      this.onSoundStop();
+      // Voice stealing: let the old oscillators ring through the choke fade
+      // until the new note's attack time, rather than cutting them instantly.
+      this.oscillators.forEach(osc => osc.stop(now));
+    } else {
+      this.ampEnvelope.node.connect(this.audioSink);
     }
-
-    this.ampEnvelope.node.connect(this.audioSink);
 
     const frequency = freqOf(noteNumber);
     this.oscillators.forEach(osc => {
@@ -126,7 +128,6 @@ export class AxiomVoice extends Voice {
     });
 
     this.areOscillatorsActive = true;
-    //
   }
 
   override onSoundStop(): void {

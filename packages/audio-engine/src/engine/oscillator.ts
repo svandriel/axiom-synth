@@ -43,22 +43,36 @@ export class Oscillator {
     });
     osc.onended = () => {
       unsubscribe();
+      this.configSource.detuneSource.disconnect(osc.detune);
+      // Detach the node once it has stopped so it does not linger, still
+      // connected to the gain, in the audio graph.
+      osc.disconnect();
     };
     this.configSource.detuneSource.connect(osc.detune);
     osc.connect(this.gain);
     osc.frequency.setValueAtTime(frequency, now);
-    osc.start();
+    osc.start(now);
 
     this.osc = osc;
   }
 
-  stop() {
+  /**
+   * Stop the oscillator. With no argument it stops immediately; with a time it
+   * stops silently at that time (used when a voice is stolen so the old note
+   * can ring through the choke fade). Either way the node detaches itself from
+   * the graph in onended.
+   */
+  stop(): void;
+  stop(time: number): void;
+  stop(time?: number) {
     if (!this.osc) {
       return;
     }
-    this.configSource.detuneSource.disconnect(this.osc.detune);
-    this.osc.stop();
-    this.osc.disconnect();
+    if (time === undefined) {
+      this.osc.stop();
+    } else {
+      this.osc.stop(time);
+    }
     this.osc = null;
   }
 }

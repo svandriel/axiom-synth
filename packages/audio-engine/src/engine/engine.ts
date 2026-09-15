@@ -363,10 +363,10 @@ export class AudioEngine {
           }
         }
 
-        // Choke the stolen voice instantly over a 3ms window
+        // Choke the stolen voice instantly over a micro-fade window
         targetVoice.fastChoke(now);
-        // Fixed: Delays the new note's execution by 3ms to allow the old note to fade completely
-        startDelay = 0.003;
+        // Delays the new note's execution so the old note can fade completely
+        startDelay = targetVoice.chokeDuration;
       }
     }
 
