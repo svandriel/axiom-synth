@@ -1,10 +1,13 @@
 <template>
   <Panel label="Scope">
-    <div class="relative mt-3 h-32 overflow-hidden rounded-2xl">
-      <canvas
-        ref="scope"
-        class="block h-full w-full bg-primary-600 dark:bg-primary-800"
-      />
+    <div class="mt-3 flex flex-row gap-4">
+      <VUMeter :get-value="() => engine.meterLevel" />
+      <div class="relative h-32 overflow-hidden rounded-2xl">
+        <canvas
+          ref="scope"
+          class="block h-full w-full bg-primary-600 dark:bg-primary-800"
+        />
+      </div>
     </div>
   </Panel>
 </template>
@@ -13,6 +16,7 @@
 import { onMounted, onUnmounted, useTemplateRef } from 'vue';
 import { useAudioEngine } from '../composables/use-audio-context';
 import Panel from './Panel.vue';
+import VUMeter from './VUMeter.vue';
 
 const scope = useTemplateRef<HTMLCanvasElement>('scope');
 
@@ -26,7 +30,7 @@ const scopeColor2 = styles.getPropertyValue('--color-accent-500');
 const scopeColor3 = styles.getPropertyValue('--color-accent-900');
 
 let rafId: number | undefined = undefined;
-var timeData = new Float32Array(2048);
+let timeData = new Float32Array(2048);
 
 onMounted(() => {
   window.addEventListener('resize', onResize);
