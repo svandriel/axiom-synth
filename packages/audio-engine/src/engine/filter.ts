@@ -1,10 +1,8 @@
 export class Filter {
-  private readonly ctxt: AudioContext;
   private readonly gain: GainNode;
   private readonly filter: BiquadFilterNode;
 
   constructor(ctxt: AudioContext) {
-    this.ctxt = ctxt;
     this.gain = ctxt.createGain();
     this.filter = ctxt.createBiquadFilter();
     this.gain.connect(this.filter);
@@ -24,6 +22,10 @@ export class Filter {
 
   get frequency(): AudioParam {
     return this.filter.frequency;
+  }
+
+  get q(): AudioParam {
+    return this.filter.Q;
   }
 
   connect(destination: AudioNode): void {
