@@ -353,7 +353,7 @@ export class AudioEngine {
       if (oldestVoice) {
         const age = now - oldestTime;
         console.warn(
-          `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber} - oldest voice is ${oldestVoice?.id}, age ${oldestTime.toFixed(1)} s`,
+          `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber} - oldest voice is ${oldestVoice?.id}, age ${age.toFixed(1)} s`,
         );
         targetVoice = oldestVoice;
 
