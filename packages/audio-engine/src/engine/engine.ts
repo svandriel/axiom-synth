@@ -124,7 +124,7 @@ export class AudioEngine {
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.82;
     this.dry = ctxt.createGain();
-    this.dry.gain.value = 1;
+    this.dry.gain.value = 0.9;
 
     this.comp = ctxt.createDynamicsCompressor();
 

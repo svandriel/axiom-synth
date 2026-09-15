@@ -16,7 +16,7 @@ const props = withDefaults(
     maxLevel?: number;
   }>(),
   {
-    maxLevel: 1,
+    maxLevel: 1.2,
   },
 );
 
@@ -24,10 +24,9 @@ let rafId: number | undefined = undefined;
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas');
 
 const styles = getComputedStyle(document.documentElement);
-const scopeGridColor = styles.getPropertyValue('--color-accent-100');
-const scopeColor1 = styles.getPropertyValue('--color-accent-300');
-const scopeColor2 = styles.getPropertyValue('--color-accent-500');
-const scopeColor3 = styles.getPropertyValue('--color-accent-900');
+const scopeColor1 = styles.getPropertyValue('--color-green-500');
+const scopeColor2 = styles.getPropertyValue('--color-orange-500');
+const scopeOverthresholdColor = styles.getPropertyValue('--color-red-500');
 
 onMounted(() => {
   window.addEventListener('resize', onResize);
@@ -40,7 +39,6 @@ onMounted(() => {
     return;
   }
   rafId = requestAnimationFrame(() => {
-    console.log('w00t');
     render(canvasValue, sctxt);
   });
 });
@@ -77,9 +75,17 @@ function render(canvas: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
   const h = d.h;
   sctx.clearRect(0, 0, w, h);
 
+  const threshold = 1 / props.maxLevel;
+
+  const grad = sctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, scopeOverthresholdColor);
+  grad.addColorStop(1 - threshold, scopeOverthresholdColor);
+  grad.addColorStop(1 - threshold, scopeColor2);
+  grad.addColorStop(1, scopeColor1);
+
   const height = (props.getValue() / props.maxLevel) * h;
 
-  sctx.fillStyle = scopeColor2;
+  sctx.fillStyle = grad;
   sctx.fillRect(0, h - height, w, height);
 
   rafId = requestAnimationFrame(() => {

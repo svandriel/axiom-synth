@@ -1,7 +1,7 @@
 <template>
   <Panel label="Scope">
     <div class="mt-3 flex flex-row gap-4">
-      <VUMeter :get-value="() => engine.meterLevel" :max-level="2" />
+      <VUMeter :get-value="() => engine.meterLevel" />
       <div class="relative h-32 overflow-hidden rounded-2xl">
         <canvas
           ref="scope"
