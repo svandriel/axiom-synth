@@ -59,10 +59,10 @@ export class AudioEngine {
       gain: 1,
     },
     {
-      octave: -1,
+      octave: -2,
       semi: 0,
       detune: 0,
-      waveform: 'sawtooth',
+      waveform: 'triangle',
       gain: 1,
     },
   ];
@@ -333,14 +333,13 @@ export class AudioEngine {
     let startDelay = 0;
 
     if (targetVoice) {
-      console.log(`[${now.toFixed(4)}] Voice available for note ${noteNumber}`);
+      console.log(
+        `[${now.toFixed(4)}] Voice ${targetVoice.id} available for note ${noteNumber}`,
+      );
     }
 
     // 2. Thread-Safe Voice Stealing Logic
     if (!targetVoice) {
-      console.log(
-        `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber}`,
-      );
       let oldestTime = Infinity;
       let oldestVoice: Voice | null = null;
 
@@ -352,6 +351,10 @@ export class AudioEngine {
       }
 
       if (oldestVoice) {
+        const age = now - oldestTime;
+        console.warn(
+          `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber} - oldest voice is ${oldestVoice?.id}, age ${age.toFixed(1)} s`,
+        );
         targetVoice = oldestVoice;
 
         for (const [note, voice] of this.noteToVoiceMap.entries()) {
