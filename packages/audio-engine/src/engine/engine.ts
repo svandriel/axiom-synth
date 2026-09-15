@@ -333,14 +333,13 @@ export class AudioEngine {
     let startDelay = 0;
 
     if (targetVoice) {
-      console.log(`[${now.toFixed(4)}] Voice available for note ${noteNumber}`);
+      console.log(
+        `[${now.toFixed(4)}] Voice ${targetVoice.id} available for note ${noteNumber}`,
+      );
     }
 
     // 2. Thread-Safe Voice Stealing Logic
     if (!targetVoice) {
-      console.log(
-        `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber}`,
-      );
       let oldestTime = Infinity;
       let oldestVoice: Voice | null = null;
 
@@ -350,6 +349,9 @@ export class AudioEngine {
           oldestVoice = voice;
         }
       }
+      console.log(
+        `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber} - oldest voice is ${oldestVoice?.id}`,
+      );
 
       if (oldestVoice) {
         targetVoice = oldestVoice;

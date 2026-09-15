@@ -32,7 +32,7 @@ export class Oscillator {
     }
   }
 
-  start(frequency: number) {
+  start(frequency: number, now: number) {
     if (this.osc) {
       this.stop();
     }
@@ -46,7 +46,7 @@ export class Oscillator {
     };
     this.configSource.detuneSource.connect(osc.detune);
     osc.connect(this.gain);
-    osc.frequency.setValueAtTime(frequency, this.ctxt.currentTime);
+    osc.frequency.setValueAtTime(frequency, now);
     osc.start();
 
     this.osc = osc;

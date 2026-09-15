@@ -85,8 +85,6 @@ export class AxiomVoice extends Voice {
         osc.connect(oscillatorAudioSink);
         return osc;
       }) as FixedArray<Oscillator, OscillatorCount>;
-
-    this.ampEnvelope.node.connect(audioSink);
   }
 
   override internalNoteOn(
@@ -120,9 +118,11 @@ export class AxiomVoice extends Voice {
       this.destroyOscillators();
     }
 
+    this.ampEnvelope.node.connect(this.audioSink);
+
     const frequency = freqOf(noteNumber);
     this.oscillators.forEach(osc => {
-      osc.start(frequency);
+      osc.start(frequency, now);
     });
 
     this.areOscillatorsActive = true;
@@ -130,6 +130,8 @@ export class AxiomVoice extends Voice {
 
   override destroyOscillators(): void {
     this.oscillators.forEach(osc => osc.stop());
+
+    this.ampEnvelope.node.disconnect(this.audioSink);
 
     this.areOscillatorsActive = false;
   }

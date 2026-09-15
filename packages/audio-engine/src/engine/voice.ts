@@ -1,3 +1,4 @@
+let counter: number = 0;
 export abstract class Voice {
   protected readonly ctxt: AudioContext;
   protected readonly audioSink: AudioNode;
@@ -8,6 +9,7 @@ export abstract class Voice {
   public currentNote: number | null = null;
   public endTime = 0;
   public lastUsed = 0;
+  public readonly id = counter++;
 
   constructor(ctxt: AudioContext, audioSink: AudioNode) {
     this.ctxt = ctxt;
@@ -39,13 +41,16 @@ export abstract class Voice {
     this.currentNote = noteNumber;
     this.lastUsed = this.ctxt.currentTime + startTimeOffset;
 
-    console.log(`[${now.toFixed(4)}] noteOn(${noteNumber})`);
+    console.log(`[${now.toFixed(4)}] Voice ${this.id}: noteOn(${noteNumber})`);
 
     if (this.cleanupTimer !== null) {
       clearTimeout(this.cleanupTimer);
       this.cleanupTimer = null;
     }
 
+    console.log(
+      `[${this.ctxt.currentTime.toFixed(4)}] Voice ${this.id}: connecting`,
+    );
     this.internalNoteOn(noteNumber, velocity, now);
 
     this.endTime = Infinity;
@@ -59,7 +64,7 @@ export abstract class Voice {
 
   noteOff() {
     const now = this.ctxt.currentTime;
-    console.log(`[${now.toFixed(4)}] noteOff()`);
+    console.log(`[${now.toFixed(4)}] Voice ${this.id}: noteOff()`);
 
     if (this.cleanupTimer !== null) {
       clearTimeout(this.cleanupTimer);
@@ -73,6 +78,9 @@ export abstract class Voice {
 
     this.cleanupTimer = setTimeout(
       () => {
+        console.log(
+          `[${this.ctxt.currentTime.toFixed(4)}] Voice ${this.id}: disconnecting`,
+        );
         this.destroyOscillators();
         this.currentNote = null;
         this.cleanupTimer = null;
