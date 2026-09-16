@@ -54,12 +54,22 @@ export class Oscillator implements Destroyable {
       this.waveformUnsubscribers.delete(osc);
       this.activeOscillators.delete(osc);
       this.stoppedOscillators.delete(osc);
+      if (this.configSource.modInputs) {
+        for (const modInput of this.configSource.modInputs) {
+          modInput.disconnect(osc.detune);
+        }
+      }
       this.configSource.detuneSource.disconnect(osc.detune);
       // Detach the node once it has stopped so it does not linger, still
       // connected to the gain, in the audio graph.
       osc.disconnect();
     };
     this.configSource.detuneSource.connect(osc.detune);
+    if (this.configSource.modInputs) {
+      for (const modInput of this.configSource.modInputs) {
+        modInput.connect(osc.detune);
+      }
+    }
     osc.connect(this.gain);
     osc.frequency.setValueAtTime(frequency, now);
     osc.start(now);
@@ -103,6 +113,11 @@ export class Oscillator implements Destroyable {
       osc.onended = null;
       this.waveformUnsubscribers.get(osc)?.();
       this.configSource.detuneSource.disconnect(osc.detune);
+      if (this.configSource.modInputs) {
+        for (const modInput of this.configSource.modInputs) {
+          modInput.disconnect(osc.detune);
+        }
+      }
       if (!this.stoppedOscillators.has(osc)) {
         osc.stop();
       }

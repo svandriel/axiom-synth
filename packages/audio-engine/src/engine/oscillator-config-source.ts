@@ -5,4 +5,5 @@ export interface OscillatorConfigSource {
   detuneSource: ConstantSourceNode;
   gainSource: ConstantSourceNode;
   waveForm: Observable<WaveFormType>;
+  modInputs?: AudioNode[];
 }
