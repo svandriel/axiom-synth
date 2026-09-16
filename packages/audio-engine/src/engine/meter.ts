@@ -1,7 +1,9 @@
 import { Analyser } from './analyser';
+import type { Destroyable } from './destroyable';
 
-export class Meter {
+export class Meter implements Destroyable {
   private analyser: Analyser;
+  private destroyed = false;
 
   constructor(ctxt: AudioContext) {
     this.analyser = new Analyser(ctxt, {
@@ -38,6 +40,10 @@ export class Meter {
   }
 
   destroy() {
+    if (this.destroyed) {
+      return;
+    }
+    this.destroyed = true;
     this.analyser.destroy();
   }
 }

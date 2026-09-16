@@ -1,10 +1,18 @@
 import type { OscillatorConfigSource } from './oscillator-config-source';
+import type { Destroyable } from './destroyable';
 
-export class Oscillator {
+export class Oscillator implements Destroyable {
   private osc: OscillatorNode | null = null;
+  private readonly activeOscillators = new Set<OscillatorNode>();
+  private readonly stoppedOscillators = new Set<OscillatorNode>();
+  private readonly waveformUnsubscribers = new Map<
+    OscillatorNode,
+    () => void
+  >();
   private readonly gain: GainNode;
   private readonly configSource: OscillatorConfigSource;
   private readonly ctxt: AudioContext;
+  private destroyed = false;
 
   constructor(ctxt: AudioContext, configSource: OscillatorConfigSource) {
     this.ctxt = ctxt;
@@ -43,6 +51,9 @@ export class Oscillator {
     });
     osc.onended = () => {
       unsubscribe();
+      this.waveformUnsubscribers.delete(osc);
+      this.activeOscillators.delete(osc);
+      this.stoppedOscillators.delete(osc);
       this.configSource.detuneSource.disconnect(osc.detune);
       // Detach the node once it has stopped so it does not linger, still
       // connected to the gain, in the audio graph.
@@ -54,6 +65,8 @@ export class Oscillator {
     osc.start(now);
 
     this.osc = osc;
+    this.activeOscillators.add(osc);
+    this.waveformUnsubscribers.set(osc, unsubscribe);
   }
 
   /**
@@ -68,11 +81,38 @@ export class Oscillator {
     if (!this.osc) {
       return;
     }
-    if (time === undefined) {
-      this.osc.stop();
-    } else {
-      this.osc.stop(time);
-    }
+    const osc = this.osc;
     this.osc = null;
+    if (this.stoppedOscillators.has(osc)) {
+      return;
+    }
+    this.stoppedOscillators.add(osc);
+    if (time === undefined) {
+      osc.stop();
+    } else {
+      osc.stop(time);
+    }
+  }
+
+  destroy(): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.destroyed = true;
+    this.activeOscillators.forEach(osc => {
+      osc.onended = null;
+      this.waveformUnsubscribers.get(osc)?.();
+      this.configSource.detuneSource.disconnect(osc.detune);
+      if (!this.stoppedOscillators.has(osc)) {
+        osc.stop();
+      }
+      osc.disconnect();
+    });
+    this.activeOscillators.clear();
+    this.stoppedOscillators.clear();
+    this.waveformUnsubscribers.clear();
+    this.osc = null;
+    this.configSource.gainSource.disconnect(this.gain.gain);
+    this.disconnect();
   }
 }

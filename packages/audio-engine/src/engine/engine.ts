@@ -14,10 +14,11 @@ import { Meter } from './meter';
 import { Voice } from './voice';
 import type { WaveshaperType } from './waveshaper';
 import { WaveshaperCurve } from './waveshaper-curve';
+import type { Destroyable } from './destroyable';
 
 const MAX_VOICES = 16;
 
-export class AudioEngine {
+export class AudioEngine implements Destroyable {
   public readonly ctxt: AudioContext;
   private readonly master: GainNode;
   private readonly meter: Meter;
@@ -111,6 +112,7 @@ export class AudioEngine {
 
   private readonly _distortionAmount: Observable<number>;
   private readonly _waveshaperType: Observable<WaveshaperType>;
+  private destroyed = false;
 
   constructor(ctxt: AudioContext) {
     this.ctxt = ctxt;
@@ -407,8 +409,29 @@ export class AudioEngine {
     }
   }
 
+  private createConstantSources<N extends number>(
+    offsets: FixedArray<number, N>,
+  ): FixedArray<ConstantSourceNode, N> {
+    return offsets.map(offset =>
+      this.createConstantSource(offset),
+    ) as FixedArray<ConstantSourceNode, N>;
+  }
+
+  private createConstantSource(offset: number = 0) {
+    const source = this.ctxt.createConstantSource();
+    source.offset.value = offset;
+    source.start();
+    return source;
+  }
+
   destroy() {
+    if (this.destroyed) {
+      return;
+    }
+    this.destroyed = true;
+    this.noteToVoiceMap.clear();
     this.voicePool.forEach(voice => voice.destroy());
+    this.meter.destroy();
     this.comp.disconnect();
     this.analyser.disconnect();
     this.master.disconnect();
@@ -426,22 +449,8 @@ export class AudioEngine {
     });
     this.waveShaperDriveSource.disconnect();
     this.waveShaperDriveSource.stop();
+    this.waveshaperCurve.destroy();
     this.dry.disconnect();
     this.ctxt.close();
-  }
-
-  private createConstantSources<N extends number>(
-    offsets: FixedArray<number, N>,
-  ): FixedArray<ConstantSourceNode, N> {
-    return offsets.map(offset =>
-      this.createConstantSource(offset),
-    ) as FixedArray<ConstantSourceNode, N>;
-  }
-
-  private createConstantSource(offset: number = 0) {
-    const source = this.ctxt.createConstantSource();
-    source.offset.value = offset;
-    source.start();
-    return source;
   }
 }

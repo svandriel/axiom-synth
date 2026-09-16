@@ -1,11 +1,13 @@
 import type { WaveshaperCurve } from './waveshaper-curve';
+import type { Destroyable } from './destroyable';
 
 export type { WaveshaperType } from './waveshaper-curve';
 
-export class Waveshaper {
+export class Waveshaper implements Destroyable {
   private readonly driveNode: GainNode;
   private readonly wsNode: WaveShaperNode;
   private readonly curve: WaveshaperCurve;
+  private destroyed = false;
 
   constructor(ctxt: AudioContext, curve: WaveshaperCurve) {
     this.curve = curve;
@@ -29,6 +31,10 @@ export class Waveshaper {
   }
 
   destroy(): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.destroyed = true;
     this.curve.unsubscribe(this.wsNode);
     this.driveNode.disconnect();
     this.wsNode.disconnect();
