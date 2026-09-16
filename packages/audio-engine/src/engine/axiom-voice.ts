@@ -4,6 +4,7 @@ import type { AxiomVoiceConfig } from './axiom-voice-config';
 import {
   LFO_COUNT,
   OSCILLATOR_COUNT,
+  type LfoCount,
   type OscillatorCount,
   type OscillatorIndex,
 } from './constants';
@@ -28,7 +29,7 @@ export class AxiomVoice extends Voice implements Destroyable {
   private readonly oscillatorNormalizeGain: GainNode;
   private readonly waveShaper: Waveshaper;
   private readonly waveformUnsubscribers: Array<() => void> = [];
-  private readonly lfos: Lfo[];
+  private readonly lfos: FixedArray<Lfo, LfoCount>;
   private readonly ampModGain: GainNode;
   private voiceDestroyed = false;
 
@@ -79,14 +80,17 @@ export class AxiomVoice extends Voice implements Destroyable {
           config.lfoRateSources[lfoIdx]!,
           config.lfoDepthSources[lfoIdx]!,
         ),
-    );
+    ) as FixedArray<Lfo, LfoCount>;
 
     // Collect per-osc mod inputs from LFO depthGains (osc1 → index 0, etc.)
-    const oscModInputs = [
+    const oscModInputs: FixedArray<
+      FixedArray<AudioNode, LfoCount>,
+      OscillatorCount
+    > = [
       this.lfos.map(lfo => lfo.targetOutput(0)),
       this.lfos.map(lfo => lfo.targetOutput(1)),
       this.lfos.map(lfo => lfo.targetOutput(2)),
-    ];
+    ] as FixedArray<FixedArray<AudioNode, LfoCount>, OscillatorCount>;
 
     // Create ampModGain (bias 1.0, sits between envelope and sink)
     this.ampModGain = ctxt.createGain();
