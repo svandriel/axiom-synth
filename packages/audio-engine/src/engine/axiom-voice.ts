@@ -7,6 +7,7 @@ import {
   type OscillatorIndex,
 } from './constants';
 import { Envelope } from './envelope';
+import { Filter } from './filter';
 import { freqOf } from './helpers';
 import { Oscillator } from './oscillator';
 import { Voice } from './voice';
@@ -20,7 +21,7 @@ export class AxiomVoice extends Voice {
   private readonly ampEnvelope: Envelope;
   // private readonly gainNodes: FixedArray<GainNode, OscillatorCount>;
   private readonly filterEnvelope: Envelope;
-  private readonly filter: BiquadFilterNode;
+  private readonly filter: Filter;
   private readonly keyTrackGain: GainNode;
   private readonly oscillatorNormalizeGain: GainNode;
   private readonly waveShaper: Waveshaper;
@@ -38,13 +39,12 @@ export class AxiomVoice extends Voice {
     this.filterEnvelope = new Envelope(ctxt);
     this.waveShaper = new Waveshaper(ctxt, config.waveshaperCurve);
 
-    this.filter = ctxt.createBiquadFilter();
-    this.filter.type = 'lowpass';
+    this.filter = new Filter(ctxt);
     this.filter.frequency.value = 0;
 
     // Hook up base values
     this.config.filterCutoff.connect(this.filter.frequency);
-    this.config.filterResonance.connect(this.filter.Q);
+    this.config.filterResonance.connect(this.filter.q);
 
     // Filter Env Amount -> Filter Envelope -> Filter Detune
     this.config.filterEnvAmount.connect(this.filterEnvelope.node);
@@ -61,7 +61,7 @@ export class AxiomVoice extends Voice {
 
     // [[ Oscillators -> Gain ]] Normalize -> WaveShaper -> Filter -> Amp Envelope -> Gain -> Audio Sink
     const oscillatorAudioSink = this.oscillatorNormalizeGain;
-    this.waveShaper.output.connect(this.filter);
+    this.waveShaper.output.connect(this.filter.input);
     this.filter.connect(this.ampEnvelope.node);
 
     config.waveshaperDrive.connect(this.waveShaper.drive);
