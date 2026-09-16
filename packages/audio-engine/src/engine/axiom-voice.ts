@@ -3,6 +3,7 @@ import { Observable } from '../utils/observable';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
 import {
   LFO_COUNT,
+  LFO_TARGET_INDEX,
   OSCILLATOR_COUNT,
   type LfoCount,
   type OscillatorCount,
@@ -82,14 +83,14 @@ export class AxiomVoice extends Voice implements Destroyable {
         ),
     ) as FixedArray<Lfo, LfoCount>;
 
-    // Collect per-osc mod inputs from LFO depthGains (osc1 → index 0, etc.)
+    // Collect per-osc mod inputs from LFO depthGains
     const oscModInputs: FixedArray<
       FixedArray<AudioNode, LfoCount>,
       OscillatorCount
     > = [
-      this.lfos.map(lfo => lfo.targetOutput(0)),
-      this.lfos.map(lfo => lfo.targetOutput(1)),
-      this.lfos.map(lfo => lfo.targetOutput(2)),
+      this.lfos.map(lfo => lfo.targetOutput(LFO_TARGET_INDEX.osc1)),
+      this.lfos.map(lfo => lfo.targetOutput(LFO_TARGET_INDEX.osc2)),
+      this.lfos.map(lfo => lfo.targetOutput(LFO_TARGET_INDEX.osc3)),
     ] as FixedArray<FixedArray<AudioNode, LfoCount>, OscillatorCount>;
 
     // Create ampModGain (bias 1.0, sits between envelope and sink)
@@ -99,9 +100,9 @@ export class AxiomVoice extends Voice implements Destroyable {
 
     // Wire LFO non-osc targets (cutoff, amp, drive)
     for (const lfo of this.lfos) {
-      lfo.targetOutput(3).connect(this.filter.cutoff); // cutoff
-      lfo.targetOutput(4).connect(this.ampModGain.gain); // amp (tremolo)
-      lfo.targetOutput(5).connect(this.waveShaper.drive); // drive
+      lfo.targetOutput(LFO_TARGET_INDEX.cutoff).connect(this.filter.cutoff);
+      lfo.targetOutput(LFO_TARGET_INDEX.amp).connect(this.ampModGain.gain);
+      lfo.targetOutput(LFO_TARGET_INDEX.drive).connect(this.waveShaper.drive);
     }
 
     this.oscillators = new Array(OSCILLATOR_COUNT)

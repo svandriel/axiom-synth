@@ -6,13 +6,19 @@ import type {
   WaveFormType,
 } from '../types';
 import type { WaveshaperConfig } from '../types/waveshaper-config';
-import type { LfoConfig, LfoWaveformType } from '../types/lfo-config';
+import type {
+  LfoConfig,
+  LfoTarget,
+  LfoWaveformType,
+} from '../types/lfo-config';
 import { Observable } from '../utils/observable';
 import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
 import {
   LFO_COUNT,
   LFO_TARGET_COUNT,
+  LFO_TARGET_INDEX,
+  LFO_TARGETS,
   type LfoCount,
   type LfoIndex,
   type LfoTargetCount,
@@ -30,8 +36,14 @@ import type { Destroyable } from './destroyable';
 const MAX_VOICES = 16;
 
 // Per-target depth scales: raw -1..1 × scale → final modulation amount
-// [osc1 detune, osc2 detune, osc3 detune, cutoff Hz, amp gain, drive units]
-const LFO_DEPTH_SCALES: readonly number[] = [150, 150, 150, 1000, 1, 4];
+const LFO_DEPTH_SCALES: Record<LfoTarget, number> = {
+  osc1: 150,
+  osc2: 150,
+  osc3: 150,
+  cutoff: 1000,
+  amp: 1,
+  drive: 4,
+};
 
 export class AudioEngine implements Destroyable {
   public readonly ctxt: AudioContext;
@@ -388,9 +400,10 @@ export class AudioEngine implements Destroyable {
     );
     this.lfoWaveforms[index]!.value = config.waveform;
 
-    for (let i = 0; i < LFO_TARGET_COUNT; i++) {
-      this.lfoDepthSources[index]![i]!.offset.linearRampToValueAtTime(
-        config.depths[i]! * LFO_DEPTH_SCALES[i]!,
+    for (const target of LFO_TARGETS) {
+      const targetIndex = LFO_TARGET_INDEX[target];
+      this.lfoDepthSources[index]![targetIndex]!.offset.linearRampToValueAtTime(
+        config.depths[targetIndex]! * LFO_DEPTH_SCALES[target],
         now + 0.01,
       );
     }
