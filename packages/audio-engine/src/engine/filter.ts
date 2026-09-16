@@ -58,7 +58,7 @@ export class Filter implements Destroyable {
   private readonly cutoff: ConstantSourceNode;
   private readonly keytrackSource: ConstantSourceNode;
   private readonly keytrackGain: GainNode;
-  private readonly modulationNodes: AudioNode[] = [];
+  private readonly detuneSource: ConstantSourceNode;
   private readonly typeSubscription: { unsubscribe: () => void };
   private stages: BiquadFilterNode[] = [];
   private currentSlope: 1 | 2 | 3 | 4 = 1;
@@ -81,6 +81,10 @@ export class Filter implements Destroyable {
     this.keytrackGain.gain.value = 0;
     this.keytrackSource.connect(this.keytrackGain);
 
+    this.detuneSource = ctxt.createConstantSource();
+    this.detuneSource.offset.value = 0;
+    this.detuneSource.start();
+
     this.typeSubscription = config.type.subscribe(type => this.rebuild(type));
     this.rebuild(config.type.value);
   }
@@ -97,9 +101,8 @@ export class Filter implements Destroyable {
     return this.keytrackGain.gain;
   }
 
-  connectModulation(node: AudioNode): void {
-    this.modulationNodes.push(node);
-    this.stages.forEach(stage => node.connect(stage.detune));
+  get detune(): AudioParam {
+    return this.detuneSource.offset;
   }
 
   noteOn(noteNumber: number, now: number): void {
@@ -133,6 +136,8 @@ export class Filter implements Destroyable {
     this.keytrackSource.disconnect();
     this.keytrackSource.stop();
     this.keytrackGain.disconnect();
+    this.detuneSource.disconnect();
+    this.detuneSource.stop();
   }
 
   private rebuild(type: FilterType): void {
@@ -158,7 +163,7 @@ export class Filter implements Destroyable {
         stage.frequency.value = 0;
         this.cutoff.connect(stage.frequency);
         this.keytrackGain.connect(stage.detune);
-        this.modulationNodes.forEach(node => node.connect(stage.detune));
+        this.detuneSource.connect(stage.detune);
         this.resonance.stageQFor(spec.stages).connect(stage.Q);
         this.stages.push(stage);
       }
@@ -189,7 +194,7 @@ export class Filter implements Destroyable {
     stage.disconnect();
     this.cutoff.disconnect(stage.frequency);
     this.keytrackGain.disconnect(stage.detune);
-    this.modulationNodes.forEach(node => node.disconnect(stage.detune));
+    this.detuneSource.disconnect(stage.detune);
     this.resonance.stageQFor(this.currentSlope).disconnect(stage.Q);
   }
 }

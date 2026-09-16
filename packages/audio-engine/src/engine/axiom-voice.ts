@@ -47,9 +47,9 @@ export class AxiomVoice extends Voice implements Destroyable {
       type: this.config.filterType,
     });
 
-    // Filter Env Amount -> Filter Envelope -> Filter Stages (Detune)
+    // Filter Env Amount -> Filter Envelope -> Filter Detune (fans out to stages)
     this.config.filterEnvAmount.connect(this.filterEnvelope.node);
-    this.filter.connectModulation(this.filterEnvelope.node);
+    this.filterEnvelope.node.connect(this.filter.detune);
 
     this.config.filterKeyTrack.connect(this.filter.keytrack);
 

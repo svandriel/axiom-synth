@@ -26,6 +26,7 @@ standard `node.connect(audioParam)` idiom. The filter fans that one connection
 out to all biquad stages internally.
 
 This removes:
+
 - the bespoke `connectModulation` API,
 - the `modulationNodes` bookkeeping array,
 - the teardown race (the filter only ever disconnects its own fan-out node,
