@@ -2,10 +2,10 @@
   <Panel label="Scope">
     <div class="mt-3 flex flex-row gap-4">
       <VUMeter :get-value="() => engine.meterLevel" />
-      <div class="relative h-32 overflow-hidden rounded-2xl">
+      <div class="relative h-full w-full overflow-hidden rounded-2xl">
         <canvas
           ref="scope"
-          class="block h-full w-full bg-primary-600 dark:bg-primary-800"
+          class="block h-32 w-full bg-primary-600 dark:bg-primary-800"
         />
       </div>
     </div>

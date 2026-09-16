@@ -1,11 +1,22 @@
 export class Filter {
   private readonly gain: GainNode;
   private readonly filter: BiquadFilterNode;
+  private readonly keytrackSource: ConstantSourceNode;
+  private readonly keytrackGain: GainNode;
 
   constructor(ctxt: AudioContext) {
     this.gain = ctxt.createGain();
     this.filter = ctxt.createBiquadFilter();
     this.gain.connect(this.filter);
+
+    this.keytrackSource = ctxt.createConstantSource();
+    this.keytrackSource.offset.value = 0;
+    this.keytrackSource.start();
+
+    this.keytrackGain = ctxt.createGain();
+    this.keytrackGain.gain.value = 0;
+    this.keytrackSource.connect(this.keytrackGain);
+    this.keytrackGain.connect(this.filter.detune);
   }
 
   get input(): AudioNode {
@@ -28,6 +39,14 @@ export class Filter {
     return this.filter.Q;
   }
 
+  get keytrack(): AudioParam {
+    return this.keytrackGain.gain;
+  }
+
+  noteOn(noteNumber: number, now: number): void {
+    this.keytrackSource.offset.setValueAtTime(100 * noteNumber, now);
+  }
+
   connect(destination: AudioNode): void {
     this.filter.connect(destination);
   }
@@ -40,5 +59,13 @@ export class Filter {
     } else {
       this.filter.disconnect();
     }
+  }
+
+  destroy(): void {
+    this.gain.disconnect();
+    this.filter.disconnect();
+    this.keytrackSource.disconnect();
+    this.keytrackSource.stop();
+    this.keytrackGain.disconnect();
   }
 }
