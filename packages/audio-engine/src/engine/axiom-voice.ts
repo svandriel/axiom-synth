@@ -22,7 +22,6 @@ export class AxiomVoice extends Voice {
   // private readonly gainNodes: FixedArray<GainNode, OscillatorCount>;
   private readonly filterEnvelope: Envelope;
   private readonly filter: Filter;
-  private readonly keyTrackGain: GainNode;
   private readonly oscillatorNormalizeGain: GainNode;
   private readonly waveShaper: Waveshaper;
 
@@ -50,10 +49,7 @@ export class AxiomVoice extends Voice {
     this.config.filterEnvAmount.connect(this.filterEnvelope.node);
     this.filterEnvelope.node.connect(this.filter.detune);
 
-    this.keyTrackGain = ctxt.createGain();
-    this.keyTrackGain.gain.value = 0;
-    this.config.filterKeyTrack.connect(this.keyTrackGain);
-    this.keyTrackGain.connect(this.filter.detune);
+    this.config.filterKeyTrack.connect(this.filter.keytrack);
 
     this.oscillatorNormalizeGain = ctxt.createGain();
     this.oscillatorNormalizeGain.gain.value = 1 / OSCILLATOR_COUNT;
@@ -95,7 +91,7 @@ export class AxiomVoice extends Voice {
     this.onSoundStart(noteNumber, now);
     this.ampEnvelope.noteOn(velocity, this.config.ampEnvelope, now);
     this.filterEnvelope.noteOn(velocity, this.config.filterEnvelope, now);
-    this.keyTrackGain.gain.setValueAtTime(100 * noteNumber, now);
+    this.filter.noteOn(noteNumber, now);
   }
 
   override internalNoteOff(now: number): { silentAt: number } {
@@ -148,7 +144,6 @@ export class AxiomVoice extends Voice {
     this.filterEnvelope.disconnect();
     this.filter.disconnect();
     this.oscillators.forEach(osc => osc.disconnect());
-    this.keyTrackGain.disconnect();
     this.waveShaper.destroy();
     super.destroy();
   }
