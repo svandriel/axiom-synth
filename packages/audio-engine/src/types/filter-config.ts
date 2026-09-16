@@ -1,4 +1,11 @@
+import type { FilterType } from '../engine/filter';
+
 export interface FilterConfig {
+  /**
+   * Filter shape and slope. Slope types chain biquad stages, each adding
+   * 12 dB/octave of rolloff (e.g. 'lowpass24' = two chained lowpass stages).
+   */
+  type: FilterType;
   frequency: number;
   /**
    * The quality factor of the filter, controlling the resonance peak.

@@ -1,5 +1,47 @@
 import type { Destroyable } from './destroyable';
 
+export type FilterType =
+  | 'lowpass12'
+  | 'lowpass24'
+  | 'lowpass36'
+  | 'lowpass48'
+  | 'highpass12'
+  | 'highpass24'
+  | 'highpass36'
+  | 'highpass48'
+  | 'bandpass'
+  | 'notch'
+  | 'lowshelf'
+  | 'highshelf'
+  | 'peaking'
+  | 'allpass';
+
+export interface FilterSpec {
+  shape: BiquadFilterType;
+  stages: 1 | 2 | 3 | 4;
+}
+
+const FILTER_SPECS: Record<FilterType, FilterSpec> = {
+  lowpass12: { shape: 'lowpass', stages: 1 },
+  lowpass24: { shape: 'lowpass', stages: 2 },
+  lowpass36: { shape: 'lowpass', stages: 3 },
+  lowpass48: { shape: 'lowpass', stages: 4 },
+  highpass12: { shape: 'highpass', stages: 1 },
+  highpass24: { shape: 'highpass', stages: 2 },
+  highpass36: { shape: 'highpass', stages: 3 },
+  highpass48: { shape: 'highpass', stages: 4 },
+  bandpass: { shape: 'bandpass', stages: 1 },
+  notch: { shape: 'notch', stages: 1 },
+  lowshelf: { shape: 'lowshelf', stages: 1 },
+  highshelf: { shape: 'highshelf', stages: 1 },
+  peaking: { shape: 'peaking', stages: 1 },
+  allpass: { shape: 'allpass', stages: 1 },
+};
+
+export function filterTypeToSpec(type: FilterType): FilterSpec {
+  return FILTER_SPECS[type];
+}
+
 export class Filter implements Destroyable {
   private readonly gain: GainNode;
   private readonly filter: BiquadFilterNode;

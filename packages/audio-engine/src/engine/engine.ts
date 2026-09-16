@@ -81,6 +81,7 @@ export class AudioEngine implements Destroyable {
   };
 
   public readonly filterConfig: FilterConfig = {
+    type: 'lowpass12',
     frequency: 350,
     q: 6,
     envAmount: 3600, // cents, -9600 to 9600
