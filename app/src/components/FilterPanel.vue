@@ -1,5 +1,8 @@
 <template>
   <Panel :label="label">
+    <template #top-right>
+      <Toggle v-model="type" :values="types" />
+    </template>
     <div class="mt-3 flex flex-row justify-between gap-4">
       <Knob
         label="Cutoff"
@@ -47,9 +50,15 @@
 </template>
 
 <script setup lang="ts">
+import { type FilterType } from '@axiom/audio-engine';
 import { fractionDisplay } from '../utils/fraction-display.ts';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
+import Toggle from './Toggle.vue';
+
+const type = defineModel<FilterType>('type', {
+  required: true,
+});
 
 const cutoff = defineModel<number>('cutoff', {
   required: true,
@@ -66,6 +75,15 @@ const envAmount = defineModel<number>('envAmount', {
 const tracking = defineModel<number>('tracking', {
   required: true,
 });
+
+const types: Array<{ id: FilterType; label: string }> = [
+  { id: 'lowpass12', label: 'LP12' },
+  { id: 'lowpass24', label: 'LP24' },
+  { id: 'highpass12', label: 'HP12' },
+  { id: 'highpass24', label: 'HP24' },
+  { id: 'bandpass', label: 'BP' },
+  { id: 'notch', label: 'Notch' },
+];
 
 withDefaults(
   defineProps<{
