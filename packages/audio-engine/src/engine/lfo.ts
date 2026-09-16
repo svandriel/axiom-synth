@@ -2,7 +2,7 @@ import type { FixedArray } from '../types';
 import type { Observable } from '../utils/observable';
 import type { LfoWaveformType } from '../types/lfo-config';
 import type { Destroyable } from './destroyable';
-import type { LfoTargetCount } from './constants';
+import type { LfoTargetCount, LfoTargetIndex } from './constants';
 
 export class Lfo implements Destroyable {
   private osc: OscillatorNode | null = null;
@@ -31,7 +31,7 @@ export class Lfo implements Destroyable {
     }) as FixedArray<GainNode, LfoTargetCount>;
   }
 
-  targetOutput(index: number): AudioNode {
+  targetOutput(index: LfoTargetIndex): AudioNode {
     return this.depthGains[index]!;
   }
 

@@ -19,14 +19,10 @@
     <div class="mt-3 grid grid-cols-3 gap-4">
       <Knob
         v-for="i in depthIndices"
-        :key="depthLabels[i]"
-        :model-value="config.depths[i]"
-        @update:model-value="
-          (v: number) => {
-            config.depths[i] = v;
-          }
-        "
-        :label="depthLabels[i]"
+        :key="depthLabels[i]!"
+        :model-value="config.depths[i]!"
+        @update:model-value="(v: number) => setDepth(i, v)"
+        :label="depthLabels[i]!"
         size="md"
         :from="-1"
         :to="1"
@@ -62,7 +58,7 @@ const waveforms: Array<{ id: LfoWaveformType; label: string }> = [
 ];
 
 const depthLabels = ['VCO1', 'VCO2', 'VCO3', 'CUT', 'AMP', 'DRV'] as const;
-const depthIndices = [0, 1, 2, 3, 4, 5] as const;
+const depthIndices = depthLabels.map((_, i) => i);
 
 const rateHz = computed({
   get: () => config.value.rateHz,
@@ -77,6 +73,10 @@ const waveform = computed({
     config.value.waveform = v;
   },
 });
+
+function setDepth(index: number, value: number): void {
+  config.value.depths[index] = value;
+}
 
 function rateFormat(v: number): string {
   return v < 10 ? `${v.toFixed(2)} Hz` : `${v.toFixed(1)} Hz`;
