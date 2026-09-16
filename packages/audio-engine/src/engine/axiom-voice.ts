@@ -155,8 +155,8 @@ export class AxiomVoice extends Voice implements Destroyable {
     this.waveformUnsubscribers.forEach(unsubscribe => unsubscribe());
     this.waveformUnsubscribers.length = 0;
     this.ampEnvelope.destroy();
-    this.filterEnvelope.destroy();
     this.filter.destroy();
+    this.filterEnvelope.destroy();
     this.oscillatorNormalizeGain.disconnect();
     this.oscillators.forEach(osc => osc.destroy());
     this.waveShaper.destroy();
