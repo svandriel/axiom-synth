@@ -138,20 +138,26 @@ API changes:
 - Unchanged: `input`, `drive`, `keytrack`, `noteOn`, `connect`,
   `disconnect`, `destroy`.
 
-Rebuild (triggered by the type observable):
+Rebuild (triggered by the type observable). Stages form a nested prefix
+chain — slope N uses stages `[0..N-1]` — so growth and shrink always happen at
+the tail and intermediate stages are always reusable. Drive always feeds
+`stages[0]` and `stages[last]` always feeds `output`.
 
-1. Map new type → `{ shape, stages }`.
-2. Teardown: for each old stage, `stage.disconnect()`,
-   `stage.frequency.disconnect()`, `stage.detune.disconnect()`,
-   `stage.Q.disconnect()`. The Q disconnect also detaches the stage from the
-   shared `resonance` transform.
-3. Build N new biquads; per stage:
-   - `stage.type = shape`, `stage.frequency.value = 0` (anti-blip, as today).
-   - `cutoff.connect(stage.frequency)` (shared source fans to N params).
-   - `keytrackGain.connect(stage.detune)`.
-   - `modulationNodes.forEach(n => n.connect(stage.detune))`.
-   - `resonance.stageQFor(stages).connect(stage.Q)`.
-4. Chain `drive → s0 → s1 → … → sLast → output`.
+1. Map new type → `{ shape, stages }`; let `cur` = current stage count.
+2. Reuse each existing stage: set `stage.type = shape`. Frequency, keytrack,
+   and modulation wiring persist untouched (`stageQFor` re-points are separate,
+   below). Shape-only swaps therefore rebuild nothing.
+3. Slope changed (`stages ≠ cur`): re-point Q on every existing stage —
+   `stage.Q.disconnect()` then `resonance.stageQFor(stages).connect(stage.Q)`.
+4. Grow (`stages > cur`): create the missing tail stages; per new stage set
+   `type = shape`, `frequency.value = 0` (anti-blip, as today), and wire
+   `cutoff → frequency`, `keytrackGain → detune`, `modulationNodes → detune`,
+   `resonance.stageQFor(stages) → Q`. Rewire the tail edge:
+   `stages[cur-1] → output` becomes `stages[cur-1] → newTail → … → output`.
+5. Shrink (`stages < cur`): teardown only the tail stages `[stages..cur-1]`
+   (`stage.disconnect()`, `stage.frequency/detune/Q.disconnect()` — the Q
+   disconnect also detaches the shared resonance edge), then bridge
+   `stages[stages-1] → output`.
 
 Param-level `disconnect()` only removes edges into that voice's own stage
 params, so shared engine sources feeding other voices are untouched.
@@ -209,9 +215,11 @@ drive/output/keytrack internals, stop the keytrack source.
 - Default `lowpass12` = single stage, Q = identity tap → startup sound and Q
   wiring are identical to today's hardcoded single `lowpass`.
 - Type switches rebuild per-voice chains; a brief audible click on the hard
-  switch is expected and accepted (documented in `CONCERNS.md`). A single
-  toggle rebuilds all 16 voices at once (up to 64 biquads churned in one
-  tick) — sub-ms node work, then GC; accepted.
+  switch is expected and accepted (documented in `CONCERNS.md`). Rebuilds are
+  incremental: a slope change churns only the stage-count delta (e.g. 4→2
+  destroys 2 stages), and a shape-only swap (LP24→HP24) reuses every stage
+  with a `.type` assignment — no node churn. A toggle still touches all 16
+  voices in one tick, but each rebuild is small; accepted.
 - The three slope transform chains (Gain + WaveShaper per slope) run even when
   no voice uses a slope and even while the synth is silent — trivial block
   cost, accepted. Lazy-bridging them is YAGNI.
