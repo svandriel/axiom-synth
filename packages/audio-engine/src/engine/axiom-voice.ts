@@ -41,16 +41,15 @@ export class AxiomVoice extends Voice implements Destroyable {
     this.filterEnvelope = new Envelope(ctxt);
     this.waveShaper = new Waveshaper(ctxt, config.waveshaperCurve);
 
-    this.filter = new Filter(ctxt);
-    this.filter.frequency.value = 0;
+    this.filter = new Filter(ctxt, {
+      cutoff: this.config.filterCutoff,
+      resonance: this.config.filterResonance,
+      type: this.config.filterType,
+    });
 
-    // Hook up base values
-    this.config.filterCutoff.connect(this.filter.frequency);
-    this.config.filterResonance.connect(this.filter.q);
-
-    // Filter Env Amount -> Filter Envelope -> Filter Detune
+    // Filter Env Amount -> Filter Envelope -> Filter Stages (Detune)
     this.config.filterEnvAmount.connect(this.filterEnvelope.node);
-    this.filterEnvelope.node.connect(this.filter.detune);
+    this.filter.connectModulation(this.filterEnvelope.node);
 
     this.config.filterKeyTrack.connect(this.filter.keytrack);
 
@@ -150,8 +149,6 @@ export class AxiomVoice extends Voice implements Destroyable {
     }
     this.voiceDestroyed = true;
     this.onSoundStop();
-    this.config.filterCutoff.disconnect(this.filter.frequency);
-    this.config.filterResonance.disconnect(this.filter.q);
     this.config.filterEnvAmount.disconnect(this.filterEnvelope.node);
     this.config.filterKeyTrack.disconnect(this.filter.keytrack);
     this.config.waveshaperDrive.disconnect(this.waveShaper.drive);

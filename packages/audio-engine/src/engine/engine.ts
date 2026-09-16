@@ -10,6 +10,8 @@ import { Observable } from '../utils/observable';
 import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
 import type { OscillatorCount, OscillatorIndex } from './constants';
+import { FilterResonance } from './filter-resonance';
+import type { FilterType } from './filter';
 import { Meter } from './meter';
 import { Voice } from './voice';
 import type { WaveshaperType } from './waveshaper';
@@ -31,7 +33,7 @@ export class AudioEngine implements Destroyable {
   private readonly voicePool: Voice[] = [];
 
   private readonly filterCutOffSource: ConstantSourceNode;
-  private readonly filterQSource: ConstantSourceNode;
+  private readonly filterResonance: FilterResonance;
   private readonly filterEnvAmountSource: ConstantSourceNode;
   private readonly filterKeyTrackSource: ConstantSourceNode;
   private readonly oscillatorDetuneSources: FixedArray<
@@ -113,6 +115,7 @@ export class AudioEngine implements Destroyable {
 
   private readonly _distortionAmount: Observable<number>;
   private readonly _waveshaperType: Observable<WaveshaperType>;
+  private readonly _filterType: Observable<FilterType>;
   private destroyed = false;
 
   constructor(ctxt: AudioContext) {
@@ -141,7 +144,8 @@ export class AudioEngine implements Destroyable {
     this.filterCutOffSource = this.createConstantSource(
       this.filterConfig.frequency,
     );
-    this.filterQSource = this.createConstantSource(this.filterConfig.q);
+    this.filterResonance = new FilterResonance(ctxt, this.filterConfig.q);
+    this._filterType = new Observable<FilterType>(this.filterConfig.type);
     this.filterEnvAmountSource = this.createConstantSource(
       this.filterConfig.envAmount,
     );
@@ -190,7 +194,8 @@ export class AudioEngine implements Destroyable {
       ampEnvelope: this.ampEnvelope,
       filterEnvelope: this.filterEnvelope,
       filterCutoff: this.filterCutOffSource,
-      filterResonance: this.filterQSource,
+      filterResonance: this.filterResonance,
+      filterType: this._filterType,
       filterEnvAmount: this.filterEnvAmountSource,
       filterKeyTrack: this.filterKeyTrackSource,
       oscillatorDetuneSources: this.oscillatorDetuneSources,
@@ -223,15 +228,21 @@ export class AudioEngine implements Destroyable {
   }
 
   get filterQ(): number {
-    return this.filterConfig.q;
+    return this.filterResonance.q;
   }
 
   set filterQ(q: number) {
-    this.filterQSource.offset.linearRampToValueAtTime(
-      q,
-      this.ctxt.currentTime + 0.01,
-    );
+    this.filterResonance.q = q;
     this.filterConfig.q = q;
+  }
+
+  get filterType(): FilterType {
+    return this._filterType.value;
+  }
+
+  set filterType(val: FilterType) {
+    this.filterConfig.type = val;
+    this._filterType.value = val;
   }
 
   get filterEnvAmount(): number {
@@ -438,8 +449,7 @@ export class AudioEngine implements Destroyable {
     this.master.disconnect();
     this.filterCutOffSource.disconnect();
     this.filterCutOffSource.stop();
-    this.filterQSource.disconnect();
-    this.filterQSource.stop();
+    this.filterResonance.destroy();
     this.filterEnvAmountSource.disconnect();
     this.filterEnvAmountSource.stop();
     this.filterKeyTrackSource.disconnect();
