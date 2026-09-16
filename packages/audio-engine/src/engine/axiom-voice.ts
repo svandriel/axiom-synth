@@ -2,6 +2,7 @@ import type { FixedArray } from '../types';
 import { Observable } from '../utils/observable';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
 import {
+  LFO_COUNT,
   OSCILLATOR_COUNT,
   type OscillatorCount,
   type OscillatorIndex,
@@ -10,6 +11,7 @@ import type { Destroyable } from './destroyable';
 import { Envelope } from './envelope';
 import { Filter } from './filter';
 import { freqOf } from './helpers';
+import { Lfo } from './lfo';
 import { Oscillator } from './oscillator';
 import { Voice } from './voice';
 import { Waveshaper } from './waveshaper';
@@ -26,6 +28,8 @@ export class AxiomVoice extends Voice implements Destroyable {
   private readonly oscillatorNormalizeGain: GainNode;
   private readonly waveShaper: Waveshaper;
   private readonly waveformUnsubscribers: Array<() => void> = [];
+  private readonly lfos: Lfo[];
+  private readonly ampModGain: GainNode;
   private voiceDestroyed = false;
 
   constructor(
@@ -42,10 +46,11 @@ export class AxiomVoice extends Voice implements Destroyable {
     this.waveShaper = new Waveshaper(ctxt, config.waveshaperCurve);
 
     this.filter = new Filter(ctxt, {
-      cutoff: this.config.filterCutoff,
       resonance: this.config.filterResonance,
       type: this.config.filterType,
     });
+
+    this.config.filterCutoff.connect(this.filter.cutoff);
 
     // Filter Env Amount -> Filter Envelope -> Filter Detune (fans out to stages)
     this.config.filterEnvAmount.connect(this.filterEnvelope.node);
@@ -63,6 +68,37 @@ export class AxiomVoice extends Voice implements Destroyable {
     this.filter.connect(this.ampEnvelope.node);
 
     config.waveshaperDrive.connect(this.waveShaper.drive);
+
+    // Create LFO instances — depth gains are wired to shared depth sources
+    this.lfos = Array.from(
+      { length: LFO_COUNT },
+      (_, lfoIdx) =>
+        new Lfo(
+          ctxt,
+          config.lfoWaveforms[lfoIdx]!,
+          config.lfoRateSources[lfoIdx]!,
+          config.lfoDepthSources[lfoIdx]!,
+        ),
+    );
+
+    // Collect per-osc mod inputs from LFO depthGains (osc1 → index 0, etc.)
+    const oscModInputs = [
+      this.lfos.map(lfo => lfo.targetOutput(0)),
+      this.lfos.map(lfo => lfo.targetOutput(1)),
+      this.lfos.map(lfo => lfo.targetOutput(2)),
+    ];
+
+    // Create ampModGain (bias 1.0, sits between envelope and sink)
+    this.ampModGain = ctxt.createGain();
+    this.ampModGain.gain.value = 1.0;
+    this.ampModGain.connect(this.audioSink);
+
+    // Wire LFO non-osc targets (cutoff, amp, drive)
+    for (const lfo of this.lfos) {
+      lfo.targetOutput(3).connect(this.filter.cutoff); // cutoff
+      lfo.targetOutput(4).connect(this.ampModGain.gain); // amp (tremolo)
+      lfo.targetOutput(5).connect(this.waveShaper.drive); // drive
+    }
 
     this.oscillators = new Array(OSCILLATOR_COUNT)
       .fill(null)
@@ -82,6 +118,7 @@ export class AxiomVoice extends Voice implements Destroyable {
           gainSource:
             this.config.oscillatorGainSources[index as OscillatorIndex],
           waveForm,
+          modInputs: oscModInputs[index]!,
         });
         osc.connect(oscillatorAudioSink);
         return osc;
@@ -119,23 +156,26 @@ export class AxiomVoice extends Voice implements Destroyable {
       // Voice stealing: let the old oscillators ring through the choke fade
       // until the new note's attack time, rather than cutting them instantly.
       this.oscillators.forEach(osc => osc.stop(now));
+      this.lfos.forEach(lfo => lfo.stop());
     } else {
-      this.ampEnvelope.node.connect(this.audioSink);
+      this.ampEnvelope.node.connect(this.ampModGain);
     }
 
     const frequency = freqOf(noteNumber);
     this.oscillators.forEach(osc => {
       osc.start(frequency, now);
     });
+    this.lfos.forEach(lfo => lfo.start(now));
 
     this.areOscillatorsActive = true;
   }
 
   override onSoundStop(): void {
     this.oscillators.forEach(osc => osc.stop());
+    this.lfos.forEach(lfo => lfo.stop());
 
     try {
-      this.ampEnvelope.node.disconnect(this.audioSink);
+      this.ampEnvelope.node.disconnect(this.ampModGain);
     } catch (exp) {
       // Was not connected, it's ok
     }
@@ -151,6 +191,7 @@ export class AxiomVoice extends Voice implements Destroyable {
     this.onSoundStop();
     this.config.filterEnvAmount.disconnect(this.filterEnvelope.node);
     this.config.filterKeyTrack.disconnect(this.filter.keytrack);
+    this.config.filterCutoff.disconnect(this.filter.cutoff);
     this.config.waveshaperDrive.disconnect(this.waveShaper.drive);
     this.waveformUnsubscribers.forEach(unsubscribe => unsubscribe());
     this.waveformUnsubscribers.length = 0;
@@ -159,6 +200,8 @@ export class AxiomVoice extends Voice implements Destroyable {
     this.filterEnvelope.destroy();
     this.oscillatorNormalizeGain.disconnect();
     this.oscillators.forEach(osc => osc.destroy());
+    this.lfos.forEach(lfo => lfo.destroy());
+    this.ampModGain.disconnect();
     this.waveShaper.destroy();
     super.destroy();
   }

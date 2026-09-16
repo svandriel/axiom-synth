@@ -6,10 +6,19 @@ import type {
   WaveFormType,
 } from '../types';
 import type { WaveshaperConfig } from '../types/waveshaper-config';
+import type { LfoConfig, LfoWaveformType } from '../types/lfo-config';
 import { Observable } from '../utils/observable';
 import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
-import type { OscillatorCount, OscillatorIndex } from './constants';
+import {
+  LFO_COUNT,
+  LFO_TARGET_COUNT,
+  type LfoCount,
+  type LfoIndex,
+  type LfoTargetCount,
+  type OscillatorCount,
+  type OscillatorIndex,
+} from './constants';
 import { FilterResonance } from './filter-resonance';
 import type { FilterType } from './filter';
 import { Meter } from './meter';
@@ -19,6 +28,10 @@ import { WaveshaperCurve } from './waveshaper-curve';
 import type { Destroyable } from './destroyable';
 
 const MAX_VOICES = 16;
+
+// Per-target depth scales: raw -1..1 × scale → final modulation amount
+// [osc1 detune, osc2 detune, osc3 detune, cutoff Hz, amp gain, drive units]
+const LFO_DEPTH_SCALES: readonly number[] = [150, 150, 150, 1000, 1, 4];
 
 export class AudioEngine implements Destroyable {
   public readonly ctxt: AudioContext;
@@ -116,6 +129,17 @@ export class AudioEngine implements Destroyable {
   private readonly _distortionAmount: Observable<number>;
   private readonly _waveshaperType: Observable<WaveshaperType>;
   private readonly _filterType: Observable<FilterType>;
+
+  private readonly lfoWaveforms: Observable<LfoWaveformType>[];
+  private readonly lfoRateSources: ConstantSourceNode[];
+  private readonly lfoDepthSources: ConstantSourceNode[][];
+
+  public readonly lfoConfigs: FixedArray<LfoConfig, LfoCount> = [
+    { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
+    { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
+    { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
+    { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
+  ];
   private destroyed = false;
 
   constructor(ctxt: AudioContext) {
@@ -190,6 +214,19 @@ export class AudioEngine implements Destroyable {
       this.waveshaperCurve.type = type;
     });
 
+    this.lfoWaveforms = Array.from(
+      { length: LFO_COUNT },
+      (_, i) => new Observable<LfoWaveformType>(this.lfoConfigs[i]!.waveform),
+    );
+    this.lfoRateSources = Array.from({ length: LFO_COUNT }, (_, i) =>
+      this.createConstantSource(this.lfoConfigs[i]!.rateHz),
+    );
+    this.lfoDepthSources = Array.from({ length: LFO_COUNT }, (_, i) =>
+      Array.from({ length: LFO_TARGET_COUNT }, (_, j) =>
+        this.createConstantSource(this.lfoConfigs[i]!.depths[j]!),
+      ),
+    );
+
     const voiceConfig: AxiomVoiceConfig = {
       ampEnvelope: this.ampEnvelope,
       filterEnvelope: this.filterEnvelope,
@@ -203,6 +240,9 @@ export class AudioEngine implements Destroyable {
       oscillatorWaveForms: this.oscillatorWaveForms,
       waveshaperCurve: this.waveshaperCurve,
       waveshaperDrive: this.waveShaperDriveSource,
+      lfoWaveforms: this.lfoWaveforms,
+      lfoRateSources: this.lfoRateSources,
+      lfoDepthSources: this.lfoDepthSources,
     };
 
     this.voicePool = Array.from(
@@ -327,6 +367,27 @@ export class AudioEngine implements Destroyable {
       );
     }
     this.oscillatorConfigs[index] = { ...config };
+  }
+
+  setLfoConfiguration(index: LfoIndex, config: LfoConfig) {
+    this.lfoConfigs[index] = {
+      ...config,
+      depths: [...config.depths] as FixedArray<number, LfoTargetCount>,
+    };
+    const now = this.ctxt.currentTime;
+
+    this.lfoRateSources[index]!.offset.linearRampToValueAtTime(
+      config.rateHz,
+      now + 0.01,
+    );
+    this.lfoWaveforms[index]!.value = config.waveform;
+
+    for (let i = 0; i < LFO_TARGET_COUNT; i++) {
+      this.lfoDepthSources[index]![i]!.offset.linearRampToValueAtTime(
+        config.depths[i]! * LFO_DEPTH_SCALES[i]!,
+        now + 0.01,
+      );
+    }
   }
 
   get meterLevel(): number {
@@ -461,6 +522,16 @@ export class AudioEngine implements Destroyable {
     this.waveShaperDriveSource.disconnect();
     this.waveShaperDriveSource.stop();
     this.waveshaperCurve.destroy();
+    this.lfoRateSources.forEach(source => {
+      source.disconnect();
+      source.stop();
+    });
+    this.lfoDepthSources.forEach(sources => {
+      sources.forEach(source => {
+        source.disconnect();
+        source.stop();
+      });
+    });
     this.dry.disconnect();
     this.ctxt.close();
   }
