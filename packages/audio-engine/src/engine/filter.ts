@@ -1,8 +1,11 @@
-export class Filter {
+import type { Destroyable } from './destroyable';
+
+export class Filter implements Destroyable {
   private readonly gain: GainNode;
   private readonly filter: BiquadFilterNode;
   private readonly keytrackSource: ConstantSourceNode;
   private readonly keytrackGain: GainNode;
+  private destroyed = false;
 
   constructor(ctxt: AudioContext) {
     this.gain = ctxt.createGain();
@@ -62,6 +65,10 @@ export class Filter {
   }
 
   destroy(): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.destroyed = true;
     this.gain.disconnect();
     this.filter.disconnect();
     this.keytrackSource.disconnect();

@@ -6,6 +6,7 @@ import {
   type OscillatorCount,
   type OscillatorIndex,
 } from './constants';
+import type { Destroyable } from './destroyable';
 import { Envelope } from './envelope';
 import { Filter } from './filter';
 import { freqOf } from './helpers';
@@ -13,7 +14,7 @@ import { Oscillator } from './oscillator';
 import { Voice } from './voice';
 import { Waveshaper } from './waveshaper';
 
-export class AxiomVoice extends Voice {
+export class AxiomVoice extends Voice implements Destroyable {
   private areOscillatorsActive = false;
   private oscillators: FixedArray<Oscillator, OscillatorCount>;
 
@@ -24,6 +25,8 @@ export class AxiomVoice extends Voice {
   private readonly filter: Filter;
   private readonly oscillatorNormalizeGain: GainNode;
   private readonly waveShaper: Waveshaper;
+  private readonly waveformUnsubscribers: Array<() => void> = [];
+  private voiceDestroyed = false;
 
   constructor(
     ctxt: AudioContext,
@@ -68,9 +71,12 @@ export class AxiomVoice extends Voice {
         const waveForm = new Observable(
           this.config.oscillatorWaveForms.value[index as OscillatorIndex],
         );
-        this.config.oscillatorWaveForms.subscribe(newValue => {
-          waveForm.value = newValue[index as OscillatorIndex];
-        });
+        const { unsubscribe } = this.config.oscillatorWaveForms.subscribe(
+          newValue => {
+            waveForm.value = newValue[index as OscillatorIndex];
+          },
+        );
+        this.waveformUnsubscribers.push(unsubscribe);
         const osc = new Oscillator(ctxt, {
           detuneSource:
             this.config.oscillatorDetuneSources[index as OscillatorIndex],
@@ -139,11 +145,23 @@ export class AxiomVoice extends Voice {
   }
 
   override destroy(): void {
+    if (this.voiceDestroyed) {
+      return;
+    }
+    this.voiceDestroyed = true;
     this.onSoundStop();
-    this.ampEnvelope.disconnect();
-    this.filterEnvelope.disconnect();
-    this.filter.disconnect();
-    this.oscillators.forEach(osc => osc.disconnect());
+    this.config.filterCutoff.disconnect(this.filter.frequency);
+    this.config.filterResonance.disconnect(this.filter.q);
+    this.config.filterEnvAmount.disconnect(this.filterEnvelope.node);
+    this.config.filterKeyTrack.disconnect(this.filter.keytrack);
+    this.config.waveshaperDrive.disconnect(this.waveShaper.drive);
+    this.waveformUnsubscribers.forEach(unsubscribe => unsubscribe());
+    this.waveformUnsubscribers.length = 0;
+    this.ampEnvelope.destroy();
+    this.filterEnvelope.destroy();
+    this.filter.destroy();
+    this.oscillatorNormalizeGain.disconnect();
+    this.oscillators.forEach(osc => osc.destroy());
     this.waveShaper.destroy();
     super.destroy();
   }
