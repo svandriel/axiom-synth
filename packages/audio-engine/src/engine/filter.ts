@@ -189,6 +189,7 @@ export class Filter implements Destroyable {
     stage.disconnect();
     this.cutoff.disconnect(stage.frequency);
     this.keytrackGain.disconnect(stage.detune);
+    this.modulationNodes.forEach(node => node.disconnect(stage.detune));
     this.resonance.stageQFor(this.currentSlope).disconnect(stage.Q);
   }
 }
