@@ -209,7 +209,23 @@ drive/output/keytrack internals, stop the keytrack source.
 - Default `lowpass12` = single stage, Q = identity tap → startup sound and Q
   wiring are identical to today's hardcoded single `lowpass`.
 - Type switches rebuild per-voice chains; a brief audible click on the hard
-  switch is expected and accepted (documented in `CONCERNS.md`).
+  switch is expected and accepted (documented in `CONCERNS.md`). A single
+  toggle rebuilds all 16 voices at once (up to 64 biquads churned in one
+  tick) — sub-ms node work, then GC; accepted.
+- The three slope transform chains (Gain + WaveShaper per slope) run even when
+  no voice uses a slope and even while the synth is silent — trivial block
+  cost, accepted. Lazy-bridging them is YAGNI.
+- Max-slope cost is 4 biquads per voice (4× today's single biquad) — inherent
+  to chained filters; small at a 16-voice pool.
+- At the default `lowpass12` each voice holds exactly one biquad — idle node
+  count identical to today.
+- Per-voice fan-outs (frequency, detune/keytrack/envelope) are pointer-level
+  Web Audio connections: the source signal is computed once and applied to N
+  params; no duplicated per-stage processing.
+- Q-change cost is unchanged from today: a single ramp on the shared source,
+  no per-change curve recompute.
+- `Filter.destroy` must unsubscribe from the type observable — otherwise 16
+  callbacks linger on the engine-level observable after teardown.
 - WaveShaper Q curve precision ~0.04 steps, worsens below `Q < 0.5` (out of
   Res-knob range; documented).
 - Three extra WaveShaper/Gain nodes per engine for the slope transforms —
@@ -218,3 +234,10 @@ drive/output/keytrack internals, stop the keytrack source.
 ## Testing / verification
 
 No test runner (build is the gate). Verify with `pnpm build` and `pnpm lint`.
+
+Manual checks to add:
+
+- Toggle the type while holding a chord (including >8-voice chords) and listen
+  for dropouts beyond the accepted switch click.
+- After `engine.destroy()`, confirm no type-observable subscribers remain
+  (a repeat note-on after destroy must not run rebuilds).
