@@ -3,7 +3,7 @@
     class="synth b-3 min-h-100 rounded-2xl bg-default p-3 shadow-out dark:bg-default-dark dark:shadow-out-dark"
   >
     <div
-      class="grid grid-cols-12 grid-rows-7 gap-3 sm:grid-rows-4 lg:grid-rows-3"
+      class="grid grid-cols-12 grid-rows-8 gap-3 sm:grid-rows-5 lg:grid-rows-3"
     >
       <OscillatorPanel
         class="col-span-12 row-start-1 sm:col-span-6 lg:col-span-4"
@@ -40,8 +40,13 @@
         v-model:type="waveshaperType"
         :curve="engine.shaperCurve"
       />
+      <LfoPanel
+        class="col-span-12 row-start-7 sm:col-span-12 sm:col-start-1 sm:row-start-4 lg:col-span-4 lg:row-start-3"
+        v-model="activeLfo"
+        v-model:selected-lfo="selectedLfo"
+      />
       <ScopePanel
-        class="col-span-12 row-start-7 sm:col-span-12 sm:col-start-1 sm:row-start-4 lg:col-span-4 lg:col-start-5 lg:row-start-3"
+        class="col-span-12 row-start-8 sm:col-span-12 sm:col-start-1 sm:row-start-5 lg:col-span-4 lg:col-start-5 lg:row-start-3"
       />
     </div>
 
@@ -49,11 +54,13 @@
   </div>
 </template>
 <script setup lang="ts">
-import { onUnmounted, reactive, ref, watch } from 'vue';
+import { computed, onUnmounted, reactive, ref, watch } from 'vue';
+import type { LfoConfig, LfoIndex } from '@axiom/audio-engine';
 import { useAudioEngine } from '../composables/use-audio-context.ts';
 import EnvelopePanel from './EnvelopePanel.vue';
 import FilterPanel from './FilterPanel.vue';
 import Keyboard from './Keyboard.vue';
+import LfoPanel from './LfoPanel.vue';
 import OscillatorPanel from './OscillatorPanel.vue';
 import ScopePanel from './ScopePanel.vue';
 import WaveshaperPanel from './WaveshaperPanel.vue';
@@ -68,6 +75,35 @@ const filterType = ref(engine.value.filterType);
 const waveshaperType = ref(engine.value.waveshaperType);
 const waveshaperDistortion = ref(engine.value.distortionAmount);
 const waveshaperDrive = ref(engine.value.waveshaperDrive);
+
+function cloneLfoConfig(c: LfoConfig): LfoConfig {
+  return {
+    rateHz: c.rateHz,
+    waveform: c.waveform,
+    depths: c.depths.slice() as LfoConfig['depths'],
+  };
+}
+
+const lfoConfigs = [
+  reactive(cloneLfoConfig(engine.value.lfoConfigs[0])),
+  reactive(cloneLfoConfig(engine.value.lfoConfigs[1])),
+  reactive(cloneLfoConfig(engine.value.lfoConfigs[2])),
+  reactive(cloneLfoConfig(engine.value.lfoConfigs[3])),
+];
+
+const selectedLfo = ref('0');
+const activeLfo = computed(() => lfoConfigs[Number(selectedLfo.value)]!);
+
+watch(
+  activeLfo,
+  cfg => {
+    engine.value.setLfoConfiguration(
+      Number(selectedLfo.value) as LfoIndex,
+      cfg,
+    );
+  },
+  { deep: true },
+);
 
 let osc1 = reactive({ ...engine.value.oscillatorConfigs[0] });
 let osc2 = reactive({ ...engine.value.oscillatorConfigs[1] });
