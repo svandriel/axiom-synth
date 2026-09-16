@@ -36,20 +36,28 @@ This removes:
 ### Filter changes (`packages/audio-engine/src/engine/filter.ts`)
 
 - Replace `private readonly modulationNodes: AudioNode[] = []` with a fan-out
-  hub node created in the constructor:
+  source node created in the constructor (mirrors the engine's `cutoff`
+  ConstantSourceNode pattern):
 
   ```typescript
-  this.detuneHub = ctxt.createGain();
-  this.detuneHub.gain.value = 1;
+  this.detuneSource = ctxt.createConstantSource();
+  this.detuneSource.offset.value = 0;
+  this.detuneSource.start();
   ```
+
+  The default is 0 because the stage `detune` param base is already 0; the
+  envelope signal is the only contribution.
 
 - Add a public getter:
 
   ```typescript
   get detune(): AudioParam {
-    return this.detuneHub.gain;
+    return this.detuneSource.offset;
   }
   ```
+
+  The envelope connects into the offset (a-rate), and the constant source's
+  output — which carries exactly the envelope signal — fans out to the stages.
 
 - Remove `connectModulation(node)`.
 
@@ -62,18 +70,18 @@ This removes:
   with
 
   ```typescript
-  this.detuneHub.connect(stage.detune);
+  this.detuneSource.connect(stage.detune);
   ```
 
 - `teardownStage`: replace the modulation disconnect loop with a source-side
   disconnect:
 
   ```typescript
-  this.detuneHub.disconnect(stage.detune);
+  this.detuneSource.disconnect(stage.detune);
   ```
 
-- `destroy()`: add `this.detuneHub.disconnect();` alongside the other node
-  disconnects.
+- `destroy()`: add `this.detuneSource.stop();` and `this.detuneSource.disconnect();`
+  alongside the other node disconnects.
 
 ### Voice changes (`packages/audio-engine/src/engine/axiom-voice.ts`)
 
@@ -91,8 +99,12 @@ This removes:
 
 ### Behavior parity
 
-- The hub gain is 1, so the envelope's modulated cents flow through unchanged
-  into every stage's `detune`.
+- The envelope's modulated cents flow through unchanged: envelope → `offset`
+  (base 0) → constant source output → every stage's `detune`.
+- The hub-gain approach was rejected: a GainNode with its `.gain` exposed but
+  no audio input multiplies silence by the modulated gain, so no signal could
+  reach the stages. A ConstantSourceNode is the correct fan-out primitive for
+  an exposed AudioParam that other nodes drive.
 - Keytrack continues to connect directly to each stage's `detune` (unchanged).
 - Default `'lowpass12'`, Q curve, incremental rebuild, wiring — all untouched.
 - `Filter` remains `Destroyable`; `destroy()` still unsubscribes the type
