@@ -26,6 +26,7 @@
         v-model:resonance="resonance"
         v-model:envAmount="envAmount"
         v-model:tracking="tracking"
+        v-model:type="filterType"
       />
       <EnvelopePanel
         class="col-span-12 row-start-5 sm:col-span-6 sm:col-start-7 sm:row-start-2 lg:col-span-4"
@@ -63,6 +64,7 @@ const cutoff = ref(engine.value.filterConfig.frequency);
 const resonance = ref(filterQ);
 const envAmount = ref(engine.value.filterConfig.envAmount / 9600);
 const tracking = ref(engine.value.filterConfig.tracking);
+const filterType = ref(engine.value.filterType);
 const waveshaperType = ref(engine.value.waveshaperType);
 const waveshaperDistortion = ref(engine.value.distortionAmount);
 const waveshaperDrive = ref(engine.value.waveshaperDrive);
@@ -86,6 +88,10 @@ watch(envAmount, newEnvAmount => {
 
 watch(tracking, newTracking => {
   engine.value.filterKeyTrack = newTracking;
+});
+
+watch(filterType, newType => {
+  engine.value.filterType = newType;
 });
 
 watch(osc1, newOsc1 => {
