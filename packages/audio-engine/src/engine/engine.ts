@@ -130,9 +130,15 @@ export class AudioEngine implements Destroyable {
   private readonly _waveshaperType: Observable<WaveshaperType>;
   private readonly _filterType: Observable<FilterType>;
 
-  private readonly lfoWaveforms: Observable<LfoWaveformType>[];
-  private readonly lfoRateSources: ConstantSourceNode[];
-  private readonly lfoDepthSources: ConstantSourceNode[][];
+  private readonly lfoWaveforms: FixedArray<
+    Observable<LfoWaveformType>,
+    LfoCount
+  >;
+  private readonly lfoRateSources: FixedArray<ConstantSourceNode, LfoCount>;
+  private readonly lfoDepthSources: FixedArray<
+    FixedArray<ConstantSourceNode, LfoTargetCount>,
+    LfoCount
+  >;
 
   public readonly lfoConfigs: FixedArray<LfoConfig, LfoCount> = [
     { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
@@ -217,15 +223,15 @@ export class AudioEngine implements Destroyable {
     this.lfoWaveforms = Array.from(
       { length: LFO_COUNT },
       (_, i) => new Observable<LfoWaveformType>(this.lfoConfigs[i]!.waveform),
-    );
+    ) as FixedArray<Observable<LfoWaveformType>, LfoCount>;
     this.lfoRateSources = Array.from({ length: LFO_COUNT }, (_, i) =>
       this.createConstantSource(this.lfoConfigs[i]!.rateHz),
-    );
+    ) as FixedArray<ConstantSourceNode, LfoCount>;
     this.lfoDepthSources = Array.from({ length: LFO_COUNT }, (_, i) =>
       Array.from({ length: LFO_TARGET_COUNT }, (_, j) =>
         this.createConstantSource(this.lfoConfigs[i]!.depths[j]!),
       ),
-    );
+    ) as FixedArray<FixedArray<ConstantSourceNode, LfoTargetCount>, LfoCount>;
 
     const voiceConfig: AxiomVoiceConfig = {
       ampEnvelope: this.ampEnvelope,
