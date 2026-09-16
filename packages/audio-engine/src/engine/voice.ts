@@ -1,5 +1,7 @@
+import type { Destroyable } from './destroyable';
+
 let counter: number = 0;
-export abstract class Voice {
+export abstract class Voice implements Destroyable {
   protected readonly ctxt: AudioContext;
   protected readonly audioSink: AudioNode;
 
@@ -7,6 +9,7 @@ export abstract class Voice {
   public readonly chokeDuration = 0.003;
 
   private cleanupTimer: ReturnType<typeof setTimeout> | null = null;
+  private destroyed = false;
   public currentNote: number | null = null;
   public endTime = 0;
   public lastUsed = 0;
@@ -93,6 +96,10 @@ export abstract class Voice {
   protected abstract internalNoteOff(now: number): { silentAt: number };
 
   destroy() {
+    if (this.destroyed) {
+      return;
+    }
+    this.destroyed = true;
     if (this.cleanupTimer !== null) {
       clearTimeout(this.cleanupTimer);
       this.cleanupTimer = null;

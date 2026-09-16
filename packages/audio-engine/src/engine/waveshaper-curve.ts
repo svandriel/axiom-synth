@@ -1,3 +1,5 @@
+import type { Destroyable } from './destroyable';
+
 const CURVE_SAMPLES = 1024;
 
 export type WaveshaperType =
@@ -8,12 +10,13 @@ export type WaveshaperType =
   | 'sine-shaper'
   | 'chebyshev';
 
-export class WaveshaperCurve {
+export class WaveshaperCurve implements Destroyable {
   private readonly nodes = new Set<WaveShaperNode>();
   private readonly samples = new Float32Array(CURVE_SAMPLES);
 
   private _amount: number;
   private _type: WaveshaperType;
+  private destroyed = false;
 
   constructor(amount: number, type: WaveshaperType) {
     this._amount = amount;
@@ -101,5 +104,13 @@ export class WaveshaperCurve {
         }
       }
     }
+  }
+
+  destroy(): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.destroyed = true;
+    this.nodes.clear();
   }
 }

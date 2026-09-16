@@ -1,7 +1,10 @@
-export class Analyser {
+import type { Destroyable } from './destroyable';
+
+export class Analyser implements Destroyable {
   private readonly analyser: AnalyserNode;
   private readonly buffer: Float32Array<ArrayBuffer>;
   private readonly type: AnalyzerType;
+  private destroyed = false;
 
   constructor(ctxt: AudioContext, options: Partial<AnalyserOptions>) {
     const opts = { ...Analyser.defaultOptions, ...options };
@@ -47,15 +50,19 @@ export class Analyser {
     return this.buffer;
   }
 
-  destroy() {
-    this.analyser.disconnect();
-  }
-
   static defaultOptions: AnalyserOptions = {
     size: 2048,
     smoothing: 0.82,
     type: 'timeDomain',
   };
+
+  destroy() {
+    if (this.destroyed) {
+      return;
+    }
+    this.destroyed = true;
+    this.analyser.disconnect();
+  }
 }
 
 export type AnalyzerType = 'fft' | 'timeDomain';

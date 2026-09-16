@@ -1,8 +1,10 @@
 import type { EnvelopeConfig } from '../types';
+import type { Destroyable } from './destroyable';
 
-export class Envelope {
+export class Envelope implements Destroyable {
   private readonly ctxt: AudioContext;
   private readonly ampEnv: GainNode;
+  private destroyed = false;
 
   constructor(ctxt: AudioContext) {
     this.ctxt = ctxt;
@@ -118,5 +120,13 @@ export class Envelope {
 
   disconnect() {
     this.ampEnv.disconnect();
+  }
+
+  destroy(): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.destroyed = true;
+    this.disconnect();
   }
 }
