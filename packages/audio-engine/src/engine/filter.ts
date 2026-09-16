@@ -45,7 +45,6 @@ export function filterTypeToSpec(type: FilterType): FilterSpec {
 }
 
 interface FilterInputs {
-  cutoff: ConstantSourceNode;
   resonance: FilterResonance;
   type: Observable<FilterType>;
 }
@@ -55,7 +54,7 @@ export class Filter implements Destroyable {
   private readonly gain: GainNode;
   private readonly output: GainNode;
   private readonly resonance: FilterResonance;
-  private readonly cutoff: ConstantSourceNode;
+  private readonly cutoffSource: ConstantSourceNode;
   private readonly keytrackSource: ConstantSourceNode;
   private readonly keytrackGain: GainNode;
   private readonly detuneSource: ConstantSourceNode;
@@ -66,8 +65,11 @@ export class Filter implements Destroyable {
 
   constructor(ctxt: AudioContext, config: FilterInputs) {
     this.ctxt = ctxt;
-    this.cutoff = config.cutoff;
     this.resonance = config.resonance;
+
+    this.cutoffSource = ctxt.createConstantSource();
+    this.cutoffSource.offset.value = 0;
+    this.cutoffSource.start();
 
     this.gain = ctxt.createGain();
     this.output = ctxt.createGain();
@@ -87,6 +89,10 @@ export class Filter implements Destroyable {
 
     this.typeSubscription = config.type.subscribe(type => this.rebuild(type));
     this.rebuild(config.type.value);
+  }
+
+  get cutoff(): AudioParam {
+    return this.cutoffSource.offset;
   }
 
   get input(): AudioNode {
@@ -131,6 +137,8 @@ export class Filter implements Destroyable {
     this.typeSubscription.unsubscribe();
     this.stages.forEach(stage => this.teardownStage(stage));
     this.stages = [];
+    this.cutoffSource.disconnect();
+    this.cutoffSource.stop();
     this.gain.disconnect();
     this.output.disconnect();
     this.keytrackSource.disconnect();
@@ -161,7 +169,7 @@ export class Filter implements Destroyable {
         const stage = this.ctxt.createBiquadFilter();
         stage.type = spec.shape;
         stage.frequency.value = 0;
-        this.cutoff.connect(stage.frequency);
+        this.cutoffSource.connect(stage.frequency);
         this.keytrackGain.connect(stage.detune);
         this.detuneSource.connect(stage.detune);
         this.resonance.stageQFor(spec.stages).connect(stage.Q);
@@ -192,7 +200,7 @@ export class Filter implements Destroyable {
 
   private teardownStage(stage: BiquadFilterNode): void {
     stage.disconnect();
-    this.cutoff.disconnect(stage.frequency);
+    this.cutoffSource.disconnect(stage.frequency);
     this.keytrackGain.disconnect(stage.detune);
     this.detuneSource.disconnect(stage.detune);
     this.resonance.stageQFor(this.currentSlope).disconnect(stage.Q);
