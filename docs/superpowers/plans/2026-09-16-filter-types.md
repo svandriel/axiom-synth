@@ -24,12 +24,14 @@
 **Context:** Add the flat `FilterType` union, the internal `{ shape, stages }` mapping, the `FilterConfig.type` field, and the package export. Wiring that uses these comes in later tasks.
 
 **Files:**
+
 - Modify: `packages/audio-engine/src/engine/filter.ts` (top of file, above the class)
 - Modify: `packages/audio-engine/src/types/filter-config.ts`
 - Modify: `packages/audio-engine/src/engine/engine.ts:83-88` (add `type` to `filterConfig`)
 - Modify: `packages/audio-engine/src/index.ts`
 
 **Interfaces:**
+
 - Produces: `FilterType` (string-literal union of 14 values), `FilterSpec` (`{ shape: BiquadFilterType; stages: 1 | 2 | 3 | 4 }`), `filterTypeToSpec(type: FilterType): FilterSpec`. `FilterConfig` gains required `type: FilterType`. Barrel exports `FilterType`.
 
 - [ ] **Step 1: Add the type and mapping to filter.ts**
@@ -153,9 +155,11 @@ git commit -m "feat(engine): add FilterType union and spec mapping"
 **Context:** New class owning the Q source and the per-slope `q^(1/N)` WaveShaper transforms. One instance per engine. Slopes 2/3/4 get their own `Gain(1/20) → WaveShaper` chain; slope 1 (single-stage types) returns the raw Q source (identity).
 
 **Files:**
+
 - Create: `packages/audio-engine/src/engine/filter-resonance.ts`
 
 **Interfaces:**
+
 - Consumes: `Destroyable` from `./destroyable`.
 - Produces: `class FilterResonance implements Destroyable` with
   `constructor(ctxt: AudioContext, startQ: number)`,
@@ -267,12 +271,14 @@ git commit -m "feat(engine): add shared FilterResonance Q transform"
 **Context:** The coupling — engine owns the shared Q/type, voices wire the shared sources into the Filter — means this refactor lands as one cohesive change. The `Filter` becomes a stage-chain on a stable `gain → output` skeleton, driven by constructor-injected shared nodes, with incremental rebuilds. The engine swaps `filterQSource` for `FilterResonance` + a type `Observable`. The voice stops touching filter params directly.
 
 **Files:**
+
 - Rewrite: `packages/audio-engine/src/engine/filter.ts`
 - Modify: `packages/audio-engine/src/engine/axiom-voice-config.ts`
 - Modify: `packages/audio-engine/src/engine/axiom-voice.ts`
 - Modify: `packages/audio-engine/src/engine/engine.ts`
 
 **Interfaces:**
+
 - Consumes (from Tasks 1-2): `FilterType`, `filterTypeToSpec`, `FilterConfig` (with `type`), `FilterResonance`.
 - Produces: `Filter` constructor takes
   `{ cutoff: ConstantSourceNode; resonance: FilterResonance; type: Observable<FilterType> }`.
@@ -520,31 +526,31 @@ export interface AxiomVoiceConfig {
 In `packages/audio-engine/src/engine/axiom-voice.ts`, replace the constructor filter block (currently `this.filter = new Filter(ctxt);` through `this.config.filterKeyTrack.connect(this.filter.keytrack);`):
 
 ```typescript
-    this.filter = new Filter(ctxt, {
-      cutoff: this.config.filterCutoff,
-      resonance: this.config.filterResonance,
-      type: this.config.filterType,
-    });
+this.filter = new Filter(ctxt, {
+  cutoff: this.config.filterCutoff,
+  resonance: this.config.filterResonance,
+  type: this.config.filterType,
+});
 
-    // Filter Env Amount -> Filter Envelope -> Filter Stages (Detune)
-    this.config.filterEnvAmount.connect(this.filterEnvelope.node);
-    this.filter.connectModulation(this.filterEnvelope.node);
+// Filter Env Amount -> Filter Envelope -> Filter Stages (Detune)
+this.config.filterEnvAmount.connect(this.filterEnvelope.node);
+this.filter.connectModulation(this.filterEnvelope.node);
 
-    this.config.filterKeyTrack.connect(this.filter.keytrack);
+this.config.filterKeyTrack.connect(this.filter.keytrack);
 ```
 
 Then, in `destroy()`, remove the two lines that disconnect the cutoff and resonance sources (keep the envAmount and keytrack lines). The old block:
 
 ```typescript
-    this.config.filterCutoff.disconnect(this.filter.frequency);
-    this.config.filterResonance.disconnect(this.filter.q);
-    this.config.filterEnvAmount.disconnect(this.filterEnvelope.node);
+this.config.filterCutoff.disconnect(this.filter.frequency);
+this.config.filterResonance.disconnect(this.filter.q);
+this.config.filterEnvAmount.disconnect(this.filterEnvelope.node);
 ```
 
 becomes:
 
 ```typescript
-    this.config.filterEnvAmount.disconnect(this.filterEnvelope.node);
+this.config.filterEnvAmount.disconnect(this.filterEnvelope.node);
 ```
 
 - [ ] **Step 4: Update the engine**
@@ -573,14 +579,14 @@ and add the type observable field next to the existing `_waveshaperType` field:
 3. In the constructor, replace:
 
 ```typescript
-    this.filterQSource = this.createConstantSource(this.filterConfig.q);
+this.filterQSource = this.createConstantSource(this.filterConfig.q);
 ```
 
 with:
 
 ```typescript
-    this.filterResonance = new FilterResonance(ctxt, this.filterConfig.q);
-    this._filterType = new Observable<FilterType>(this.filterConfig.type);
+this.filterResonance = new FilterResonance(ctxt, this.filterConfig.q);
+this._filterType = new Observable<FilterType>(this.filterConfig.type);
 ```
 
 4. In `voiceConfig`, replace:
@@ -625,14 +631,14 @@ with:
 7. In `destroy()`, replace:
 
 ```typescript
-    this.filterQSource.disconnect();
-    this.filterQSource.stop();
+this.filterQSource.disconnect();
+this.filterQSource.stop();
 ```
 
 with:
 
 ```typescript
-    this.filterResonance.destroy();
+this.filterResonance.destroy();
 ```
 
 - [ ] **Step 5: Verify build + lint pass**
@@ -662,10 +668,12 @@ git commit -m "refactor(engine): filter class with slope stages and shared reson
 **Context:** Wire the engine's `filterType` into the UI. The FilterPanel gets a six-entry flat Toggle (reusing the existing `Toggle.vue`); `Synth.vue` adds the model + watch bridge, mirroring the waveshaper type wiring.
 
 **Files:**
+
 - Modify: `app/src/components/FilterPanel.vue`
 - Modify: `app/src/components/Synth.vue`
 
 **Interfaces:**
+
 - Consumes: `FilterType` from `@axiom/audio-engine` (barrel — Task 1), `engine.value.filterType` getter/setter (Task 3).
 - Produces: `FilterPanel` model `type: FilterType` (required). Labels `LP12 LP24 HP12 HP24 BP Notch`.
 
@@ -793,14 +801,14 @@ watch(filterType, newType => {
 3. Add the binding to the `<FilterPanel>` tag:
 
 ```vue
-      <FilterPanel
-        class="col-span-12 row-start-4 sm:col-span-6 sm:col-start-7 sm:row-start-1 lg:col-span-4"
-        v-model:cutoff="cutoff"
-        v-model:resonance="resonance"
-        v-model:envAmount="envAmount"
-        v-model:tracking="tracking"
-        v-model:type="filterType"
-      />
+<FilterPanel
+  class="col-span-12 row-start-4 sm:col-span-6 sm:col-start-7 sm:row-start-1 lg:col-span-4"
+  v-model:cutoff="cutoff"
+  v-model:resonance="resonance"
+  v-model:envAmount="envAmount"
+  v-model:tracking="tracking"
+  v-model:type="filterType"
+/>
 ```
 
 - [ ] **Step 3: Verify build + lint pass**
@@ -825,6 +833,7 @@ git commit -m "feat(ui): filter type toggle in FilterPanel"
 **Context:** Confirm the whole workspace builds/lints, perform the manual audio checks, and record the accepted performance trade-offs in the codebase concerns doc.
 
 **Files:**
+
 - Modify: `docs/codebase/CONCERNS.md`
 - None else.
 
@@ -833,9 +842,9 @@ git commit -m "feat(ui): filter type toggle in FilterPanel"
 In `docs/codebase/CONCERNS.md`, add three rows to the Top Risks table (after the existing row at line 12):
 
 ```markdown
-| med      | Filter type-switch rebuild touches all 16 voices; hard switch clicks audibly                          | `packages/audio-engine/src/engine/filter.ts` (rebuild/wireChain)                                     | Click + brief re-patch on type change; rebuild is incremental (shape swaps churn no nodes)          | Accepted; consider a crossfade between the old/new chains later                                        |
-| low      | Slope transform chains (Gain + WaveShaper ×3) run even when no slope is used or synth is silent      | `packages/audio-engine/src/engine/filter-resonance.ts`                                              | Trivial block cost, always-on                                                                      | Accepted; lazy-bridging the chains is YAGNI                                                            |
-| low      | WaveShaper Q-curve resolution degrades below Q < 0.5                                                | `packages/audio-engine/src/engine/filter-resonance.ts` (buildCurve)                                 | Invisible within the Res-knob range (0.5–20); relevant if Q is ever modulated toward 0              | Document; re-map curve if Q-modulation lands there                                                    |
+| med | Filter type-switch rebuild touches all 16 voices; hard switch clicks audibly | `packages/audio-engine/src/engine/filter.ts` (rebuild/wireChain) | Click + brief re-patch on type change; rebuild is incremental (shape swaps churn no nodes) | Accepted; consider a crossfade between the old/new chains later |
+| low | Slope transform chains (Gain + WaveShaper ×3) run even when no slope is used or synth is silent | `packages/audio-engine/src/engine/filter-resonance.ts` | Trivial block cost, always-on | Accepted; lazy-bridging the chains is YAGNI |
+| low | WaveShaper Q-curve resolution degrades below Q < 0.5 | `packages/audio-engine/src/engine/filter-resonance.ts` (buildCurve) | Invisible within the Res-knob range (0.5–20); relevant if Q is ever modulated toward 0 | Document; re-map curve if Q-modulation lands there |
 ```
 
 - [ ] **Step 2: Clean build + lint from repo root**

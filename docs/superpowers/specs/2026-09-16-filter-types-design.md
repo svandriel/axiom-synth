@@ -29,21 +29,31 @@ One flat type string. Each value maps internally to
 
 ```ts
 type FilterType =
-  | 'lowpass12' | 'lowpass24' | 'lowpass36' | 'lowpass48'
-  | 'highpass12' | 'highpass24' | 'highpass36' | 'highpass48'
-  | 'bandpass' | 'notch'
-  | 'lowshelf' | 'highshelf' | 'peaking' | 'allpass';
+  | 'lowpass12'
+  | 'lowpass24'
+  | 'lowpass36'
+  | 'lowpass48'
+  | 'highpass12'
+  | 'highpass24'
+  | 'highpass36'
+  | 'highpass48'
+  | 'bandpass'
+  | 'notch'
+  | 'lowshelf'
+  | 'highshelf'
+  | 'peaking'
+  | 'allpass';
 ```
 
 Mapping (`filterTypeToSpec`):
 
-| Public type               | shape                  | stages |
-| ------------------------- | ---------------------- | ------ |
-| `lowpass12` … `lowpass48` | `lowpass`              | 1..4   |
-| `highpass12` … `highpass48` | `highpass`           | 1..4   |
-| `bandpass`                | `bandpass`             | 1      |
-| `notch`                   | `notch`                | 1      |
-| `lowshelf`/`highshelf`/`peaking`/`allpass` | same           | 1      |
+| Public type                                | shape      | stages |
+| ------------------------------------------ | ---------- | ------ |
+| `lowpass12` … `lowpass48`                  | `lowpass`  | 1..4   |
+| `highpass12` … `highpass48`                | `highpass` | 1..4   |
+| `bandpass`                                 | `bandpass` | 1      |
+| `notch`                                    | `notch`    | 1      |
+| `lowshelf`/`highshelf`/`peaking`/`allpass` | same       | 1      |
 
 Slopes exist only for lowpass and highpass. Bandpass/notch/shelves/allpass
 have no meaning as chained slopes: a chained bandpass narrows bandwidth, a
@@ -73,11 +83,11 @@ API:
 
 ```ts
 class FilterResonance implements Destroyable {
-  constructor(ctxt: AudioContext, startQ: number)
-  get q(): number                                 // current Q value
-  set q(v: number)                                // ramps source.offset over 10ms
-  stageQFor(slope: 1 | 2 | 3 | 4): AudioNode      // node whose output carries q^(1/slope)
-  destroy(): void
+  constructor(ctxt: AudioContext, startQ: number);
+  get q(): number; // current Q value
+  set q(v: number); // ramps source.offset over 10ms
+  stageQFor(slope: 1 | 2 | 3 | 4): AudioNode; // node whose output carries q^(1/slope)
+  destroy(): void;
 }
 ```
 
@@ -85,8 +95,8 @@ Stages wire Q with plain Web Audio connect/disconnect, so no
 attach/detach helper methods exist:
 
 ```ts
-resonance.stageQFor(slope).connect(stage.Q);      // during rebuild
-stage.Q.disconnect();                             // during stage teardown
+resonance.stageQFor(slope).connect(stage.Q); // during rebuild
+stage.Q.disconnect(); // during stage teardown
 ```
 
 ### Why WaveShaper
@@ -114,10 +124,10 @@ Constructor injection replaces the external param wiring:
 
 ```ts
 new Filter(ctxt, {
-  cutoff: ConstantSourceNode,       // shared engine source
-  resonance: FilterResonance,       // shared Q transform
-  type: Observable<FilterType>,     // shared engine observable
-})
+  cutoff: ConstantSourceNode, // shared engine source
+  resonance: FilterResonance, // shared Q transform
+  type: Observable<FilterType>, // shared engine observable
+});
 ```
 
 Structure:
