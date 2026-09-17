@@ -24,7 +24,7 @@
         @update:model-value="(v: number) => setDepth(i, v)"
         :label="depthLabels[i]!"
         size="md"
-        :from="-1"
+        :from="driveOnly(i) ? 0 : -1"
         :to="1"
         :default="0"
         :format="depthFormat"
@@ -76,6 +76,10 @@ const waveform = computed({
 
 function setDepth(index: number, value: number): void {
   config.value.depths[index] = value;
+}
+
+function driveOnly(index: number): boolean {
+  return depthLabels[index] === 'DRV';
 }
 
 function rateFormat(v: number): string {
