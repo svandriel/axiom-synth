@@ -1,3 +1,3 @@
-export function freqOf(semi: number) {
-  return 261.6256 * Math.pow(2, semi / 12);
+export function freqOf(note: number) {
+  return 440 * Math.pow(2, (note - 69) / 12);
 }
