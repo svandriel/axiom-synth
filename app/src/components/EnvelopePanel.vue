@@ -3,7 +3,7 @@
     <template #top-right>
       <Toggle :values="envelopes" v-model="current" />
     </template>
-    <div class="mt-4 grid grid-cols-4 grid-rows-2 gap-4">
+    <div class="mt-4 grid grid-cols-4 grid-rows-2 gap-x-4 gap-y-2">
       <Knob
         class="col-start-1 row-start-1"
         size="sm"

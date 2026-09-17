@@ -1,6 +1,14 @@
 <template>
   <div
-    class="knob-block flex touch-none flex-col items-center gap-2"
+    class="knob-block flex touch-none flex-col items-center gap-1.5 text-2xs"
+    :class="{
+      'opacity-50': props.disabled,
+      'w-20': size === 'lg',
+      'w-14': size === 'md',
+      'w-12': size === 'sm',
+      'w-10': size === 'xs',
+    }"
+    :data-size="size"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
     @pointerup="release"
@@ -9,12 +17,14 @@
     @lostpointercapture="release"
   >
     <div
-      class="knob relative cursor-ns-resize rounded-full shadow-out-sm duration-200 ease-in-out outline-none dark:shadow-out-sm-dark"
+      class="knob relative rounded-full shadow-out-sm duration-200 ease-in-out outline-none dark:shadow-out-sm-dark"
       :class="{
         active,
+        'cursor-ns-resize': !props.disabled,
         'h-18 w-18': size === 'lg',
         'h-12 w-12': size === 'md',
         'h-8 w-8': size === 'sm',
+        'h-5 w-5': size === 'xs',
       }"
       role="slider"
       tabindex="0"
@@ -22,19 +32,19 @@
       :aria-valuemin="from"
       :aria-valuemax="to"
       :aria-valuenow="value"
-      :data-size="size"
       ref="knob"
       :style="{
         '--angle': `${angle}deg`,
         '--sweep-start': `${sweepStart}deg`,
         '--sweep': `${sweep}deg`,
+        '--arc-thickness': `${arcThickness}px`,
       }"
     >
       <div class="arc absolute rounded-full"></div>
       <div class="pointer absolute"></div>
     </div>
     <div
-      class="knob-label mt-0 text-2xs tracking-wide text-primary-500 dark:text-primary-400"
+      class="knob-label mt-0 tracking-wide text-primary-500 dark:text-primary-400"
     >
       <span v-if="!showValue && active">
         {{ format(value) }}
@@ -45,7 +55,7 @@
     </div>
     <div
       v-if="showValue"
-      class="knob-value rounded-lg p-1 font-mono text-2xs text-primary-500 shadow-in-sm dark:text-primary-300 dark:shadow-in-sm-dark"
+      class="knob-value rounded-lg p-1 font-mono text-primary-500 shadow-in-sm dark:text-primary-300 dark:shadow-in-sm-dark"
     >
       {{ displayValue }}
     </div>
@@ -64,8 +74,9 @@ const props = withDefaults(
     tickSize?: number;
     logBase?: number;
     format?: (value: number) => string;
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'xs' | 'sm' | 'md' | 'lg';
     showValue?: boolean;
+    disabled?: boolean;
   }>(),
   {
     from: 0,
@@ -75,6 +86,7 @@ const props = withDefaults(
     format: (value: number) => `${value}`,
     size: 'lg',
     showValue: true,
+    disabled: false,
   },
 );
 const angleMin = -135; // corresponds to normalized 0
@@ -108,6 +120,14 @@ const sweepStart = computed(() => {
 const sweep = computed(() => {
   const valueAngle = convertNormalizedToAngle(normalizedValue.value);
   return Math.abs(valueAngle - sweepZero);
+});
+
+const arcThickness = computed(() => {
+  if (props.size === 'xs') {
+    return 2;
+  } else {
+    return 4;
+  }
 });
 
 // Converts a value from the component's range to a normalized 0..1 range
@@ -147,7 +167,7 @@ let startY = 0;
 let startV = 0;
 
 function onPointerDown(e: PointerEvent) {
-  if (!knob.value) return;
+  if (props.disabled || !knob.value) return;
   startY = e.clientY;
   startV = normalizedValue.value;
   active.value = true;
@@ -156,7 +176,7 @@ function onPointerDown(e: PointerEvent) {
 }
 
 function onPointerMove(e: PointerEvent) {
-  if (!active.value) return;
+  if (props.disabled || !active.value) return;
   var dy = startY - e.clientY;
   set(startV + dy / (e.shiftKey ? 600 : 180));
 }
@@ -223,7 +243,8 @@ function resetToDefault() {
     inset 2px 2px 4px var(--color-primary-400),
     inset -2px -2px 4px var(--color-primary-100);
 }
-.knob[data-size='sm']::before {
+.knob-block[data-size='xs'] .knob::before,
+.knob-block[data-size='sm'] .knob::before {
   display: none;
 }
 
@@ -273,14 +294,20 @@ function resetToDefault() {
 
   transition: transform 0.01s ease-in-out;
 }
-.knob[data-size='sm'] .pointer {
+.knob-block[data-size='xs'] .knob .pointer {
+  width: 1.5px;
+  height: 8px;
+  transform: translateY(-100%) rotate(var(--angle)) translateY(-1px);
+}
+
+.knob-block[data-size='sm'] .knob .pointer {
   width: 2px;
   height: 12px;
   transform: translateY(-100%) rotate(var(--angle)) translateY(-2px);
 }
 
 .knob .arc {
-  inset: -6px;
+  inset: calc(-2 * var(--arc-thickness));
   background: conic-gradient(
     from var(--sweep-start),
     var(--color-accent-300) 0deg,
@@ -289,7 +316,7 @@ function resetToDefault() {
   );
   mask: radial-gradient(
     farthest-side,
-    transparent calc(100% - 4px),
+    transparent calc(100% - var(--arc-thickness)),
     #000 calc(100% - 3px)
   );
   opacity: 0.9;
@@ -301,10 +328,10 @@ function resetToDefault() {
   text-align: center;
 }
 
-.knob[data-size='md']::before {
+.knob-block[data-size='md'] .knob::before {
   inset: 5px;
 }
-.knob[data-size='md'] .pointer {
+.knob-block[data-size='md'] .knob .pointer {
   width: 3px;
   height: 15px;
   transform: translateY(-100%) rotate(var(--angle)) translateY(-6px);
