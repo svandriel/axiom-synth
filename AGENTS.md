@@ -41,3 +41,4 @@ the relevant file before deep work:
 | `INTEGRATIONS.md` | CI/CD, GitHub Pages, localStorage          |
 | `TESTING.md`      | Test setup (none — build is the gate)      |
 | `CONCERNS.md`     | Known issues, tech debt, risks             |
+| `RULES.md`        | Locked architectural rules (living doc)    |
