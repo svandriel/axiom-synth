@@ -1,5 +1,8 @@
 # Architecture
 
+Hard rules live in `RULES.md`. If a pattern documented here conflicts with a
+rule there, the rule wins.
+
 ## Core Sections (Required)
 
 ### 1) Architectural Style
