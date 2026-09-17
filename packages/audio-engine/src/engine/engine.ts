@@ -402,8 +402,12 @@ export class AudioEngine implements Destroyable {
 
     for (const target of LFO_TARGETS) {
       const targetIndex = LFO_TARGET_INDEX[target];
+      const depth =
+        target === 'drive'
+          ? Math.max(0, config.depths[targetIndex]!)
+          : config.depths[targetIndex]!;
       this.lfoDepthSources[index]![targetIndex]!.offset.linearRampToValueAtTime(
-        config.depths[targetIndex]! * LFO_DEPTH_SCALES[target],
+        depth * LFO_DEPTH_SCALES[target],
         now + 0.01,
       );
     }
