@@ -1,6 +1,6 @@
 <template>
   <Panel label="Scope">
-    <div class="mt-3 flex flex-row gap-4">
+    <div class="flex flex-row gap-4">
       <VUMeter :get-value="() => engine.meterLevel" />
       <div class="relative h-full w-full overflow-hidden rounded-2xl">
         <canvas
