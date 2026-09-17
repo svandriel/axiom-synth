@@ -22,7 +22,7 @@ unit.
 
 Reference: `Filter.cutoff`/`drive`/`keytrack`/`detune`
 (`packages/audio-engine/src/engine/filter.ts`), `Oscillator.frequency`/`detune`/
-`gain` (post-refactor `packages/audio-engine/src/engine/oscillator.ts`).
+`gain` (`packages/audio-engine/src/engine/oscillator.ts`).
 Design: `docs/superpowers/specs/2026-09-17-oscillator-audio-param-jacks-design.md`.
 
 ### 2. Static modulation patching lives in ModulationRouter
