@@ -100,7 +100,7 @@ export class AxiomVoice extends Voice implements Destroyable {
 
     // Wire LFO non-osc targets (cutoff, amp, drive)
     for (const lfo of this.lfos) {
-      lfo.targetOutput(LFO_TARGET_INDEX.cutoff).connect(this.filter.cutoff);
+      lfo.targetOutput(LFO_TARGET_INDEX.cutoff).connect(this.filter.detune);
       lfo.targetOutput(LFO_TARGET_INDEX.amp).connect(this.ampModGain.gain);
       lfo.targetOutput(LFO_TARGET_INDEX.drive).connect(this.waveShaper.drive);
     }
