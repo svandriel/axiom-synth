@@ -9,7 +9,7 @@
         label="Rate"
         size="md"
         :from="0.01"
-        :to="30"
+        :to="220"
         :log-base="2"
         :default="2"
         :format="rateFormat"
