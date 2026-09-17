@@ -77,7 +77,10 @@ export class AxiomVoice extends Voice implements Destroyable {
     this.waveShaper.output.connect(this.filter.input);
     this.filter.connect(this.ampEnvelope.node);
 
-    config.waveshaperDrive.connect(this.waveShaper.drive);
+    this.modulationRouter.patch(
+      this.config.waveshaperDrive,
+      this.waveShaper.drive,
+    );
 
     // Create LFO instances — depth gains are wired to shared depth sources
     this.lfos = Array.from(
@@ -187,6 +190,8 @@ export class AxiomVoice extends Voice implements Destroyable {
       this.oscillators.forEach(osc => osc.stop(now));
       this.lfos.forEach(lfo => lfo.stop());
     } else {
+      // ampEnvelope.node <-> ampModGain is a per-note audio-path switch,
+      // intentionally not patched (ModulationRouter is static node-to-param only).
       this.ampEnvelope.node.connect(this.ampModGain);
     }
 
