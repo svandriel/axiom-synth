@@ -1,5 +1,4 @@
 import type { FixedArray } from '../types';
-import { Observable } from '../utils/observable';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
 import {
   LFO_COUNT,
@@ -14,6 +13,7 @@ import { Envelope } from './envelope';
 import { Filter } from './filter';
 import { freqOf } from './helpers';
 import { Lfo } from './lfo';
+import { ModulationRouter } from './modulation-router';
 import { Oscillator } from './oscillator';
 import { Voice } from './voice';
 import { Waveshaper } from './waveshaper';
@@ -29,7 +29,9 @@ export class AxiomVoice extends Voice implements Destroyable {
   private readonly filter: Filter;
   private readonly oscillatorNormalizeGain: GainNode;
   private readonly waveShaper: Waveshaper;
-  private readonly waveformUnsubscribers: Array<() => void> = [];
+  private readonly modulationRouter: ModulationRouter;
+  private oscillatorWaveformSubscription: { unsubscribe: () => void } | null =
+    null;
   private readonly lfos: FixedArray<Lfo, LfoCount>;
   private readonly ampModGain: GainNode;
   private voiceDestroyed = false;
@@ -43,6 +45,8 @@ export class AxiomVoice extends Voice implements Destroyable {
 
     this.config = config;
 
+    this.modulationRouter = new ModulationRouter();
+
     this.ampEnvelope = new Envelope(ctxt);
     this.filterEnvelope = new Envelope(ctxt);
     this.waveShaper = new Waveshaper(ctxt, config.waveshaperCurve);
@@ -52,13 +56,17 @@ export class AxiomVoice extends Voice implements Destroyable {
       type: this.config.filterType,
     });
 
-    this.config.filterCutoff.connect(this.filter.cutoff);
+    this.modulationRouter.patch(this.config.filterCutoff, this.filter.cutoff);
 
-    // Filter Env Amount -> Filter Envelope -> Filter Detune (fans out to stages)
+    // filterEnvAmount -> filterEnvelope.node is a node-to-node signal wire,
+    // intentionally not patched (ModulationRouter is node-to-param only).
     this.config.filterEnvAmount.connect(this.filterEnvelope.node);
     this.filterEnvelope.node.connect(this.filter.detune);
 
-    this.config.filterKeyTrack.connect(this.filter.keytrack);
+    this.modulationRouter.patch(
+      this.config.filterKeyTrack,
+      this.filter.keytrack,
+    );
 
     this.oscillatorNormalizeGain = ctxt.createGain();
     this.oscillatorNormalizeGain.gain.value = 1 / OSCILLATOR_COUNT;
@@ -83,16 +91,6 @@ export class AxiomVoice extends Voice implements Destroyable {
         ),
     ) as FixedArray<Lfo, LfoCount>;
 
-    // Collect per-osc mod inputs from LFO depthGains
-    const oscModInputs: FixedArray<
-      FixedArray<AudioNode, LfoCount>,
-      OscillatorCount
-    > = [
-      this.lfos.map(lfo => lfo.targetOutput(LFO_TARGET_INDEX.osc1)),
-      this.lfos.map(lfo => lfo.targetOutput(LFO_TARGET_INDEX.osc2)),
-      this.lfos.map(lfo => lfo.targetOutput(LFO_TARGET_INDEX.osc3)),
-    ] as FixedArray<FixedArray<AudioNode, LfoCount>, OscillatorCount>;
-
     // Create ampModGain (bias 1.0, sits between envelope and sink)
     this.ampModGain = ctxt.createGain();
     this.ampModGain.gain.value = 1.0;
@@ -100,34 +98,58 @@ export class AxiomVoice extends Voice implements Destroyable {
 
     // Wire LFO non-osc targets (cutoff, amp, drive)
     for (const lfo of this.lfos) {
-      lfo.targetOutput(LFO_TARGET_INDEX.cutoff).connect(this.filter.detune);
-      lfo.targetOutput(LFO_TARGET_INDEX.amp).connect(this.ampModGain.gain);
-      lfo.targetOutput(LFO_TARGET_INDEX.drive).connect(this.waveShaper.drive);
+      this.modulationRouter.patch(
+        lfo.targetOutput(LFO_TARGET_INDEX.cutoff),
+        this.filter.detune,
+      );
+      this.modulationRouter.patch(
+        lfo.targetOutput(LFO_TARGET_INDEX.amp),
+        this.ampModGain.gain,
+      );
+      this.modulationRouter.patch(
+        lfo.targetOutput(LFO_TARGET_INDEX.drive),
+        this.waveShaper.drive,
+      );
     }
 
     this.oscillators = new Array(OSCILLATOR_COUNT)
       .fill(null)
       .map((_value, index) => {
-        const waveForm = new Observable(
-          this.config.oscillatorWaveForms.value[index as OscillatorIndex],
+        const osc = new Oscillator(ctxt);
+        this.modulationRouter.patch(
+          this.config.oscillatorDetuneSources[index as OscillatorIndex],
+          osc.detune,
         );
-        const { unsubscribe } = this.config.oscillatorWaveForms.subscribe(
-          newValue => {
-            waveForm.value = newValue[index as OscillatorIndex];
-          },
+        this.modulationRouter.patch(
+          this.config.oscillatorGainSources[index as OscillatorIndex],
+          osc.gain,
         );
-        this.waveformUnsubscribers.push(unsubscribe);
-        const osc = new Oscillator(ctxt, {
-          detuneSource:
-            this.config.oscillatorDetuneSources[index as OscillatorIndex],
-          gainSource:
-            this.config.oscillatorGainSources[index as OscillatorIndex],
-          waveForm,
-          modInputs: oscModInputs[index]!,
-        });
         osc.connect(oscillatorAudioSink);
         return osc;
       }) as FixedArray<Oscillator, OscillatorCount>;
+
+    // LFO oscN depth outputs patch into each oscillator's detune jack.
+    for (const lfo of this.lfos) {
+      this.modulationRouter.patch(
+        lfo.targetOutput(LFO_TARGET_INDEX.osc1),
+        this.oscillators[0]!.detune,
+      );
+      this.modulationRouter.patch(
+        lfo.targetOutput(LFO_TARGET_INDEX.osc2),
+        this.oscillators[1]!.detune,
+      );
+      this.modulationRouter.patch(
+        lfo.targetOutput(LFO_TARGET_INDEX.osc3),
+        this.oscillators[2]!.detune,
+      );
+    }
+
+    this.oscillatorWaveformSubscription =
+      this.config.oscillatorWaveForms.subscribe(newValue => {
+        this.oscillators.forEach((osc, index) => {
+          osc.waveform = newValue[index as OscillatorIndex];
+        });
+      });
   }
 
   override internalNoteOn(
@@ -194,12 +216,9 @@ export class AxiomVoice extends Voice implements Destroyable {
     }
     this.voiceDestroyed = true;
     this.onSoundStop();
+    this.modulationRouter.destroy();
     this.config.filterEnvAmount.disconnect(this.filterEnvelope.node);
-    this.config.filterKeyTrack.disconnect(this.filter.keytrack);
-    this.config.filterCutoff.disconnect(this.filter.cutoff);
-    this.config.waveshaperDrive.disconnect(this.waveShaper.drive);
-    this.waveformUnsubscribers.forEach(unsubscribe => unsubscribe());
-    this.waveformUnsubscribers.length = 0;
+    this.oscillatorWaveformSubscription?.unsubscribe();
     this.ampEnvelope.destroy();
     this.filter.destroy();
     this.filterEnvelope.destroy();
