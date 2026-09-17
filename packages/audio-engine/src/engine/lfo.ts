@@ -40,6 +40,10 @@ export class Lfo implements Destroyable {
 
     const osc = this.ctxt.createOscillator();
     osc.type = this.waveForm.value;
+    // AudioParams sum connected inputs with their intrinsic value; an
+    // OscillatorNode defaults to 440 Hz, so zero it so the rate source
+    // becomes the LFO frequency outright.
+    osc.frequency.setValueAtTime(0, now);
 
     this.rateSource.connect(osc.frequency);
     for (const gain of this.depthGains) {
