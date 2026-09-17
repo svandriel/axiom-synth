@@ -3,7 +3,7 @@
     class="synth b-3 min-h-100 rounded-2xl bg-default p-3 shadow-out dark:bg-default-dark dark:shadow-out-dark"
   >
     <div
-      class="grid grid-cols-12 grid-rows-8 gap-3 sm:grid-rows-5 lg:grid-rows-3"
+      class="grid grid-cols-12 grid-rows-9 gap-3 sm:grid-rows-6 lg:grid-rows-3"
     >
       <OscillatorPanel
         class="col-span-12 row-start-1 sm:col-span-6 lg:col-span-4"
@@ -41,12 +41,12 @@
         :curve="engine.shaperCurve"
       />
       <LfoPanel
-        class="col-span-12 row-start-7 sm:col-span-12 sm:col-start-1 sm:row-start-4 lg:col-span-4 lg:row-start-3"
+        class="col-span-12 row-span-2 row-start-7 sm:col-span-12 sm:col-start-1 sm:row-start-4 lg:col-span-4 lg:row-start-2"
         v-model="activeLfo"
         v-model:selected-lfo="selectedLfo"
       />
       <ScopePanel
-        class="col-span-12 row-start-8 sm:col-span-12 sm:col-start-1 sm:row-start-5 lg:col-span-4 lg:col-start-5 lg:row-start-3"
+        class="col-span-12 row-start-9 sm:col-span-12 sm:col-start-1 sm:row-start-6 lg:col-span-4 lg:col-start-5 lg:row-start-3"
       />
     </div>
 
