@@ -3,11 +3,10 @@
     <template #top-right>
       <Toggle v-model="type" :values="types" />
     </template>
-    <div class="mt-3 flex flex-row justify-between gap-4">
+    <div class="flex flex-row justify-between gap-4">
       <Knob
         label="Cutoff"
         v-model="cutoff"
-        class="mt-3"
         size="md"
         :from="20"
         :to="20000"
@@ -18,7 +17,6 @@
       <Knob
         label="Res"
         v-model="resonance"
-        class="mt-3"
         size="md"
         :from="0"
         :to="1"
@@ -28,7 +26,6 @@
       <Knob
         label="Env Amt"
         v-model="envAmount"
-        class="mt-3"
         size="md"
         :from="-1"
         :to="1"
@@ -38,7 +35,6 @@
       <Knob
         label="Tracking"
         v-model="tracking"
-        class="mt-3"
         size="md"
         :from="0"
         :to="2"

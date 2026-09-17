@@ -3,7 +3,7 @@
     <template #top-right>
       <Toggle v-model="selectedLfo" :values="lfoSlots" />
     </template>
-    <div class="mt-3 flex flex-row gap-4">
+    <div class="flex flex-row gap-4">
       <Knob
         v-model="rateHz"
         label="Rate"
