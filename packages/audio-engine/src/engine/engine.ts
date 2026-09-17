@@ -77,15 +77,15 @@ export class AudioEngine implements Destroyable {
     {
       octave: 0,
       semi: 0,
-      detune: -10,
+      detune: 5,
       waveform: 'sawtooth',
       gain: 1,
     },
     {
       octave: 0,
       semi: 0,
-      detune: 16.2,
-      waveform: 'sawtooth',
+      detune: -5,
+      waveform: 'square',
       gain: 1,
     },
     {
@@ -108,11 +108,11 @@ export class AudioEngine implements Destroyable {
   };
 
   public readonly filterConfig: FilterConfig = {
-    type: 'lowpass12',
-    frequency: 350,
+    type: 'lowpass24',
+    frequency: 360,
     q: 6,
-    envAmount: 3600, // cents, -9600 to 9600
-    tracking: 0.5,
+    envAmount: 4800, // cents, -9600 to 9600
+    tracking: 0.9,
   };
 
   public readonly filterEnvelope: EnvelopeConfig = {
@@ -126,7 +126,7 @@ export class AudioEngine implements Destroyable {
   };
 
   private readonly waveshaperConfig: WaveshaperConfig = {
-    distortion: 0,
+    distortion: 50,
     drive: 0,
     type: 'soft-algebraic',
   };
@@ -153,8 +153,8 @@ export class AudioEngine implements Destroyable {
   >;
 
   public readonly lfoConfigs: FixedArray<LfoConfig, LfoCount> = [
-    { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
-    { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
+    { rateHz: 2, waveform: 'sine', depths: [-0.11, 0.09, 0, 0, -0.1, 0] },
+    { rateHz: 3.47, waveform: 'sine', depths: [0, 0, 0, 0.2, 0, 0] },
     { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
     { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
   ];
@@ -172,7 +172,7 @@ export class AudioEngine implements Destroyable {
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.82;
     this.dry = ctxt.createGain();
-    this.dry.gain.value = 0.9;
+    this.dry.gain.value = 0.8;
 
     this.comp = ctxt.createDynamicsCompressor();
 
