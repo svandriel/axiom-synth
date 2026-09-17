@@ -172,7 +172,7 @@ export class AudioEngine implements Destroyable {
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.82;
     this.dry = ctxt.createGain();
-    this.dry.gain.value = 0.8;
+    this.dry.gain.value = 0.6;
 
     this.comp = ctxt.createDynamicsCompressor();
 
