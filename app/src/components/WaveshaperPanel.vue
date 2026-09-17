@@ -3,7 +3,7 @@
     <template #top-right>
       <Toggle v-model="type" :values="types" />
     </template>
-    <div class="mt-4 grid grid-cols-4 gap-4">
+    <div class="grid grid-cols-4 gap-4">
       <Knob
         class="col-start-1 row-start-1"
         v-model="distortionAmount"

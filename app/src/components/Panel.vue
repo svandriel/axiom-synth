@@ -6,7 +6,9 @@
       </div>
       <slot name="top-right" />
     </div>
-    <slot />
+    <div class="mt-3">
+      <slot />
+    </div>
   </div>
 </template>
 <script setup lang="ts">

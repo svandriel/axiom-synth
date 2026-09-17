@@ -1,6 +1,6 @@
 <template>
   <div
-    class="toggle-container inline-flex gap-1 rounded-md px-1 py-1 shadow-in-xs dark:shadow-in-xs-dark"
+    class="inline-flex gap-1 rounded-md px-1 py-1 shadow-in-xs dark:shadow-in-xs-dark"
   >
     <div v-for="value in values" :key="value.id">
       <button
