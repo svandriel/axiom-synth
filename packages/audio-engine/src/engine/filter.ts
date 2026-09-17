@@ -112,7 +112,7 @@ export class Filter implements Destroyable {
   }
 
   noteOn(noteNumber: number, now: number): void {
-    this.keytrackSource.offset.setValueAtTime(100 * noteNumber, now);
+    this.keytrackSource.offset.setValueAtTime(100 * (noteNumber - 69), now);
   }
 
   connect(destination: AudioNode): void {
