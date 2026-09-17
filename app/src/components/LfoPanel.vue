@@ -14,7 +14,7 @@
         :default="2"
         :format="rateFormat"
       />
-      <Toggle v-model="waveform" :values="waveforms" class="mt-3" />
+      <Toggle v-model="waveform" :values="waveforms" class="mt-3 self-start" />
     </div>
     <div class="mt-3 grid grid-cols-3 gap-4">
       <Knob
