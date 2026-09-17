@@ -1,8 +1,9 @@
 import type { EnvelopeConfig, FixedArray, WaveFormType } from '../types';
 import type { Observable } from '../utils/observable';
-import type { OscillatorCount } from './constants';
+import type { LfoCount, LfoTargetCount, OscillatorCount } from './constants';
 import type { FilterType } from './filter';
 import type { FilterResonance } from './filter-resonance';
+import type { LfoWaveformType } from '../types/lfo-config';
 import type { WaveshaperCurve } from './waveshaper-curve';
 
 export interface AxiomVoiceConfig {
@@ -18,4 +19,10 @@ export interface AxiomVoiceConfig {
   oscillatorWaveForms: Observable<FixedArray<WaveFormType, OscillatorCount>>;
   waveshaperCurve: WaveshaperCurve;
   waveshaperDrive: ConstantSourceNode;
+  lfoWaveforms: FixedArray<Observable<LfoWaveformType>, LfoCount>;
+  lfoRateSources: FixedArray<ConstantSourceNode, LfoCount>;
+  lfoDepthSources: FixedArray<
+    FixedArray<ConstantSourceNode, LfoTargetCount>,
+    LfoCount
+  >;
 }
