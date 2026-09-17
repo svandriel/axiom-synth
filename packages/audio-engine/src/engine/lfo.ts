@@ -2,11 +2,17 @@ import type { FixedArray } from '../types';
 import type { Observable } from '../utils/observable';
 import type { LfoWaveformType } from '../types/lfo-config';
 import type { Destroyable } from './destroyable';
-import type { LfoTargetCount, LfoTargetIndex } from './constants';
+import {
+  LFO_TARGET_INDEX,
+  LFO_TARGETS,
+  type LfoTargetCount,
+  type LfoTargetIndex,
+} from './constants';
 
 export class Lfo implements Destroyable {
   private osc: OscillatorNode | null = null;
   private readonly depthGains: FixedArray<GainNode, LfoTargetCount>;
+  private readonly driveWaveShaper: WaveShaperNode;
   private readonly waveForm: Observable<LfoWaveformType>;
   private readonly rateSource: ConstantSourceNode;
   private readonly ctxt: AudioContext;
@@ -22,6 +28,15 @@ export class Lfo implements Destroyable {
     this.ctxt = ctxt;
     this.waveForm = waveForm;
     this.rateSource = rateSource;
+
+    // The drive target modulates a gain (Waveshaper pre-gain). Modulating
+    // it with the bipolar LFO signal swings the gain through zero —
+    // polarity flip + silence side-effects. Unipolarize the signal for
+    // that target only: a 2-point linear WaveShaper curve remaps the
+    // bipolar oscillator [-1,1] to [0,1], so the drive gain rides
+    // [base, base + depth*scale] instead of dipping negative.
+    this.driveWaveShaper = ctxt.createWaveShaper();
+    this.driveWaveShaper.curve = new Float32Array([0, 1]);
 
     this.depthGains = depthSources.map(src => {
       const gain = ctxt.createGain();
@@ -46,9 +61,12 @@ export class Lfo implements Destroyable {
     osc.frequency.setValueAtTime(0, now);
 
     this.rateSource.connect(osc.frequency);
-    for (const gain of this.depthGains) {
-      osc.connect(gain);
+    for (const target of LFO_TARGETS) {
+      if (target === 'drive') continue;
+      osc.connect(this.depthGains[LFO_TARGET_INDEX[target]]!);
     }
+    osc.connect(this.driveWaveShaper);
+    this.driveWaveShaper.connect(this.depthGains[LFO_TARGET_INDEX.drive]!);
 
     this.waveFormUnsubscribe = this.waveForm.subscribe(v => {
       osc.type = v;
@@ -75,9 +93,12 @@ export class Lfo implements Destroyable {
     this.waveFormUnsubscribe?.();
     this.waveFormUnsubscribe = null;
     this.rateSource.disconnect(osc.frequency);
-    for (const gain of this.depthGains) {
-      osc.disconnect(gain);
+    for (const target of LFO_TARGETS) {
+      if (target === 'drive') continue;
+      osc.disconnect(this.depthGains[LFO_TARGET_INDEX[target]]!);
     }
+    osc.disconnect(this.driveWaveShaper);
+    this.driveWaveShaper.disconnect(this.depthGains[LFO_TARGET_INDEX.drive]!);
   }
 
   destroy(): void {
@@ -87,5 +108,6 @@ export class Lfo implements Destroyable {
     for (const gain of this.depthGains) {
       gain.disconnect();
     }
+    this.driveWaveShaper.disconnect();
   }
 }
