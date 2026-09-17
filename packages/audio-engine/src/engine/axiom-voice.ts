@@ -116,6 +116,8 @@ export class AxiomVoice extends Voice implements Destroyable {
       .fill(null)
       .map((_value, index) => {
         const osc = new Oscillator(ctxt);
+        osc.waveform =
+          this.config.oscillatorWaveForms.value[index as OscillatorIndex];
         this.modulationRouter.patch(
           this.config.oscillatorDetuneSources[index as OscillatorIndex],
           osc.detune,
