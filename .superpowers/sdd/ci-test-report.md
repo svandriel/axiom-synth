@@ -11,7 +11,7 @@
 
 Run on 2026-09-18:
 
-- `pnpm test`: passed, 2 test files and 7 tests.
+- `pnpm test`: passed, 2 test files and 8 tests.
 - `pnpm build`: passed for all three buildable workspace packages.
 - `pnpm lint`: passed, all files matched Prettier style.
 - `git diff --check`: passed.
