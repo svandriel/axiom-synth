@@ -1,9 +1,26 @@
 export type FakeAudioDestination = FakeAudioNode | FakeAudioParam;
 
 export interface FakeConnection {
-  source: FakeAudioNode;
-  destination: FakeAudioDestination;
+  readonly source: FakeAudioNode;
+  readonly destination: FakeAudioDestination;
 }
+
+export type FakeOperation =
+  | {
+      readonly type: 'connect';
+      readonly source: FakeAudioNode;
+      readonly destination: FakeAudioDestination;
+    }
+  | {
+      readonly type: 'disconnect';
+      readonly source: FakeAudioNode;
+      readonly destination?: FakeAudioDestination;
+    }
+  | {
+      readonly type: 'stop';
+      readonly source: FakeOscillatorNode | FakeConstantSourceNode;
+      readonly when?: number;
+    };
 
 export class FakeAudioParam {
   value = 0;
@@ -25,9 +42,13 @@ export class FakeAudioParam {
 }
 
 export class FakeAudioNode {
-  readonly connections: FakeConnection[] = [];
+  private readonly activeConnections: FakeConnection[] = [];
   throwOnDisconnect = false;
   readonly context: FakeAudioContext;
+
+  get connections(): readonly FakeConnection[] {
+    return this.activeConnections;
+  }
 
   constructor(context: FakeAudioContext) {
     this.context = context;
@@ -35,8 +56,13 @@ export class FakeAudioNode {
 
   connect(destination: FakeAudioDestination): void {
     const connection = { source: this, destination };
-    this.connections.push(connection);
+    this.activeConnections.push(connection);
     this.context.connections.push(connection);
+    this.context.record({
+      type: 'connect',
+      source: this,
+      destination,
+    });
   }
 
   disconnect(destination?: FakeAudioDestination): void {
@@ -44,11 +70,19 @@ export class FakeAudioNode {
       throw new Error('FakeAudioNode disconnect failed');
     }
 
+    this.context.record({
+      type: 'disconnect',
+      source: this,
+      destination,
+    });
     const matches = (connection: FakeConnection) =>
       connection.source === this &&
       (destination === undefined || connection.destination === destination);
-    for (const connection of this.connections.filter(matches)) {
-      this.connections.splice(this.connections.indexOf(connection), 1);
+    for (const connection of this.activeConnections.filter(matches)) {
+      this.activeConnections.splice(
+        this.activeConnections.indexOf(connection),
+        1,
+      );
       this.context.connections.splice(
         this.context.connections.indexOf(connection),
         1,
@@ -64,12 +98,18 @@ export class FakeOscillatorNode extends FakeAudioNode {
   onended: (() => void) | null = null;
   stopped = false;
   stopTime: number | undefined;
+  readonly startCalls: { when?: number }[] = [];
+  readonly stopCalls: { when?: number }[] = [];
 
-  start(_when?: number): void {}
+  start(when?: number): void {
+    this.startCalls.push({ when });
+  }
 
   stop(when?: number): void {
     this.stopped = true;
     this.stopTime = when;
+    this.stopCalls.push({ when });
+    this.context.record({ type: 'stop', source: this, when });
   }
 
   end(): void {
@@ -91,12 +131,15 @@ export class FakeWaveShaperNode extends FakeAudioNode {
 
 export class FakeConstantSourceNode extends FakeAudioNode {
   readonly offset = new FakeAudioParam();
+  readonly stopCalls: { when?: number }[] = [];
   stopped = false;
 
   start(_when?: number): void {}
 
-  stop(_when?: number): void {
+  stop(when?: number): void {
     this.stopped = true;
+    this.stopCalls.push({ when });
+    this.context.record({ type: 'stop', source: this, when });
   }
 }
 
@@ -130,7 +173,16 @@ export class FakeAudioContext {
   readonly biquadFilters: FakeBiquadFilterNode[] = [];
   readonly analysers: FakeAnalyserNode[] = [];
   readonly compressors: FakeDynamicsCompressorNode[] = [];
+  private readonly operationHistory: FakeOperation[] = [];
   currentTime = 0;
+
+  get operations(): readonly FakeOperation[] {
+    return Object.freeze([...this.operationHistory]);
+  }
+
+  record(operation: FakeOperation): void {
+    this.operationHistory.push(Object.freeze(operation));
+  }
 
   createOscillator(): FakeOscillatorNode {
     const node = new FakeOscillatorNode(this);
@@ -185,7 +237,24 @@ export class FakeAudioContext {
   }
 }
 
-Object.defineProperty(globalThis, 'AudioParam', {
-  configurable: true,
-  value: FakeAudioParam,
-});
+export function installFakeAudioParam(): () => void {
+  // Vitest's Node environment has no native AudioParam constructor. Install it
+  // only for tests that exercise instanceof checks, then restore global state.
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'AudioParam');
+  Object.defineProperty(globalThis, 'AudioParam', {
+    configurable: true,
+    value: FakeAudioParam,
+  });
+
+  return () => {
+    if (previous) {
+      Object.defineProperty(globalThis, 'AudioParam', previous);
+    } else {
+      delete (
+        globalThis as unknown as {
+          AudioParam?: typeof FakeAudioParam;
+        }
+      ).AudioParam;
+    }
+  };
+}
