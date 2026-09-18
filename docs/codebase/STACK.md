@@ -13,14 +13,15 @@
 
 ### 2) Production Frameworks and Dependencies
 
-The app is a browser Web Audio synthesizer; `vue` is the only external production dependency (`@axiom/audio-engine` is an internal workspace package, consumed as source).
+The app is a browser Web Audio synthesizer; `vue` is the only external production dependency (`@axiom/audio-engine` and `@axiom/axiom-synth` are internal workspace packages, consumed as source).
 
-| Dependency            | Version   | Role in system                                                                                                  | Evidence                                                                   |
-| --------------------- | --------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| vue                   | 3.5.42    | UI framework (`<script setup>` SFCs, `defineModel`)                                                             | `app/package.json`, `pnpm-lock.yaml`                                       |
-| `@axiom/audio-engine` | workspace | Internal source library (`packages/audio-engine/`); owns the Web Audio graph, config types, `Observable`        | `packages/audio-engine/package.json`, `packages/audio-engine/src/index.ts` |
-| Web Audio API         | —         | Native browser API wrapping all audio (oscillators, `WaveShaperNode`, `BiquadFilterNode`, compressor, analyser) | `packages/audio-engine/src/engine/*`                                       |
-| Tailwind CSS          | 4.3.3     | Utility CSS + `@theme inline` color/shadow system                                                               | `app/src/style.css`                                                        |
+| Dependency            | Version   | Role in system                                                                                                                                           | Evidence                                                                   |
+| --------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| vue                   | 3.5.42    | UI framework (`<script setup>` SFCs, `defineModel`)                                                                                                      | `app/package.json`, `pnpm-lock.yaml`                                       |
+| `@axiom/audio-engine` | workspace | Internal source library (`packages/audio-engine/`); host `AudioEngine`, building-block units, abstract `Voice`/`Synth` bases, config types, `Observable` | `packages/audio-engine/package.json`, `packages/audio-engine/src/index.ts` |
+| `@axiom/axiom-synth`  | workspace | Internal source library (`packages/axiom-synth/`); owns the Axiom synth (`AxiomSynth`/`AxiomVoice`), consumed as source                                  | `packages/axiom-synth/package.json`, `packages/axiom-synth/src/index.ts`   |
+| Web Audio API         | —         | Native browser API wrapping all audio (oscillators, `WaveShaperNode`, `BiquadFilterNode`, compressor, analyser)                                          | `packages/audio-engine/src/engine/*`, `packages/axiom-synth/src/*`         |
+| Tailwind CSS          | 4.3.3     | Utility CSS + `@theme inline` color/shadow system                                                                                                        | `app/src/style.css`                                                        |
 
 ### 3) Development Toolchain
 
@@ -51,13 +52,13 @@ There is **no test runner** configured (no `test` script). Verification is `pnpm
 
 ### 5) Environment and Config
 
-- Config sources: `app/vite.config.ts`, `app/tsconfig*.json`, `packages/audio-engine/tsconfig.json`, `.prettierrc.yaml`, `.lintstagedrc.json`, `.husky/pre-commit`, `pnpm-workspace.yaml`
+- Config sources: `app/vite.config.ts`, `app/tsconfig*.json`, `packages/audio-engine/tsconfig.json`, `packages/axiom-synth/tsconfig.json`, `.prettierrc.yaml`, `.lintstagedrc.json`, `.husky/pre-commit`, `pnpm-workspace.yaml`
 - Required env vars: **none** (no `.env` files; `.gitignore` has `*.local`). No env reads found in `app/src/`.
 - Deployment/runtime constraints: no Node runtime used in-app — pure client-side. CI expects Node 24 + pnpm 11. Frequencies/knob ranges are hardcoded UI values, not env-configurable.
 
 ### 6) Evidence
 
-- Root `package.json` (scripts, devDeps) + `app/package.json` / `packages/audio-engine/package.json`
+- Root `package.json` (scripts, devDeps) + `app/package.json` / `packages/audio-engine/package.json` / `packages/axiom-synth/package.json`
 - `pnpm-lock.yaml` (lockfileVersion '9.0', resolution versions), `pnpm-workspace.yaml`
 - `app/tsconfig.app.json` / `app/tsconfig.node.json`
 - `.github/workflows/build.yml`, `.github/workflows/deploy-pages.yml`

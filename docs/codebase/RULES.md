@@ -54,14 +54,23 @@ When a composite (`AxiomVoice`) owns a connection registry (`ModulationRouter`)
 and child units, `router.destroy()` runs first in `.destroy()` — before any
 child `.destroy()` — so registered pairs are disconnected while both ends still
 exist. `destroy()` implementations are idempotent and defensively skip
-already-gone connections (try/catch precedent: `axiom-voice.ts`).
+already-gone connections (try/catch precedent:
+`packages/axiom-synth/src/axiom-voice.ts`).
 
-### 6. New engine modules stay internal
+### 6. Building-block units are public; Axiom classes live in @axiom/axiom-synth
 
-`Oscillator`, `ModulationRouter`, and other engine-internal classes are not
+Sound-generation units and the abstract `Voice`/`Synth` bases are public API
 exported from the `@axiom/audio-engine` barrel (`packages/audio-engine/src/
-index.ts`) unless a consumer outside the package needs them.
+index.ts`) — `@axiom/axiom-synth` requires them. `AudioEngine` stays the
+package facade. Axiom-specific classes (`AxiomSynth`, `AxiomVoice`,
+`AxiomVoiceConfig`) live in `packages/axiom-synth/` (`@axiom/axiom-synth`),
+never in the engine package. `@axiom/audio-engine` contains no Axiom
+identifiers; dependency direction is one-way (`@axiom/axiom-synth` imports the
+engine, never the reverse).
 
 ## History
 
+- Rule 6 ("New engine modules stay internal") superseded by rule 6
+  (2026-09-18): engine building blocks (`Oscillator`, `ModulationRouter`, …)
+  are now public API so `@axiom/axiom-synth` can consume them.
 - _(none yet — this is the initial ruleset, recorded 2026-09-17)_
