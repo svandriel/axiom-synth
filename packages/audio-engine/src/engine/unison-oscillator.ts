@@ -121,7 +121,9 @@ export class UnisonOscillator implements Destroyable {
     const bundle = this.createBundle();
     const voices = this.voicesValue;
     for (let index = 0; index < voices; index += 1) {
+      // Evenly span [-1, 1] so detune and pan remain centered as voice count changes.
       const position = voices === 1 ? 0 : -1 + (2 * index) / (voices - 1);
+      // Center voice starts at full gain; outer voices contribute progressively less.
       const centerWeight = 1 / (1 + Math.abs(position));
       this.createSubvoice(bundle, noteHz, now, position, centerWeight);
     }
@@ -198,13 +200,16 @@ export class UnisonOscillator implements Destroyable {
       inputMax: 1,
     });
     const meanPowerGain = this.ctxt.createGain();
+    // Average squared subvoice gains, so normalization follows signal power, not amplitude.
     meanPowerGain.gain.value = 1 / this.voicesValue;
+    // Convert mean power to reciprocal RMS gain, keeping blended output level stable.
     const reciprocalSqrt = new CurveNode(
       this.ctxt,
       value => 1 / Math.sqrt(Math.max(value, 0.0001)),
       { inputMin: 0.25, inputMax: 1 },
     );
     const normalizerScale = this.ctxt.createGain();
+    // Preserve 1/sqrt(V) unison scaling when every voice receives equal gain.
     normalizerScale.gain.value = 1 / Math.sqrt(this.voicesValue);
 
     this.unisonDetuneSource.connect(detuneClamp.input);
@@ -251,6 +256,7 @@ export class UnisonOscillator implements Destroyable {
     normalizerGain.gain.setValueAtTime(0, now);
     detuneGain.gain.value = position;
     depthGain.gain.value = position;
+    // Blend moves each voice from its center-biased weight toward equal gain.
     blendGain.gain.value = 1 - centerWeight;
 
     this.frequencySource.connect(oscillator.frequency);
@@ -263,6 +269,7 @@ export class UnisonOscillator implements Destroyable {
     bundle.blendClamp.connect(blendGain);
     blendGain.connect(rawGainControl);
     rawGainControl.connect(rawGain.gain);
+    // Squaring before summation makes the aggregate represent total power.
     rawGainControl.connect(rawGainSquare.input);
     rawGainSquare.connect(bundle.meanPowerGain);
     bundle.normalizerScale.connect(normalizerGain.gain);
