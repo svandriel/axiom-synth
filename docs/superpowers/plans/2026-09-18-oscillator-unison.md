@@ -23,6 +23,7 @@
 ## File Structure
 
 - Create `packages/audio-engine/src/engine/curve-node.ts`: range-normalized reusable `WaveShaperNode` module.
+- Create `packages/audio-engine/src/engine/clamp-node.ts`: reusable range-clamping control-signal module.
 - Create `packages/audio-engine/src/engine/unison-oscillator.ts`: subvoice topology, live control graph, and lifecycle.
 - Modify `packages/audio-engine/src/engine/index.ts`: public exports.
 - Modify `packages/audio-engine/src/types/oscillator-config.ts`: embedded unison config.
@@ -243,7 +244,80 @@ git add packages/audio-engine/src/engine/unison-oscillator.ts packages/audio-eng
 git commit -m "feat(engine): add stereo unison oscillator"
 ```
 
-### Task 3: Wire Synth And Voice
+### Task 3: Add ClampNode
+
+**Files:**
+
+- Create: `packages/audio-engine/src/engine/clamp-node.ts`
+- Modify: `packages/audio-engine/src/engine/index.ts`
+- Modify: `packages/audio-engine/src/engine/unison-oscillator.ts`
+
+**Interfaces:**
+
+- Consumes: `CurveNode` and `CurveNodeOptions` from `./curve-node`.
+- Produces: public `ClampNode`, which passes values inside its declared input
+  range unchanged and clamps values outside it to the nearest endpoint.
+
+- [ ] **Step 1: Implement ClampNode as CurveNode specialization**
+
+```ts
+import { CurveNode } from './curve-node';
+
+export class ClampNode extends CurveNode {
+  constructor(ctxt: AudioContext, inputMin: number, inputMax: number) {
+    super(ctxt, value => value, { inputMin, inputMax });
+  }
+}
+```
+
+`CurveNode` maps the declared range to `WaveShaperNode`'s `[-1, 1]` input
+domain. Its identity curve preserves in-range values, while WaveShaper endpoint
+behavior clamps values outside the declared range. Do not add methods, fields,
+or separate teardown behavior.
+
+- [ ] **Step 2: Export ClampNode**
+
+Add to `packages/audio-engine/src/engine/index.ts`:
+
+```ts
+export * from './clamp-node';
+```
+
+- [ ] **Step 3: Clamp all continuous unison controls**
+
+In `unison-oscillator.ts`, create one per-note `ClampNode` for every continuous
+unison source before it reaches its distribution or gain-normalization graph:
+
+```ts
+const detuneClamp = new ClampNode(ctxt, 0, 50);
+const depthClamp = new ClampNode(ctxt, 0, 1);
+const blendClamp = new ClampNode(ctxt, 0, 1);
+
+this.unisonDetuneSource.connect(detuneClamp.input);
+this.unisonDepthSource.connect(depthClamp.input);
+this.unisonBlendSource.connect(blendClamp.input);
+```
+
+Use `detuneClamp.output`, `depthClamp.output`, and `blendClamp.output` in place
+of direct continuous-source connections. Retain ClampNodes in the per-note
+bundle and destroy them with its CurveNodes after final raw oscillator ends.
+Explicitly disconnect each persistent source from every clamp input before
+destroying the clamp, following source-to-parameter teardown discipline.
+
+- [ ] **Step 4: Verify build and formatting**
+
+Run: `pnpm build && pnpm lint && git diff --check`
+
+Expected: exit code 0.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/audio-engine/src/engine/clamp-node.ts packages/audio-engine/src/engine/index.ts packages/audio-engine/src/engine/unison-oscillator.ts
+git commit -m "feat(engine): clamp unison control signals"
+```
+
+### Task 4: Wire Synth And Voice
 
 **Files:**
 
@@ -299,7 +373,7 @@ git add packages/audio-engine/src/types/oscillator-config.ts packages/axiom-synt
 git commit -m "feat(synth): wire oscillator unison controls"
 ```
 
-### Task 4: Enable Oscillator Panel
+### Task 5: Enable Oscillator Panel
 
 **Files:**
 
@@ -369,7 +443,7 @@ git add app/src/components/OscillatorPanel.vue
 git commit -m "feat(ui): enable oscillator unison controls"
 ```
 
-### Task 5: Final Verification
+### Task 6: Final Verification
 
 **Files:**
 
