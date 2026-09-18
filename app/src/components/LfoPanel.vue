@@ -12,7 +12,7 @@
         :to="220"
         :log-base="2"
         :default="2"
-        :format="rateFormat"
+        :format="hzDisplay"
       />
       <Toggle v-model="waveform" :values="waveforms" class="mt-3 self-start" />
     </div>
@@ -39,6 +39,7 @@ import type { LfoConfig, LfoWaveformType } from '@axiom/audio-engine';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
+import { hzDisplay } from '../utils/hz-display.ts';
 
 const config = defineModel<LfoConfig>({ required: true });
 const selectedLfo = defineModel<string>('selectedLfo', { required: true });
@@ -80,10 +81,6 @@ function setDepth(index: number, value: number): void {
 
 function driveOnly(index: number): boolean {
   return depthLabels[index] === 'DRV';
-}
-
-function rateFormat(v: number): string {
-  return v < 10 ? `${v.toFixed(2)} Hz` : `${v.toFixed(1)} Hz`;
 }
 
 function depthFormat(v: number): string {
