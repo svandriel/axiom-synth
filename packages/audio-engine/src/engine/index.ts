@@ -10,6 +10,7 @@ export * from './meter';
 export * from './modulation-router';
 export * from './oscillator';
 export * from './voice';
+export * from './synth';
 export * from './engine';
 export * from './waveshaper-curve';
 export { Waveshaper } from './waveshaper';
