@@ -12,14 +12,14 @@ import { Filter } from '@axiom/audio-engine';
 import { freqOf } from '@axiom/audio-engine';
 import { Lfo } from '@axiom/audio-engine';
 import { ModulationRouter } from '@axiom/audio-engine';
-import { Oscillator } from '@axiom/audio-engine';
+import { UnisonOscillator } from '@axiom/audio-engine';
 import { Voice } from '@axiom/audio-engine';
 import { Waveshaper } from '@axiom/audio-engine';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
 
 export class AxiomVoice extends Voice {
   private areOscillatorsActive = false;
-  private oscillators: FixedArray<Oscillator, OscillatorCount>;
+  private oscillators: FixedArray<UnisonOscillator, OscillatorCount>;
 
   private readonly config: AxiomVoiceConfig;
   private readonly ampEnvelope: Envelope;
@@ -31,6 +31,9 @@ export class AxiomVoice extends Voice {
   private readonly modulationRouter: ModulationRouter;
   private oscillatorWaveformSubscription: { unsubscribe: () => void } | null =
     null;
+  private oscillatorUnisonVoicesSubscription: {
+    unsubscribe: () => void;
+  } | null = null;
   private readonly lfos: FixedArray<Lfo, LfoCount>;
   private readonly ampModGain: GainNode;
   private voiceDestroyed = false;
@@ -117,7 +120,9 @@ export class AxiomVoice extends Voice {
     this.oscillators = new Array(OSCILLATOR_COUNT)
       .fill(null)
       .map((_value, index) => {
-        const osc = new Oscillator(ctxt);
+        const osc = new UnisonOscillator(ctxt);
+        osc.voices =
+          this.config.oscillatorUnisonVoices.value[index as OscillatorIndex];
         osc.waveform =
           this.config.oscillatorWaveForms.value[index as OscillatorIndex];
         this.modulationRouter.patch(
@@ -128,9 +133,21 @@ export class AxiomVoice extends Voice {
           this.config.oscillatorGainSources[index as OscillatorIndex],
           osc.gain,
         );
+        this.modulationRouter.patch(
+          this.config.oscillatorUnisonDetuneSources[index as OscillatorIndex],
+          osc.unisonDetune,
+        );
+        this.modulationRouter.patch(
+          this.config.oscillatorUnisonDepthSources[index as OscillatorIndex],
+          osc.unisonDepth,
+        );
+        this.modulationRouter.patch(
+          this.config.oscillatorUnisonBlendSources[index as OscillatorIndex],
+          osc.unisonBlend,
+        );
         osc.connect(oscillatorAudioSink);
         return osc;
-      }) as FixedArray<Oscillator, OscillatorCount>;
+      }) as FixedArray<UnisonOscillator, OscillatorCount>;
 
     // LFO oscN depth outputs patch into each oscillator's detune jack.
     for (const lfo of this.lfos) {
@@ -152,6 +169,12 @@ export class AxiomVoice extends Voice {
       this.config.oscillatorWaveForms.subscribe(newValue => {
         this.oscillators.forEach((osc, index) => {
           osc.waveform = newValue[index as OscillatorIndex];
+        });
+      });
+    this.oscillatorUnisonVoicesSubscription =
+      this.config.oscillatorUnisonVoices.subscribe(newValue => {
+        this.oscillators.forEach((osc, index) => {
+          osc.voices = newValue[index as OscillatorIndex];
         });
       });
   }
@@ -225,6 +248,7 @@ export class AxiomVoice extends Voice {
     this.modulationRouter.destroy();
     this.config.filterEnvAmount.disconnect(this.filterEnvelope.node);
     this.oscillatorWaveformSubscription?.unsubscribe();
+    this.oscillatorUnisonVoicesSubscription?.unsubscribe();
     this.ampEnvelope.destroy();
     this.filter.destroy();
     this.filterEnvelope.destroy();

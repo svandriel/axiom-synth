@@ -51,21 +51,19 @@
       />
       <Knob
         label="Unison"
-        v-model="unison"
+        v-model="modelValue.unison.voices"
         size="sm"
         class="row-start-2"
         color="accent2"
-        :from="0"
-        :to="8"
-        :default="0"
+        :from="1"
+        :to="16"
+        :default="1"
         :tick-size="1"
-        :format="semiDisplay"
         :show-value="false"
-        :disabled="true"
       />
       <Knob
         label="Detune"
-        v-model="unisonDetune"
+        v-model="modelValue.unison.detune"
         size="sm"
         class="row-start-2"
         color="accent2"
@@ -74,33 +72,33 @@
         :default="0"
         :format="fractionDisplay(1)"
         :show-value="false"
-        :disabled="true"
+        :disabled="unisonDisabled"
       />
       <Knob
-        label="Spread"
-        v-model="unisonSpread"
+        label="Depth"
+        v-model="modelValue.unison.depth"
         size="sm"
         class="row-start-2"
         color="accent2"
-        :from="-50"
-        :to="50"
+        :from="0"
+        :to="1"
         :default="0"
-        :format="fractionDisplay(1)"
+        :format="percentageDisplay"
         :show-value="false"
-        :disabled="true"
+        :disabled="unisonDisabled"
       />
       <Knob
         label="Blend"
-        v-model="unisonBlend"
+        v-model="modelValue.unison.blend"
         size="sm"
         class="row-start-2"
         color="accent2"
-        :from="-50"
-        :to="50"
-        :default="0"
-        :format="fractionDisplay(1)"
+        :from="0"
+        :to="1"
+        :default="1"
+        :format="percentageDisplay"
         :show-value="false"
-        :disabled="true"
+        :disabled="unisonDisabled"
       />
     </div>
   </Panel>
@@ -112,20 +110,21 @@ import { dbDisplay, fractionDisplay, semiDisplay } from '../utils';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
-import { ref } from 'vue';
+import { computed } from 'vue';
 
 defineProps<{
   label?: string;
 }>();
 
-defineModel<OscillatorConfig>({
+const modelProps = defineModel<OscillatorConfig>({
   required: true,
 });
 
-const unison = ref(0);
-const unisonDetune = ref(0);
-const unisonSpread = ref(0);
-const unisonBlend = ref(0);
+const unisonDisabled = computed(() => {
+  return modelProps.value.unison.voices === 1;
+});
+
+const percentageDisplay = (value: number) => fractionDisplay(0)(value * 100);
 
 const waveForms: Array<{ id: WaveFormType; label: string }> = [
   { id: 'sawtooth', label: 'Saw' },

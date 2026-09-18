@@ -12,7 +12,7 @@
         :to="20000"
         :log-base="2"
         :default="20000"
-        :format="v => `${v.toFixed(0)} Hz`"
+        :format="hzDisplay"
       />
       <Knob
         label="Res"
@@ -51,6 +51,7 @@ import { fractionDisplay } from '../utils';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
+import { hzDisplay } from '../utils/hz-display.ts';
 
 const type = defineModel<FilterType>('type', {
   required: true,

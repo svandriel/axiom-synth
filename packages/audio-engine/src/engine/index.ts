@@ -1,5 +1,6 @@
 export * from './analyser';
 export * from './constants';
+export * from './curve-node';
 export * from './destroyable';
 export * from './envelope';
 export * from './filter';
@@ -11,6 +12,7 @@ export * from './modulation-router';
 export * from './oscillator';
 export * from './voice';
 export * from './synth';
+export * from './unison-oscillator';
 export * from './engine';
 export * from './waveshaper-curve';
 export { Waveshaper } from './waveshaper';

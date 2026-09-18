@@ -8,10 +8,12 @@ Work in progress. Use the caveman skill in ultra mode.
 
 - `pnpm dev` — Vite dev server on port 4000
 - `pnpm build` — `pnpm -r --sort build` (builds all workspace packages)
+- `pnpm test` — Vitest tests for `@axiom/audio-engine`
 - `pnpm lint` — `prettier --check .`
 - `pnpm format` — `prettier --write .`
 
-Linting runs in the pre-commit hook. No test runner configured.
+Linting runs in the pre-commit hook. New features and behavior changes require
+automated tests. GitHub Actions runs `pnpm test`, `pnpm build`, and `pnpm lint`.
 
 ## Way of working
 
@@ -39,6 +41,6 @@ the relevant file before deep work:
 | `ARCHITECTURE.md` | Audio engine graph, data flow, patterns    |
 | `CONVENTIONS.md`  | Naming, Prettier, TypeScript strictness    |
 | `INTEGRATIONS.md` | CI/CD, GitHub Pages, localStorage          |
-| `TESTING.md`      | Test setup (none — build is the gate)      |
+| `TESTING.md`      | Test setup, commands, and coverage rules   |
 | `CONCERNS.md`     | Known issues, tech debt, risks             |
 | `RULES.md`        | Locked architectural rules (living doc)    |

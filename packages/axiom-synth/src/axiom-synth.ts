@@ -28,6 +28,16 @@ import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
 
 const MAX_VOICES = 16;
+const UNISON_RAMP_SECONDS = 0.01;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+interface UnisonRampState {
+  startTime: number;
+  startValue: number;
+  target: number;
+}
 
 const LFO_DEPTH_SCALES: Record<LfoTarget, number> = {
   osc1: 150,
@@ -45,9 +55,30 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     OscillatorConfig,
     OscillatorCount
   > = [
-    { octave: 0, semi: 0, detune: 5, waveform: 'sawtooth', gain: 1 },
-    { octave: 0, semi: 0, detune: -5, waveform: 'square', gain: 1 },
-    { octave: -2, semi: 0, detune: 0, waveform: 'triangle', gain: 1 },
+    {
+      octave: 0,
+      semi: 0,
+      detune: 5,
+      waveform: 'sawtooth',
+      gain: 1,
+      unison: { voices: 1, detune: 0, depth: 0, blend: 1 },
+    },
+    {
+      octave: 0,
+      semi: 0,
+      detune: -5,
+      waveform: 'square',
+      gain: 1,
+      unison: { voices: 1, detune: 0, depth: 0, blend: 1 },
+    },
+    {
+      octave: -2,
+      semi: 0,
+      detune: 0,
+      waveform: 'triangle',
+      gain: 1,
+      unison: { voices: 1, detune: 0, depth: 0, blend: 1 },
+    },
   ];
 
   public readonly ampEnvelope: EnvelopeConfig = {
@@ -107,6 +138,25 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     ConstantSourceNode,
     OscillatorCount
   >;
+  private readonly oscillatorUnisonDetuneSources: FixedArray<
+    ConstantSourceNode,
+    OscillatorCount
+  >;
+  private readonly oscillatorUnisonDepthSources: FixedArray<
+    ConstantSourceNode,
+    OscillatorCount
+  >;
+  private readonly oscillatorUnisonBlendSources: FixedArray<
+    ConstantSourceNode,
+    OscillatorCount
+  >;
+  private readonly oscillatorUnisonVoices: Observable<
+    FixedArray<number, OscillatorCount>
+  >;
+  private readonly unisonRampStates = new Map<
+    ConstantSourceNode,
+    UnisonRampState
+  >();
   private readonly waveShaperDriveSource: ConstantSourceNode;
   private readonly waveshaperCurve: WaveshaperCurve;
   private readonly _distortionAmount: Observable<number>;
@@ -149,6 +199,30 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     );
     this.oscillatorGainSources = this.createConstantSources(
       this.oscillatorConfigs.map(c => c.gain) as FixedArray<
+        number,
+        OscillatorCount
+      >,
+    );
+    this.oscillatorUnisonDetuneSources = this.createConstantSources(
+      this.oscillatorConfigs.map(c => c.unison.detune) as FixedArray<
+        number,
+        OscillatorCount
+      >,
+    );
+    this.oscillatorUnisonDepthSources = this.createConstantSources(
+      this.oscillatorConfigs.map(c => c.unison.depth) as FixedArray<
+        number,
+        OscillatorCount
+      >,
+    );
+    this.oscillatorUnisonBlendSources = this.createConstantSources(
+      this.oscillatorConfigs.map(c => c.unison.blend) as FixedArray<
+        number,
+        OscillatorCount
+      >,
+    );
+    this.oscillatorUnisonVoices = new Observable(
+      this.oscillatorConfigs.map(c => c.unison.voices) as FixedArray<
         number,
         OscillatorCount
       >,
@@ -201,6 +275,10 @@ export class AxiomSynth extends Synth<AxiomVoice> {
       filterKeyTrack: this.filterKeyTrackSource,
       oscillatorDetuneSources: this.oscillatorDetuneSources,
       oscillatorGainSources: this.oscillatorGainSources,
+      oscillatorUnisonDetuneSources: this.oscillatorUnisonDetuneSources,
+      oscillatorUnisonDepthSources: this.oscillatorUnisonDepthSources,
+      oscillatorUnisonBlendSources: this.oscillatorUnisonBlendSources,
+      oscillatorUnisonVoices: this.oscillatorUnisonVoices,
       oscillatorWaveForms: this.oscillatorWaveForms,
       waveshaperCurve: this.waveshaperCurve,
       waveshaperDrive: this.waveShaperDriveSource,
@@ -305,6 +383,12 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
   setOscillatorConfiguration(index: OscillatorIndex, config: OscillatorConfig) {
     const currentConfig = this.oscillatorConfigs[index];
+    const unison = {
+      voices: Math.min(16, Math.max(1, Math.round(config.unison.voices))),
+      detune: clamp(config.unison.detune, 0, 50),
+      depth: clamp(config.unison.depth, 0, 1),
+      blend: clamp(config.unison.blend, 0, 1),
+    };
     if (
       currentConfig.octave !== config.octave ||
       currentConfig.semi !== config.semi ||
@@ -326,7 +410,27 @@ export class AxiomSynth extends Synth<AxiomVoice> {
         this.ctxt.currentTime + 0.01,
       );
     }
-    this.oscillatorConfigs[index] = { ...config };
+    if (currentConfig.unison.voices !== unison.voices) {
+      this.oscillatorUnisonVoices.value = this.oscillatorUnisonVoices.value.map(
+        (voices, i) => (i === index ? unison.voices : voices),
+      ) as FixedArray<number, OscillatorCount>;
+    }
+    this.rampUnisonSource(
+      this.oscillatorUnisonDetuneSources[index],
+      unison.detune,
+    );
+    this.rampUnisonSource(
+      this.oscillatorUnisonDepthSources[index],
+      unison.depth,
+    );
+    this.rampUnisonSource(
+      this.oscillatorUnisonBlendSources[index],
+      unison.blend,
+    );
+    this.oscillatorConfigs[index] = {
+      ...config,
+      unison,
+    };
   }
 
   setLfoConfiguration(index: LfoIndex, config: LfoConfig) {
@@ -375,6 +479,18 @@ export class AxiomSynth extends Synth<AxiomVoice> {
       source.disconnect();
       source.stop();
     });
+    this.oscillatorUnisonDetuneSources.forEach(source => {
+      source.disconnect();
+      source.stop();
+    });
+    this.oscillatorUnisonDepthSources.forEach(source => {
+      source.disconnect();
+      source.stop();
+    });
+    this.oscillatorUnisonBlendSources.forEach(source => {
+      source.disconnect();
+      source.stop();
+    });
     this.waveShaperDriveSource.disconnect();
     this.waveShaperDriveSource.stop();
     this.waveshaperCurve.destroy();
@@ -397,6 +513,30 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     return offsets.map(offset =>
       this.createConstantSource(offset),
     ) as FixedArray<ConstantSourceNode, N>;
+  }
+
+  private rampUnisonSource(
+    source: ConstantSourceNode,
+    nextValue: number,
+  ): void {
+    const previous = this.unisonRampStates.get(source);
+    if (previous?.target === nextValue || source.offset.value === nextValue) {
+      return;
+    }
+    const now = this.ctxt.currentTime;
+    const elapsed = Math.max(0, now - (previous?.startTime ?? now));
+    const progress = Math.min(1, elapsed / UNISON_RAMP_SECONDS);
+    const currentValue = previous
+      ? previous.startValue + (previous.target - previous.startValue) * progress
+      : source.offset.value;
+    source.offset.cancelScheduledValues(now);
+    source.offset.setValueAtTime(currentValue, now);
+    source.offset.linearRampToValueAtTime(nextValue, now + UNISON_RAMP_SECONDS);
+    this.unisonRampStates.set(source, {
+      startTime: now,
+      startValue: currentValue,
+      target: nextValue,
+    });
   }
 
   private createConstantSource(offset: number = 0) {

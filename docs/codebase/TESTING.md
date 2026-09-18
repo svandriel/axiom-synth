@@ -4,44 +4,60 @@
 
 ### 1) Test Stack and Commands
 
-- Primary test framework: **none**. There is no test runner, no `test` script, and no testing dependency (Vitest/Jest/Playwright not present) — confirmed by `package.json` and the scan.
-- Assertion/mocking tools: none.
+- Primary test framework: **Vitest** for `@axiom/audio-engine`.
+- Assertion/mocking tools: Vitest assertions plus focused fake Web Audio nodes
+  for engine graph tests. Do not require a real browser for deterministic graph
+  lifecycle tests.
 - Commands:
 
 ```bash
-# No tests. Verification is the build (type-check + bundle) and formatting:
+pnpm test       # Vitest engine tests
 pnpm build      # vue-tsc -b && vite build
-pnpm lint       # prettier --check . (handled by pre-commit; not run manually)
+pnpm lint       # prettier --check .
 ```
 
 ### 2) Test Layout
 
-- Test file placement pattern: n/a (no tests).
-- Naming convention: n/a.
-- Setup files and where they run: none.
+- Test file placement pattern: beside the engine module under
+  `packages/audio-engine/src/engine/`.
+- Naming convention: `<module>.test.ts`.
+- Setup files and where they run: fake Web Audio context helpers live under
+  `packages/audio-engine/src/engine/test/` and are imported by graph tests.
 
 ### 3) Test Scope Matrix
 
-| Scope       | Covered? | Typical target                                                                          | Notes                                               |
-| ----------- | -------- | --------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| Unit        | no       | engine math would be the target (`waveshaper-curve.ts`, `envelope.ts`, `db-display.ts`) | none; pure functions are unit-testable but untested |
-| Integration | no       | voice-to-engine wiring (`axiom-voice.ts`, `engine.ts`)                                  | none                                                |
-| E2E         | no       | UI → keyboard → audio events (`Keyboard.vue`, `Synth.vue`)                              | none                                                |
+| Scope       | Covered? | Typical target                                             | Notes                                                  |
+| ----------- | -------- | ---------------------------------------------------------- | ------------------------------------------------------ |
+| Unit        | yes      | engine math and cached transfer curves                     | Vitest                                                 |
+| Integration | partial  | voice-to-engine wiring and Web Audio graph lifecycle       | fake context; browser smoke tests for audible behavior |
+| E2E         | no       | UI → keyboard → audio events (`Keyboard.vue`, `Synth.vue`) | manual browser validation                              |
 
 ### 4) Mocking and Isolation Strategy
 
-- Main mocking approach: n/a.
-- Isolation guarantees: n/a.
-- Common failure mode in tests: n/a.
+- Main mocking approach: instrumented fake Web Audio nodes record exact
+  connections, disconnections, source stops, and manually dispatched
+  `onended` events.
+- Isolation guarantees: tests run without real `AudioContext`; each test owns a
+  fresh fake context and restores temporary globals.
+- Common failure mode in tests: forgetting exact inbound AudioParam teardown;
+  assert operation history and active connections separately.
 
 ### 5) Coverage and Quality Signals
 
-- Coverage tool + threshold: none (TODO — no coverage tooling configured).
-- Current reported coverage: 0% (no tests).
-- Known gaps/flaky areas: the Web Audio engine is inherently browser-dependent; any future tests must use an `AudioContext` mock or headless browser. `use-audio-context.ts` constructs an `AudioContext` at module import, which would run in any test importing the engine.
+- Coverage tool + threshold: no threshold configured yet.
+- Current reported coverage: not measured.
+- Required rule: every new feature or behavior change adds automated tests in
+  the same change. Build and lint alone are insufficient.
+- Known gaps/flaky areas: audible Web Audio behavior remains browser-dependent;
+  use manual browser smoke tests for stereo image, clicks, CPU, and
+  performance. `use-audio-context.ts` constructs an `AudioContext` at module
+  import, so avoid importing it in deterministic engine tests.
 
 ### 6) Evidence
 
-- `package.json` (no `test` script / no testing deps)
-- `AGENTS.md` ("There is no test runner configured.")
+- `package.json` (`test` script delegates to the audio-engine test script)
+- `packages/audio-engine/package.json` (Vitest test script and dependency)
+- `.github/workflows/test.yml` (CI runs `pnpm test`, `pnpm build`, and
+  `pnpm lint`)
+- `AGENTS.md` (current command list and CI summary)
 - `.lintstagedrc.json`, `.husky/pre-commit` (only formatting as pre-commit gate)
