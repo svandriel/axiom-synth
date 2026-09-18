@@ -70,3 +70,16 @@ The pre-existing changes in `app/src/components/FilterPanel.vue` and
 ## Review Fix Commit
 
 To be recorded separately from the original Task 4 commit.
+
+## Latest Review Fixes
+
+- Reserved all paths in an active lease until the final sibling source ends;
+  partial bundle cleanup cannot expose a path to a new acquire.
+- Added explicit lease state and idempotent release bookkeeping.
+- Made direct `voices === 1` setup transactional from oscillator allocation
+  through all connections and start.
+- Recorded pooled sources before type, frequency, or arm operations and clear
+  `onended` callbacks after normal cleanup.
+- Added coverage for partial sibling end, direct connection rollback, pre-arm
+  setup failure, callback clearing, disconnect-failure counters, live a-rate
+  links, and free-path silence.

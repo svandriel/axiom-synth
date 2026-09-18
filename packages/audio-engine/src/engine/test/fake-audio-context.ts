@@ -98,13 +98,25 @@ export class FakeAudioNode {
 export class FakeOscillatorNode extends FakeAudioNode {
   readonly frequency = new FakeAudioParam();
   readonly detune = new FakeAudioParam();
-  type: OscillatorType = 'sine';
+  private typeValue: OscillatorType = 'sine';
+  throwOnTypeSet = false;
   onended: (() => void) | null = null;
   stopped = false;
   throwOnStop = false;
   stopTime: number | undefined;
   readonly startCalls: { when?: number }[] = [];
   readonly stopCalls: { when?: number }[] = [];
+
+  get type(): OscillatorType {
+    return this.typeValue;
+  }
+
+  set type(value: OscillatorType) {
+    if (this.throwOnTypeSet) {
+      throw new Error('FakeOscillatorNode type assignment failed');
+    }
+    this.typeValue = value;
+  }
 
   start(when?: number): void {
     this.startCalls.push({ when });

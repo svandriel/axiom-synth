@@ -5,6 +5,7 @@ type PathState = 'free' | 'leased' | 'armed' | 'draining' | 'destroyed';
 interface PathLease {
   readonly paths: readonly UnisonVoicePath[];
   readonly usesOverflow: boolean;
+  state: 'active' | 'released';
 }
 
 class UnisonVoicePath {
@@ -174,6 +175,7 @@ class UnisonVoicePath {
 export class UnisonVoicePathPool {
   private readonly stablePaths: UnisonVoicePath[] = [];
   private readonly overflowPaths = new Set<UnisonVoicePath>();
+  private readonly activeLeases = new Set<PathLease>();
   private readonly countersValue = {
     created: 0,
     acquired: 0,
@@ -217,7 +219,12 @@ export class UnisonVoicePathPool {
 
     this.countersValue.acquired++;
     // Draining paths remain unavailable until their exact source has ended.
-    const available = this.stablePaths.filter(path => path.state === 'free');
+    const reserved = new Set(
+      [...this.activeLeases].flatMap(lease => lease.paths),
+    );
+    const available = this.stablePaths.filter(
+      path => path.state === 'free' && !reserved.has(path),
+    );
     const paths = available.slice(0, voiceCount);
     // Stable capacity covers the current bundle and one normal draining bundle.
     while (paths.length < voiceCount && this.stablePaths.length < voiceCount) {
@@ -239,13 +246,18 @@ export class UnisonVoicePathPool {
         path.configure(voiceCount, index, position);
       });
     } catch (error) {
-      this.abort({ paths, usesOverflow });
+      this.abort({ paths, usesOverflow, state: 'active' });
       throw error;
     }
-    return { paths, usesOverflow };
+    const lease = { paths, usesOverflow, state: 'active' as const };
+    this.activeLeases.add(lease);
+    return lease;
   }
 
   release(lease: PathLease): void {
+    if (lease.state === 'released') return;
+    lease.state = 'released';
+    this.activeLeases.delete(lease);
     this.countersValue.released++;
     lease.paths.forEach(path => {
       if (path.state === 'free' && path.isOverflow) {
@@ -257,6 +269,7 @@ export class UnisonVoicePathPool {
   }
 
   abort(lease: PathLease): void {
+    if (lease.state === 'released') return;
     lease.paths.forEach(path => path.abort());
     this.release(lease);
   }
@@ -266,6 +279,7 @@ export class UnisonVoicePathPool {
       return;
     }
     this.destroyed = true;
+    this.activeLeases.clear();
     this.countersValue.overflowDestroyed += this.overflowPaths.size;
     [...this.stablePaths, ...this.overflowPaths].forEach(path =>
       path.destroy(),

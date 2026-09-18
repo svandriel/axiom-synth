@@ -107,6 +107,23 @@ describe('UnisonOscillator', () => {
     }
   });
 
+  it('keeps every bundle path reserved until the final sibling ends', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      oscillator.voices = 2;
+      oscillator.start(440, 0);
+      oscillator.stop();
+      ctxt.oscillators[0]!.end();
+      oscillator.start(440, 1);
+
+      expect(ctxt.stereoPanners).toHaveLength(4);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
   it('keeps an out-of-order old end callback from detaching a newer source', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
@@ -239,6 +256,99 @@ describe('UnisonOscillator', () => {
       ctxt.createOscillator = originalCreate;
       oscillator.start(440, 2);
       expect(ctxt.oscillators).toHaveLength(5);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('rolls back direct setup when an output connection fails', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const originalCreate = ctxt.createOscillator.bind(ctxt);
+      ctxt.createOscillator = () => {
+        const source = originalCreate();
+        source.throwOnConnect = true;
+        return source;
+      };
+
+      expect(() => oscillator.start(440, 0)).toThrow(
+        'FakeAudioNode connect failed',
+      );
+      expect(ctxt.oscillators[0]!.connections).toHaveLength(0);
+      ctxt.createOscillator = originalCreate;
+      oscillator.start(440, 1);
+      expect(ctxt.oscillators).toHaveLength(2);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('tracks a pooled source before pre-arm setup can fail', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      oscillator.voices = 2;
+      const originalCreate = ctxt.createOscillator.bind(ctxt);
+      ctxt.createOscillator = () => {
+        const source = originalCreate();
+        source.throwOnTypeSet = true;
+        return source;
+      };
+
+      expect(() => oscillator.start(440, 0)).toThrow(
+        'FakeOscillatorNode type assignment failed',
+      );
+      ctxt.createOscillator = originalCreate;
+      oscillator.start(440, 1);
+      expect(ctxt.oscillators).toHaveLength(3);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('clears source callbacks after normal cleanup', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      oscillator.start(440, 0);
+      const direct = ctxt.oscillators[0]!;
+      oscillator.stop();
+      direct.end();
+      expect(direct.onended).toBeNull();
+
+      oscillator.voices = 2;
+      oscillator.start(440, 1);
+      const pooled = ctxt.oscillators.slice(1);
+      oscillator.stop();
+      pooled.forEach(source => source.end());
+      expect(pooled.every(source => source.onended === null)).toBe(true);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('keeps live a-rate links and silent free paths after sibling cleanup', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      oscillator.voices = 2;
+      oscillator.start(440, 0);
+      const source = ctxt.oscillators[0]!;
+      expect(
+        ctxt.connections.some(
+          connection => connection.destination === source.detune,
+        ),
+      ).toBe(true);
+      oscillator.stop();
+      ctxt.oscillators.forEach(item => item.end());
+      expect(
+        [ctxt.gains[1]!, ctxt.gains[6]!].every(gain => gain.gain.value === 0),
+      ).toBe(true);
     } finally {
       restoreAudioParam();
     }

@@ -207,22 +207,23 @@ export class UnisonOscillator implements Destroyable {
 
   private startDirect(noteHz: number, now: number): void {
     const oscillator = this.ctxt.createOscillator();
-    oscillator.type = this.wave;
-    oscillator.frequency.setValueAtTime(noteHz, now);
-    this.frequencySource.connect(oscillator.frequency);
-    this.detuneSource.connect(oscillator.detune);
-    oscillator.connect(this.outputGain);
     const bundle: VoiceBundle = {
       direct: { oscillator },
       pooled: [],
       lease: null,
     };
     oscillator.onended = () => {
+      oscillator.onended = null;
       if (!bundle.direct || !this.stoppedBundles.has(bundle)) return;
       this.detachDirect(oscillator);
       this.finishBundle(bundle);
     };
     try {
+      oscillator.type = this.wave;
+      oscillator.frequency.setValueAtTime(noteHz, now);
+      this.frequencySource.connect(oscillator.frequency);
+      this.detuneSource.connect(oscillator.detune);
+      oscillator.connect(this.outputGain);
       oscillator.start(now);
     } catch (error) {
       this.detachDirect(oscillator);
@@ -238,6 +239,7 @@ export class UnisonOscillator implements Destroyable {
     oscillator: OscillatorNode,
   ): void {
     if (!this.stoppedBundles.has(bundle)) return;
+    oscillator.onended = null;
     path.disarm(oscillator);
     if (bundle.pooled.every(source => source.path.state === 'free')) {
       this.pathPool.release(bundle.lease!);

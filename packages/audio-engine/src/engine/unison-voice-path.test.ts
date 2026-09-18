@@ -266,6 +266,7 @@ describe('UnisonVoicePathPool', () => {
 
       pool.release(lease);
       pool.release(lease);
+      expect(pool.counters.released).toBe(1);
       expect(() => pool.destroy()).not.toThrow();
       expect(() => pool.destroy()).not.toThrow();
       expect(lease.paths[1]!.state).toBe('destroyed');
