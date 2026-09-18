@@ -1,4 +1,5 @@
 import type { WaveFormType } from '../types';
+import { ClampNode } from './clamp-node';
 import { CurveNode } from './curve-node';
 import type { Destroyable } from './destroyable';
 
@@ -17,9 +18,9 @@ interface Subvoice {
 
 interface VoiceBundle {
   subvoices: Set<Subvoice>;
-  detuneClamp: CurveNode;
-  depthClamp: CurveNode;
-  blendClamp: CurveNode;
+  detuneClamp: ClampNode;
+  depthClamp: ClampNode;
+  blendClamp: ClampNode;
   meanPowerGain: GainNode;
   reciprocalSqrt: CurveNode;
   normalizerScale: GainNode;
@@ -187,18 +188,9 @@ export class UnisonOscillator implements Destroyable {
   }
 
   private createBundle(): VoiceBundle {
-    const detuneClamp = new CurveNode(this.ctxt, value => value, {
-      inputMin: 0,
-      inputMax: 50,
-    });
-    const depthClamp = new CurveNode(this.ctxt, value => value, {
-      inputMin: 0,
-      inputMax: 1,
-    });
-    const blendClamp = new CurveNode(this.ctxt, value => value, {
-      inputMin: 0,
-      inputMax: 1,
-    });
+    const detuneClamp = new ClampNode(this.ctxt, 0, 50);
+    const depthClamp = new ClampNode(this.ctxt, 0, 1);
+    const blendClamp = new ClampNode(this.ctxt, 0, 1);
     const meanPowerGain = this.ctxt.createGain();
     // Average squared subvoice gains, so normalization follows signal power, not amplitude.
     meanPowerGain.gain.value = 1 / this.voicesValue;

@@ -1,4 +1,5 @@
 export * from './analyser';
+export * from './clamp-node';
 export * from './constants';
 export * from './curve-node';
 export * from './destroyable';
