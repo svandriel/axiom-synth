@@ -11,6 +11,7 @@ interface Subvoice {
   depthGain: GainNode;
   centerWeightSource: ConstantSourceNode;
   blendGain: GainNode;
+  rawGainControl: GainNode;
   rawGainSquare: CurveNode;
 }
 
@@ -238,6 +239,7 @@ export class UnisonOscillator implements Destroyable {
     const depthGain = this.ctxt.createGain();
     const centerWeightSource = this.createSource(centerWeight);
     const blendGain = this.ctxt.createGain();
+    const rawGainControl = this.ctxt.createGain();
     const rawGainSquare = new CurveNode(this.ctxt, value => value * value, {
       inputMin: 0.5,
       inputMax: 1,
@@ -245,6 +247,8 @@ export class UnisonOscillator implements Destroyable {
 
     oscillator.type = this.wave;
     oscillator.frequency.setValueAtTime(noteHz, now);
+    rawGain.gain.setValueAtTime(0, now);
+    normalizerGain.gain.setValueAtTime(0, now);
     detuneGain.gain.value = position;
     depthGain.gain.value = position;
     blendGain.gain.value = 1 - centerWeight;
@@ -255,10 +259,11 @@ export class UnisonOscillator implements Destroyable {
     detuneGain.connect(oscillator.detune);
     bundle.depthClamp.connect(depthGain);
     depthGain.connect(panner.pan);
-    centerWeightSource.connect(rawGain.gain);
+    centerWeightSource.connect(rawGainControl);
     bundle.blendClamp.connect(blendGain);
-    blendGain.connect(rawGain.gain);
-    rawGain.connect(rawGainSquare.input);
+    blendGain.connect(rawGainControl);
+    rawGainControl.connect(rawGain.gain);
+    rawGainControl.connect(rawGainSquare.input);
     rawGainSquare.connect(bundle.meanPowerGain);
     bundle.normalizerScale.connect(normalizerGain.gain);
     oscillator.connect(rawGain);
@@ -275,6 +280,7 @@ export class UnisonOscillator implements Destroyable {
       depthGain,
       centerWeightSource,
       blendGain,
+      rawGainControl,
       rawGainSquare,
     };
     oscillator.onended = () => this.onSubvoiceEnded(bundle, subvoice);
@@ -297,8 +303,10 @@ export class UnisonOscillator implements Destroyable {
     this.detuneSource.disconnect(subvoice.oscillator.detune);
     subvoice.detuneGain.disconnect(subvoice.oscillator.detune);
     subvoice.depthGain.disconnect(subvoice.panner.pan);
-    subvoice.centerWeightSource.disconnect(subvoice.rawGain.gain);
-    subvoice.blendGain.disconnect(subvoice.rawGain.gain);
+    subvoice.centerWeightSource.disconnect(subvoice.rawGainControl);
+    subvoice.blendGain.disconnect(subvoice.rawGainControl);
+    subvoice.rawGainControl.disconnect(subvoice.rawGain.gain);
+    subvoice.rawGainControl.disconnect(subvoice.rawGainSquare.input);
     bundle.normalizerScale.disconnect(subvoice.normalizerGain.gain);
     subvoice.oscillator.disconnect();
     subvoice.rawGain.disconnect();
@@ -309,6 +317,7 @@ export class UnisonOscillator implements Destroyable {
     subvoice.centerWeightSource.disconnect();
     subvoice.centerWeightSource.stop();
     subvoice.blendGain.disconnect();
+    subvoice.rawGainControl.disconnect();
     subvoice.rawGainSquare.destroy();
   }
 
