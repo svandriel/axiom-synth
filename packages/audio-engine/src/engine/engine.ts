@@ -51,7 +51,7 @@ export class AudioEngine implements Destroyable {
   private readonly master: GainNode;
   private readonly meter: Meter;
   private readonly analyser: AnalyserNode;
-  private readonly dry: GainNode;
+  public readonly masterInput: GainNode;
   private readonly comp: DynamicsCompressorNode;
 
   private readonly noteToVoiceMap: Map<number, Voice> = new Map();
@@ -172,13 +172,13 @@ export class AudioEngine implements Destroyable {
     this.analyser = ctxt.createAnalyser();
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.82;
-    this.dry = ctxt.createGain();
-    this.dry.gain.value = 0.6;
+    this.masterInput = ctxt.createGain();
+    this.masterInput.gain.value = 1.0;
 
     this.comp = ctxt.createDynamicsCompressor();
 
-    this.dry.connect(this.master);
-    this.dry.connect(this.meter.input);
+    this.masterInput.connect(this.master);
+    this.masterInput.connect(this.meter.input);
 
     this.master.connect(this.comp);
     this.comp.connect(this.analyser);
@@ -266,7 +266,7 @@ export class AudioEngine implements Destroyable {
 
     this.voicePool = Array.from(
       { length: MAX_VOICES },
-      () => new AxiomVoice(this.ctxt, this.dry, voiceConfig),
+      () => new AxiomVoice(this.ctxt, this.masterInput, voiceConfig),
     );
   }
 
@@ -554,7 +554,7 @@ export class AudioEngine implements Destroyable {
         source.stop();
       });
     });
-    this.dry.disconnect();
+    this.masterInput.disconnect();
     this.ctxt.close();
   }
 }
