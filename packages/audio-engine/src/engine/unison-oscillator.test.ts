@@ -53,6 +53,18 @@ describe('UnisonOscillator', () => {
     }
   });
 
+  it('starts with unison blend at the public default', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+
+      expect(oscillator.unisonBlend.value).toBe(1);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
   it('reuses warmed paths while allocating fresh oscillator sources', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
@@ -388,9 +400,44 @@ describe('UnisonOscillator', () => {
 
       oscillator.stop();
       ctxt.oscillators.forEach(source => source.end());
+      const failedSources = [...ctxt.oscillators];
+      const [frequencySource, detuneSource] = ctxt.constantSources;
+      const disconnectsBeforeReuse = ctxt.operations.filter(
+        operation =>
+          operation.type === 'disconnect' &&
+          (operation.source === frequencySource ||
+            operation.source === detuneSource) &&
+          failedSources.some(
+            source =>
+              operation.destination === source.frequency ||
+              operation.destination === source.detune,
+          ),
+      );
       oscillator.start(440, 1);
 
       expect(ctxt.oscillators).toHaveLength(4);
+      expect(disconnectsBeforeReuse).toEqual([
+        {
+          type: 'disconnect',
+          source: frequencySource,
+          destination: failedSources[0]?.frequency,
+        },
+        {
+          type: 'disconnect',
+          source: detuneSource,
+          destination: failedSources[0]?.detune,
+        },
+        {
+          type: 'disconnect',
+          source: frequencySource,
+          destination: failedSources[1]?.frequency,
+        },
+        {
+          type: 'disconnect',
+          source: detuneSource,
+          destination: failedSources[1]?.detune,
+        },
+      ]);
     } finally {
       restoreAudioParam();
     }
@@ -407,6 +454,33 @@ describe('UnisonOscillator', () => {
 
       expect(() => oscillator.destroy()).not.toThrow();
       expect(() => oscillator.destroy()).not.toThrow();
+      const [frequencySource, detuneSource] = ctxt.constantSources;
+      const pooledSources = ctxt.oscillators;
+      expect(
+        ctxt.operations.filter(
+          operation =>
+            operation.type === 'disconnect' &&
+            (operation.source === frequencySource ||
+              operation.source === detuneSource) &&
+            (operation.destination === pooledSources[0]?.frequency ||
+              operation.destination === pooledSources[0]?.detune ||
+              operation.destination === pooledSources[1]?.frequency ||
+              operation.destination === pooledSources[1]?.detune),
+        ),
+      ).toEqual([
+        ...pooledSources.flatMap(source => [
+          {
+            type: 'disconnect' as const,
+            source: frequencySource,
+            destination: source.frequency,
+          },
+          {
+            type: 'disconnect' as const,
+            source: detuneSource,
+            destination: source.detune,
+          },
+        ]),
+      ]);
       ctxt.oscillators.forEach(source => source.end());
       expect(ctxt.connections).toHaveLength(0);
     } finally {

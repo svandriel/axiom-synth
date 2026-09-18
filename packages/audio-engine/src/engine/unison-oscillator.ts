@@ -41,7 +41,7 @@ export class UnisonOscillator implements Destroyable {
     this.detuneSource = this.createSource(0);
     this.unisonDetuneSource = this.createSource(0);
     this.unisonDepthSource = this.createSource(0);
-    this.unisonBlendSource = this.createSource(0);
+    this.unisonBlendSource = this.createSource(1);
     this.pathPool = new UnisonVoicePathPool(
       ctxt,
       this.outputGain,
@@ -131,6 +131,8 @@ export class UnisonOscillator implements Destroyable {
         sources.push({ oscillator, path });
         oscillator.type = this.wave;
         oscillator.frequency.setValueAtTime(noteHz, now);
+        this.frequencySource.connect(oscillator.frequency);
+        this.detuneSource.connect(oscillator.detune);
         path.arm(oscillator);
       });
       sources.forEach(source => {
@@ -165,6 +167,7 @@ export class UnisonOscillator implements Destroyable {
       });
       if (stopFailed) {
         bundle.pooled.forEach(({ path, oscillator }) => {
+          this.detachPooled(oscillator);
           path.abort();
           oscillator.onended = null;
         });
@@ -184,6 +187,7 @@ export class UnisonOscillator implements Destroyable {
         this.detachDirect(bundle.direct.oscillator);
       } else {
         bundle.pooled.forEach(({ oscillator }) => {
+          this.detachPooled(oscillator);
           oscillator.onended = null;
           this.stopSource(oscillator);
         });
@@ -261,13 +265,17 @@ export class UnisonOscillator implements Destroyable {
     sources: readonly PooledSource[],
   ): void {
     sources.forEach(({ path, oscillator }) => {
+      this.detachPooled(oscillator);
       path.abort();
       oscillator.onended = null;
-      this.safe(() => this.frequencySource.disconnect(oscillator.frequency));
-      this.safe(() => this.detuneSource.disconnect(oscillator.detune));
       this.safe(() => oscillator.stop());
     });
     this.pathPool.abort(lease!);
+  }
+
+  private detachPooled(oscillator: OscillatorNode): void {
+    this.safe(() => this.frequencySource.disconnect(oscillator.frequency));
+    this.safe(() => this.detuneSource.disconnect(oscillator.detune));
   }
 
   private detachDirect(oscillator: OscillatorNode): void {
