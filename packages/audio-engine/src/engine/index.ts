@@ -1,5 +1,6 @@
 export * from './analyser';
 export * from './constants';
+export * from './curve-node';
 export * from './destroyable';
 export * from './envelope';
 export * from './filter';
