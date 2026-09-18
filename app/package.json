@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@axiom/audio-engine": "workspace:*",
+    "@axiom/axiom-synth": "workspace:*",
     "vue": "^3.5.41"
   },
   "devDependencies": {

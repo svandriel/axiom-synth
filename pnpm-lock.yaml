@@ -32,6 +32,9 @@ importers:
       '@axiom/audio-engine':
         specifier: workspace:*
         version: link:../packages/audio-engine
+      '@axiom/axiom-synth':
+        specifier: workspace:*
+        version: link:../packages/axiom-synth
       vue:
         specifier: ^3.5.41
         version: 3.5.42(typescript@6.0.3)
@@ -56,6 +59,19 @@ importers:
         version: 3.3.11(typescript@6.0.3)
 
   packages/audio-engine:
+    devDependencies:
+      '@vue/tsconfig':
+        specifier: ^0.9.1
+        version: 0.9.1(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3))
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+
+  packages/axiom-synth:
+    dependencies:
+      '@axiom/audio-engine':
+        specifier: workspace:*
+        version: link:../audio-engine
     devDependencies:
       '@vue/tsconfig':
         specifier: ^0.9.1
