@@ -110,7 +110,8 @@ At note start:
    raw detune, then start source.
 4. Store raw oscillator and path identity in bundle member.
 
-At `stop(time?)`, retain bundle and path leases until every oscillator's
+At `stop(time?)`, retain bundle and path leases until every raw oscillator fires
+`onended`. This continues existing release and 3 ms voice-steal choke behavior.
 
 At an oscillator's `onended`:
 
