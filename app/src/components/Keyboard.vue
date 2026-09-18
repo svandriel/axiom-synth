@@ -54,7 +54,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useAxiomSynth } from '../composables/use-axiom-synth';
-import { noteForKey, notes } from '../utils/key-map';
+import { noteForKey, notes } from '../utils';
 
 const synth = useAxiomSynth();
 const octave = ref(4);

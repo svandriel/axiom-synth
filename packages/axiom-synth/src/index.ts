@@ -1,3 +1,2 @@
-export * from './axiom-synth';
-export * from './axiom-voice';
-export * from './axiom-voice-config';
+export { AxiomSynth } from './axiom-synth';
+export { AxiomVoice } from './axiom-voice';

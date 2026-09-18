@@ -47,7 +47,7 @@
 
 <script setup lang="ts">
 import { type FilterType } from '@axiom/audio-engine';
-import { fractionDisplay } from '../utils/fraction-display.ts';
+import { fractionDisplay } from '../utils';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';

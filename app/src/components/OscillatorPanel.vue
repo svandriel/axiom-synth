@@ -103,9 +103,7 @@
 
 <script setup lang="ts">
 import type { OscillatorConfig, WaveFormType } from '@axiom/audio-engine';
-import { dbDisplay } from '../utils/db-display.ts';
-import { fractionDisplay } from '../utils/fraction-display.ts';
-import { semiDisplay } from '../utils/semi-display.ts';
+import { dbDisplay, fractionDisplay, semiDisplay } from '../utils';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';

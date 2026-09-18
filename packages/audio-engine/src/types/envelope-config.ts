@@ -7,4 +7,4 @@ export interface EnvelopeConfig {
   releaseSeconds: number;
   releaseCurve: EnvelopeCurve;
 }
-export type EnvelopeCurve = 'linear' | 'exponential' | 'analog';
+type EnvelopeCurve = 'linear' | 'exponential' | 'analog';

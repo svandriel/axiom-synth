@@ -68,6 +68,20 @@ never in the engine package. `@axiom/audio-engine` contains no Axiom
 identifiers; dependency direction is one-way (`@axiom/axiom-synth` imports the
 engine, never the reverse).
 
+### 7. Only export what crosses a seam
+
+A symbol gets an `export` only if it is (a) actually referenced outside its
+module or (b) declared public API from a package entry barrel
+(`packages/*/src/index.ts`). Exports that nothing imports and that are not
+barrel-guaranteed public API are dead and must be removed. Internal plumbing
+(patch structs, shared node wiring, per-voice glue) must not be exported from
+a package barrel even when two files in the same package share it — that seam
+stays package-internal. A package's public API is exactly what its `index.ts`
+barrel declares.
+
+Reference: `packages/axiom-synth/src/index.ts` earns its keep — it exports only
+`AxiomSynth`/`AxiomVoice`; `AxiomVoiceConfig` stays package-internal.
+
 ## History
 
 - Rule 6 ("New engine modules stay internal") superseded by rule 6
