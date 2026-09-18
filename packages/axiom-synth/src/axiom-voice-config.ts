@@ -23,6 +23,13 @@ export interface AxiomVoiceConfig {
   filterKeyTrack: ConstantSourceNode;
   oscillatorDetuneSources: FixedArray<ConstantSourceNode, OscillatorCount>;
   oscillatorGainSources: FixedArray<ConstantSourceNode, OscillatorCount>;
+  oscillatorUnisonDetuneSources: FixedArray<
+    ConstantSourceNode,
+    OscillatorCount
+  >;
+  oscillatorUnisonDepthSources: FixedArray<ConstantSourceNode, OscillatorCount>;
+  oscillatorUnisonBlendSources: FixedArray<ConstantSourceNode, OscillatorCount>;
+  oscillatorUnisonVoices: Observable<FixedArray<number, OscillatorCount>>;
   oscillatorWaveForms: Observable<FixedArray<WaveFormType, OscillatorCount>>;
   waveshaperCurve: WaveshaperCurve;
   waveshaperDrive: ConstantSourceNode;
