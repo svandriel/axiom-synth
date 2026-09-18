@@ -443,7 +443,92 @@ git add app/src/components/OscillatorPanel.vue
 git commit -m "feat(ui): enable oscillator unison controls"
 ```
 
-### Task 6: Final Verification
+### Task 6: Optimize Unison Render Graph
+
+**Files:**
+
+- Modify: `packages/audio-engine/src/engine/unison-oscillator.ts`
+- Modify: `packages/audio-engine/src/engine/clamp-node.ts`
+- Modify: `packages/axiom-synth/src/axiom-synth.ts`
+
+**Interfaces:**
+
+- Preserves: public `UnisonOscillator` interface and exact live normalized
+  Blend result.
+- Produces: reduced default and high-unison Web Audio node counts.
+
+- [ ] **Step 1: Remove ClampNode from unison paths**
+
+Remove per-note ClampNode creation and source wiring. Delete
+`packages/audio-engine/src/engine/clamp-node.ts` and its barrel export because
+no remaining production code uses it. In `AxiomSynth`, clamp unison config
+before source scheduling and before storing values:
+
+```ts
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+const unison = {
+  voices: Math.min(16, Math.max(1, Math.round(config.unison.voices))),
+  detune: clamp(config.unison.detune, 0, 50),
+  depth: clamp(config.unison.depth, 0, 1),
+  blend: clamp(config.unison.blend, 0, 1),
+};
+```
+
+- [ ] **Step 2: Precompute one exact Blend curve per active subvoice**
+
+Replace raw-gain control, square curves, mean-power, reciprocal-square-root,
+and normalizer nodes with one per-subvoice `CurveNode` driven by
+`unisonBlendSource`. For fixed `voices`, precompute each position and center
+weight, then use this curve callback:
+
+```ts
+const gainForBlend = (blend: number) => {
+  const rawGain = centerWeight + blend * (1 - centerWeight);
+  const power = positions.reduce((sum, position) => {
+    const weight = 1 / (1 + Math.abs(position));
+    const gain = weight + blend * (1 - weight);
+    return sum + gain * gain;
+  }, 0);
+  return rawGain / Math.sqrt(power);
+};
+```
+
+Create `new CurveNode(ctxt, gainForBlend, { inputMin: 0, inputMax: 1 })` and
+connect `unisonBlendSource` to its input and curve output to its subvoice gain.
+Retain/destroy each curve with its subvoice. Detune and depth use direct source
+through static position gains.
+
+- [ ] **Step 3: Bypass unison graph for one voice**
+
+When `voices === 1`, create only raw `OscillatorNode`, connect normal frequency
+and detune sources, and connect it directly to persistent `outputGain`. Do not
+create any panner, subvoice gain, Blend curve, or detune/depth multiplier. Keep
+explicit inbound source-to-AudioParam teardown.
+
+- [ ] **Step 4: Preserve smooth rapid automation**
+
+Replace `rampUnisonSource()` cancellation with a cross-browser hold operation.
+Track each source's scheduled ramp start time, start value, and target. At each
+update, calculate interpolated current value, cancel future events, schedule
+that value at `now`, then ramp to target at `now + 0.01`. This must prevent a
+discontinuity when controls update before prior ramp ends.
+
+- [ ] **Step 5: Verify**
+
+Run: `pnpm build && pnpm lint && git diff --check`
+
+Expected: exit code 0. Run Vite server and verify its root returns HTTP 200.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add packages/audio-engine/src/engine/unison-oscillator.ts packages/audio-engine/src/engine/clamp-node.ts packages/audio-engine/src/engine/index.ts packages/axiom-synth/src/axiom-synth.ts
+git commit -m "perf(engine): reduce unison graph cost"
+```
+
+### Task 7: Final Verification
 
 **Files:**
 

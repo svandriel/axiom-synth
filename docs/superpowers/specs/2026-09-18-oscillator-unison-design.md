@@ -76,9 +76,9 @@ jacks, backed by module-owned `ConstantSourceNode.offset` sources. Every
 owned source is explicitly zeroed and started before any patching, per rule 3.
 
 `voices` is a plain number getter/setter since it changes graph topology. Round
-then clamp it to `[1, 16]`. Clamp continuous controls where their signals enter
-the live calculation graph. Out-of-range values do not throw. Calls after
-`destroy()` do not create or reconnect nodes:
+then clamp it to `[1, 16]`. `AxiomSynth` clamps continuous unison configuration
+before it schedules shared source values. Out-of-range values do not throw.
+Calls after `destroy()` do not create or reconnect nodes:
 
 | Jack           | Effective range | Default |
 | -------------- | --------------- | ------- |
@@ -153,16 +153,23 @@ OscillatorNode.detune`. Build live panning with `unisonDepth -> GainNode(p_i)
 -> StereoPannerNode.pan`. Existing normal detune source and LFO output also
 connect to raw oscillator detune; Web Audio sums signals.
 
-For gain, derive each raw-gain signal from `unisonBlend`, square every raw gain
-with private `CurveNode(value => value * value, { inputMin: 0.5, inputMax: 1 })`,
-mix results, and scale with `1 / V`. Pass mean power through private
-`CurveNode(value => 1 / Math.sqrt(Math.max(value, 0.0001)), { inputMin: 0.25,
-inputMax: 1 })`. Apply static `1 / sqrt(V)` gain, then connect this shared
-normalizer signal to every `normalizerGain_i.gain`. The raw gain signal connects
-to each `rawGain_i.gain`.
+For each fixed Voice Count and subvoice position, create one `CurveNode` over
+Blend `[0, 1]` whose callback returns `gain_i(b)`. Connect clamped Blend to its
+input and curve output to the subvoice gain. This evaluates exact normalized
+gain in one waveshaper stage per subvoice, rather than building raw-gain,
+squaring, summing, and reciprocal-square-root control graphs from many nodes.
 
-Legal signals remain inside `WaveShaperNode` domain `[-1, 1]`, so neither
-curve clips. The positive floor prevents division by zero for malformed input.
+The curve callback calculates all subvoice raw gains for its fixed `V`, then
+returns the requested index gain:
+
+```text
+rawGain_k(b) = centerWeight_k + b * (1 - centerWeight_k)
+gain_i(b) = rawGain_i(b) / sqrt(sum(rawGain_k(b)^2 for k in [0, V - 1]))
+```
+
+The input domain is exactly `[0, 1]`, so legal Blend signals remain within the
+curve's range. This preserves exact live a-rate Blend normalization while
+removing most blend control nodes.
 
 ## Stereo
 
@@ -196,8 +203,9 @@ config. It owns `Observable<FixedArray<number, OscillatorCount>>` for voices.
 
 `setOscillatorConfiguration()` updates unison fields. Voices publishes new
 fixed array through observable. Detune, depth, and blend cancel scheduled
-values then ramp matching shared sources over 10 ms. Store complete copied
-configuration afterward.
+values then ramp matching shared sources over 10 ms. Clamp values before both
+scheduling and storing complete copied configuration. Use a hold-safe ramp
+operation so rapid updates continue from the in-progress ramp value.
 
 `AxiomVoice` replaces `Oscillator` with `UnisonOscillator`. Construction wires:
 
@@ -235,6 +243,12 @@ Worst active graph: `3 * 16 * 16 = 768` raw oscillator nodes, with matching
 panners and audio gains, plus per-active-oscillator control graphs. Do not lower
 requested Voices based on polyphony. Normalization controls nominal power, not
 coherent attack peaks; master compression remains final peak protection.
+
+When `V = 1`, create the same raw oscillator plus direct `OscillatorNode ->
+outputGain` route used before unison. Do not create panner, per-subvoice gain,
+Blend curve, or any unison control graph. This preserves pre-unison default CPU
+cost; its mono output is upmixed only by downstream standard Web Audio channel
+handling.
 
 ## Verification
 
