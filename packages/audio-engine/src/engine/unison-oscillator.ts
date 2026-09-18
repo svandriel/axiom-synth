@@ -1,29 +1,18 @@
 import type { WaveFormType } from '../types';
-import { ClampNode } from './clamp-node';
 import { CurveNode } from './curve-node';
 import type { Destroyable } from './destroyable';
 
 interface Subvoice {
   oscillator: OscillatorNode;
-  rawGain: GainNode;
-  normalizerGain: GainNode;
-  panner: StereoPannerNode;
-  detuneGain: GainNode;
-  depthGain: GainNode;
-  centerWeightSource: ConstantSourceNode;
-  blendGain: GainNode;
-  rawGainControl: GainNode;
-  rawGainSquare: CurveNode;
+  gain: GainNode | null;
+  panner: StereoPannerNode | null;
+  detuneGain: GainNode | null;
+  depthGain: GainNode | null;
+  blendCurve: CurveNode | null;
 }
 
 interface VoiceBundle {
   subvoices: Set<Subvoice>;
-  detuneClamp: ClampNode;
-  depthClamp: ClampNode;
-  blendClamp: ClampNode;
-  meanPowerGain: GainNode;
-  reciprocalSqrt: CurveNode;
-  normalizerScale: GainNode;
 }
 
 export class UnisonOscillator implements Destroyable {
@@ -119,14 +108,13 @@ export class UnisonOscillator implements Destroyable {
     }
     this.stop();
 
-    const bundle = this.createBundle();
     const voices = this.voicesValue;
+    const positions = Array.from({ length: voices }, (_, index) =>
+      voices === 1 ? 0 : -1 + (2 * index) / (voices - 1),
+    );
+    const bundle: VoiceBundle = { subvoices: new Set() };
     for (let index = 0; index < voices; index += 1) {
-      // Evenly span [-1, 1] so detune and pan remain centered as voice count changes.
-      const position = voices === 1 ? 0 : -1 + (2 * index) / (voices - 1);
-      // Center voice starts at full gain; outer voices contribute progressively less.
-      const centerWeight = 1 / (1 + Math.abs(position));
-      this.createSubvoice(bundle, noteHz, now, position, centerWeight);
+      this.createSubvoice(bundle, noteHz, now, positions[index]!, positions);
     }
     this.activeBundles.add(bundle);
     this.current = bundle;
@@ -187,100 +175,76 @@ export class UnisonOscillator implements Destroyable {
     return source;
   }
 
-  private createBundle(): VoiceBundle {
-    const detuneClamp = new ClampNode(this.ctxt, 0, 50);
-    const depthClamp = new ClampNode(this.ctxt, 0, 1);
-    const blendClamp = new ClampNode(this.ctxt, 0, 1);
-    const meanPowerGain = this.ctxt.createGain();
-    // Average squared subvoice gains, so normalization follows signal power, not amplitude.
-    meanPowerGain.gain.value = 1 / this.voicesValue;
-    // Convert mean power to reciprocal RMS gain, keeping blended output level stable.
-    const reciprocalSqrt = new CurveNode(
-      this.ctxt,
-      value => 1 / Math.sqrt(Math.max(value, 0.0001)),
-      { inputMin: 0.25, inputMax: 1 },
-    );
-    const normalizerScale = this.ctxt.createGain();
-    // Preserve 1/sqrt(V) unison scaling when every voice receives equal gain.
-    normalizerScale.gain.value = 1 / Math.sqrt(this.voicesValue);
-
-    this.unisonDetuneSource.connect(detuneClamp.input);
-    this.unisonDepthSource.connect(depthClamp.input);
-    this.unisonBlendSource.connect(blendClamp.input);
-    meanPowerGain.connect(reciprocalSqrt.input);
-    reciprocalSqrt.connect(normalizerScale);
-
-    return {
-      subvoices: new Set(),
-      detuneClamp,
-      depthClamp,
-      blendClamp,
-      meanPowerGain,
-      reciprocalSqrt,
-      normalizerScale,
-    };
-  }
-
   private createSubvoice(
     bundle: VoiceBundle,
     noteHz: number,
     now: number,
     position: number,
-    centerWeight: number,
+    positions: number[],
   ): void {
     const oscillator = this.ctxt.createOscillator();
-    const rawGain = this.ctxt.createGain();
-    const normalizerGain = this.ctxt.createGain();
-    const panner = this.ctxt.createStereoPanner();
-    const detuneGain = this.ctxt.createGain();
-    const depthGain = this.ctxt.createGain();
-    const centerWeightSource = this.createSource(centerWeight);
-    const blendGain = this.ctxt.createGain();
-    const rawGainControl = this.ctxt.createGain();
-    const rawGainSquare = new CurveNode(this.ctxt, value => value * value, {
-      inputMin: 0.5,
-      inputMax: 1,
-    });
 
     oscillator.type = this.wave;
     oscillator.frequency.setValueAtTime(noteHz, now);
-    rawGain.gain.setValueAtTime(0, now);
-    normalizerGain.gain.setValueAtTime(0, now);
-    detuneGain.gain.value = position;
-    depthGain.gain.value = position;
-    // Blend moves each voice from its center-biased weight toward equal gain.
-    blendGain.gain.value = 1 - centerWeight;
 
     this.frequencySource.connect(oscillator.frequency);
     this.detuneSource.connect(oscillator.detune);
-    bundle.detuneClamp.connect(detuneGain);
+
+    if (positions.length === 1) {
+      oscillator.connect(this.outputGain);
+      const subvoice: Subvoice = {
+        oscillator,
+        gain: null,
+        panner: null,
+        detuneGain: null,
+        depthGain: null,
+        blendCurve: null,
+      };
+      oscillator.onended = () => this.onSubvoiceEnded(bundle, subvoice);
+      bundle.subvoices.add(subvoice);
+      oscillator.start(now);
+      return;
+    }
+
+    const centerWeight = 1 / (1 + Math.abs(position));
+    const gain = this.ctxt.createGain();
+    const panner = this.ctxt.createStereoPanner();
+    const detuneGain = this.ctxt.createGain();
+    const depthGain = this.ctxt.createGain();
+    const blendCurve = new CurveNode(
+      this.ctxt,
+      blend => {
+        const rawGain = centerWeight + blend * (1 - centerWeight);
+        const power = positions.reduce((sum, subvoicePosition) => {
+          const weight = 1 / (1 + Math.abs(subvoicePosition));
+          const subvoiceGain = weight + blend * (1 - weight);
+          return sum + subvoiceGain * subvoiceGain;
+        }, 0);
+        return rawGain / Math.sqrt(power);
+      },
+      { inputMin: 0, inputMax: 1 },
+    );
+
+    gain.gain.setValueAtTime(0, now);
+    detuneGain.gain.value = position;
+    depthGain.gain.value = position;
+    this.unisonDetuneSource.connect(detuneGain);
     detuneGain.connect(oscillator.detune);
-    bundle.depthClamp.connect(depthGain);
+    this.unisonDepthSource.connect(depthGain);
     depthGain.connect(panner.pan);
-    centerWeightSource.connect(rawGainControl);
-    bundle.blendClamp.connect(blendGain);
-    blendGain.connect(rawGainControl);
-    rawGainControl.connect(rawGain.gain);
-    // Squaring before summation makes the aggregate represent total power.
-    rawGainControl.connect(rawGainSquare.input);
-    rawGainSquare.connect(bundle.meanPowerGain);
-    bundle.normalizerScale.connect(normalizerGain.gain);
-    oscillator.connect(rawGain);
-    rawGain.connect(normalizerGain);
-    normalizerGain.connect(panner);
+    this.unisonBlendSource.connect(blendCurve.input);
+    blendCurve.connect(gain.gain);
+    oscillator.connect(gain);
+    gain.connect(panner);
     panner.connect(this.outputGain);
 
     const subvoice: Subvoice = {
       oscillator,
-      rawGain,
-      normalizerGain,
+      gain,
       panner,
       detuneGain,
       depthGain,
-      centerWeightSource,
-      blendGain,
-      rawGainControl,
-      rawGainSquare,
+      blendCurve,
     };
     oscillator.onended = () => this.onSubvoiceEnded(bundle, subvoice);
     bundle.subvoices.add(subvoice);
@@ -288,7 +252,7 @@ export class UnisonOscillator implements Destroyable {
   }
 
   private onSubvoiceEnded(bundle: VoiceBundle, subvoice: Subvoice): void {
-    this.detachSubvoice(bundle, subvoice);
+    this.detachSubvoice(subvoice);
     bundle.subvoices.delete(subvoice);
     if (bundle.subvoices.size === 0) {
       this.activeBundles.delete(bundle);
@@ -297,41 +261,27 @@ export class UnisonOscillator implements Destroyable {
     }
   }
 
-  private detachSubvoice(bundle: VoiceBundle, subvoice: Subvoice): void {
+  private detachSubvoice(subvoice: Subvoice): void {
     this.frequencySource.disconnect(subvoice.oscillator.frequency);
     this.detuneSource.disconnect(subvoice.oscillator.detune);
-    subvoice.detuneGain.disconnect(subvoice.oscillator.detune);
-    subvoice.depthGain.disconnect(subvoice.panner.pan);
-    subvoice.centerWeightSource.disconnect(subvoice.rawGainControl);
-    subvoice.blendGain.disconnect(subvoice.rawGainControl);
-    subvoice.rawGainControl.disconnect(subvoice.rawGain.gain);
-    subvoice.rawGainControl.disconnect(subvoice.rawGainSquare.input);
-    bundle.normalizerScale.disconnect(subvoice.normalizerGain.gain);
+    if (subvoice.detuneGain && subvoice.depthGain && subvoice.panner) {
+      subvoice.detuneGain.disconnect(subvoice.oscillator.detune);
+      subvoice.depthGain.disconnect(subvoice.panner.pan);
+      this.unisonDetuneSource.disconnect(subvoice.detuneGain);
+      this.unisonDepthSource.disconnect(subvoice.depthGain);
+      this.unisonBlendSource.disconnect(subvoice.blendCurve!.input);
+    }
     subvoice.oscillator.disconnect();
-    subvoice.rawGain.disconnect();
-    subvoice.normalizerGain.disconnect();
-    subvoice.panner.disconnect();
-    subvoice.detuneGain.disconnect();
-    subvoice.depthGain.disconnect();
-    subvoice.centerWeightSource.disconnect();
-    subvoice.centerWeightSource.stop();
-    subvoice.blendGain.disconnect();
-    subvoice.rawGainControl.disconnect();
-    subvoice.rawGainSquare.destroy();
+    subvoice.gain?.disconnect();
+    subvoice.panner?.disconnect();
+    subvoice.detuneGain?.disconnect();
+    subvoice.depthGain?.disconnect();
+    subvoice.blendCurve?.destroy();
   }
 
   private destroyBundle(bundle: VoiceBundle): void {
-    bundle.subvoices.forEach(subvoice => this.detachSubvoice(bundle, subvoice));
+    bundle.subvoices.forEach(subvoice => this.detachSubvoice(subvoice));
     bundle.subvoices.clear();
-    this.unisonDetuneSource.disconnect(bundle.detuneClamp.input);
-    this.unisonDepthSource.disconnect(bundle.depthClamp.input);
-    this.unisonBlendSource.disconnect(bundle.blendClamp.input);
-    bundle.detuneClamp.destroy();
-    bundle.depthClamp.destroy();
-    bundle.blendClamp.destroy();
-    bundle.meanPowerGain.disconnect();
-    bundle.reciprocalSqrt.destroy();
-    bundle.normalizerScale.disconnect();
   }
 
   private setBundleWaveform(bundle: VoiceBundle, waveform: WaveFormType): void {

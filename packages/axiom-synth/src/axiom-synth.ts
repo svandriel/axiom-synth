@@ -28,6 +28,16 @@ import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
 
 const MAX_VOICES = 16;
+const UNISON_RAMP_SECONDS = 0.01;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+interface UnisonRampState {
+  startTime: number;
+  startValue: number;
+  target: number;
+}
 
 const LFO_DEPTH_SCALES: Record<LfoTarget, number> = {
   osc1: 150,
@@ -143,6 +153,10 @@ export class AxiomSynth extends Synth<AxiomVoice> {
   private readonly oscillatorUnisonVoices: Observable<
     FixedArray<number, OscillatorCount>
   >;
+  private readonly unisonRampStates = new Map<
+    ConstantSourceNode,
+    UnisonRampState
+  >();
   private readonly waveShaperDriveSource: ConstantSourceNode;
   private readonly waveshaperCurve: WaveshaperCurve;
   private readonly _distortionAmount: Observable<number>;
@@ -369,6 +383,12 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
   setOscillatorConfiguration(index: OscillatorIndex, config: OscillatorConfig) {
     const currentConfig = this.oscillatorConfigs[index];
+    const unison = {
+      voices: Math.min(16, Math.max(1, Math.round(config.unison.voices))),
+      detune: clamp(config.unison.detune, 0, 50),
+      depth: clamp(config.unison.depth, 0, 1),
+      blend: clamp(config.unison.blend, 0, 1),
+    };
     if (
       currentConfig.octave !== config.octave ||
       currentConfig.semi !== config.semi ||
@@ -390,29 +410,26 @@ export class AxiomSynth extends Synth<AxiomVoice> {
         this.ctxt.currentTime + 0.01,
       );
     }
-    if (currentConfig.unison.voices !== config.unison.voices) {
+    if (currentConfig.unison.voices !== unison.voices) {
       this.oscillatorUnisonVoices.value = this.oscillatorUnisonVoices.value.map(
-        (voices, i) => (i === index ? config.unison.voices : voices),
+        (voices, i) => (i === index ? unison.voices : voices),
       ) as FixedArray<number, OscillatorCount>;
     }
     this.rampUnisonSource(
       this.oscillatorUnisonDetuneSources[index],
-      currentConfig.unison.detune,
-      config.unison.detune,
+      unison.detune,
     );
     this.rampUnisonSource(
       this.oscillatorUnisonDepthSources[index],
-      currentConfig.unison.depth,
-      config.unison.depth,
+      unison.depth,
     );
     this.rampUnisonSource(
       this.oscillatorUnisonBlendSources[index],
-      currentConfig.unison.blend,
-      config.unison.blend,
+      unison.blend,
     );
     this.oscillatorConfigs[index] = {
       ...config,
-      unison: { ...config.unison },
+      unison,
     };
   }
 
@@ -500,15 +517,26 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
   private rampUnisonSource(
     source: ConstantSourceNode,
-    currentValue: number,
     nextValue: number,
   ): void {
-    if (currentValue === nextValue) {
+    const previous = this.unisonRampStates.get(source);
+    if (previous?.target === nextValue || source.offset.value === nextValue) {
       return;
     }
     const now = this.ctxt.currentTime;
+    const elapsed = Math.max(0, now - (previous?.startTime ?? now));
+    const progress = Math.min(1, elapsed / UNISON_RAMP_SECONDS);
+    const currentValue = previous
+      ? previous.startValue + (previous.target - previous.startValue) * progress
+      : source.offset.value;
     source.offset.cancelScheduledValues(now);
-    source.offset.linearRampToValueAtTime(nextValue, now + 0.01);
+    source.offset.setValueAtTime(currentValue, now);
+    source.offset.linearRampToValueAtTime(nextValue, now + UNISON_RAMP_SECONDS);
+    this.unisonRampStates.set(source, {
+      startTime: now,
+      startValue: currentValue,
+      target: nextValue,
+    });
   }
 
   private createConstantSource(offset: number = 0) {
