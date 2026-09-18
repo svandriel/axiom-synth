@@ -443,6 +443,40 @@ describe('UnisonOscillator', () => {
     }
   });
 
+  it('cleans up direct links when stopping a source fails', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      oscillator.start(440, 0);
+      const source = ctxt.oscillators[0]!;
+      const [frequencySource, detuneSource] = ctxt.constantSources;
+      source.throwOnStop = true;
+
+      oscillator.stop();
+
+      expect(source.onended).toBeNull();
+      expect(
+        ctxt.connections.some(
+          connection =>
+            connection.source === frequencySource &&
+            connection.destination === source.frequency,
+        ),
+      ).toBe(false);
+      expect(
+        ctxt.connections.some(
+          connection =>
+            connection.source === detuneSource &&
+            connection.destination === source.detune,
+        ),
+      ).toBe(false);
+      oscillator.start(440, 1);
+      expect(ctxt.oscillators).toHaveLength(2);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
   it('is idempotent when destroyed while sources drain', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {

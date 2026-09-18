@@ -45,3 +45,21 @@ Updated `docs/codebase/ARCHITECTURE.md` to document:
 ## Scope Protection
 
 Unrelated Hz-display edits were not modified.
+
+## Latest Finding: Direct Stop Failure
+
+- Direct `voices === 1` stop now checks `stopSource()` and applies terminal
+  cleanup when stopping fails.
+- Failed direct stop clears `onended`, disconnects shared frequency and detune
+  AudioParam links, and removes the bundle from stopped bookkeeping.
+- Normal direct stop and `onended` cleanup behavior remains unchanged.
+- Added fake-context regression coverage proving exact inbound links are gone
+  and a subsequent note can start.
+
+## Latest Verification
+
+- `pnpm test`: passed, 3 files and 37 tests.
+- `pnpm --filter @axiom/audio-engine build`: passed.
+- `pnpm build`: passed for audio-engine, axiom-synth, and app.
+- `pnpm lint`: passed.
+- `git diff --check`: passed.

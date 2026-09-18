@@ -158,7 +158,11 @@ export class UnisonOscillator implements Destroyable {
     this.activeBundles.delete(bundle);
     this.stoppedBundles.add(bundle);
     if (bundle.direct) {
-      this.stopSource(bundle.direct.oscillator, time);
+      if (!this.stopSource(bundle.direct.oscillator, time)) {
+        bundle.direct.oscillator.onended = null;
+        this.detachDirect(bundle.direct.oscillator);
+        this.finishBundle(bundle);
+      }
     } else {
       let stopFailed = false;
       bundle.pooled.forEach(({ path, oscillator }) => {
