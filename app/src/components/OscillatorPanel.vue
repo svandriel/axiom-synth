@@ -72,6 +72,7 @@
         :default="0"
         :format="fractionDisplay(1)"
         :show-value="false"
+        :disabled="unisonDisabled"
       />
       <Knob
         label="Depth"
@@ -84,6 +85,7 @@
         :default="0"
         :format="percentageDisplay"
         :show-value="false"
+        :disabled="unisonDisabled"
       />
       <Knob
         label="Blend"
@@ -96,6 +98,7 @@
         :default="1"
         :format="percentageDisplay"
         :show-value="false"
+        :disabled="unisonDisabled"
       />
     </div>
   </Panel>
@@ -107,13 +110,18 @@ import { dbDisplay, fractionDisplay, semiDisplay } from '../utils';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
+import { computed } from 'vue';
 
 defineProps<{
   label?: string;
 }>();
 
-defineModel<OscillatorConfig>({
+const modelProps = defineModel<OscillatorConfig>({
   required: true,
+});
+
+const unisonDisabled = computed(() => {
+  return modelProps.value.unison.voices === 1;
 });
 
 const percentageDisplay = (value: number) => fractionDisplay(0)(value * 100);

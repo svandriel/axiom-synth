@@ -1,6 +1,6 @@
 <template>
   <div
-    class="knob-block flex touch-none flex-col items-center gap-1.5 text-2xs"
+    class="knob-block flex touch-none flex-col items-center gap-1.5 text-2xs transition-opacity duration-300"
     :class="{
       'opacity-50': props.disabled,
       'w-20': size === 'lg',
@@ -43,7 +43,7 @@
         '--knob-color-700': `var(--color-${color}-700)`,
       }"
     >
-      <div class="arc absolute rounded-full"></div>
+      <div class="arc absolute rounded-full" v-if="!disabled"></div>
       <div class="pointer absolute"></div>
     </div>
     <div
