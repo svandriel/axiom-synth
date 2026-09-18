@@ -61,6 +61,23 @@ Results:
 - Verification passed: `pnpm test`, `pnpm build`, `pnpm lint`, and `git diff --check`.
 - Full suite result: 8 tests passed.
 
+## Review fixes
+
+- Updated `docs/codebase/CONVENTIONS.md` to document Vitest, `pnpm test`, colocated
+  tests, and the `pnpm test`/`pnpm build`/`pnpm lint` CI gates.
+- Kept `BlendCurveCache.curveFor` cache identity while returning a readonly view.
+  Added `BlendCurveCache.applyTo`, which copies cached data into a
+  `WaveShaperNode` at the module seam.
+- Added a regression test proving mutation of node-owned curve data does not
+  change the cached curve.
+
+## Review verification
+
+- `pnpm test`: passed, 2 test files and 9 tests.
+- `pnpm build`: blocked by the unrelated existing `app/src/components/OscillatorPanel.vue` TypeScript error for unused `unisonEnabled`.
+- `pnpm lint`: passed, all files matched Prettier style.
+- `git diff --check`: passed.
+
 ## Documentation fix
 
 - Clarified that the earlier focused run covered 7 tests before the outer-role

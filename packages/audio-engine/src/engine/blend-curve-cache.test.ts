@@ -9,6 +9,19 @@ describe('BlendCurveCache', () => {
     expect(BlendCurveCache.curveFor(5, 2)).toBe(BlendCurveCache.curveFor(5, 2));
   });
 
+  it('copies cached data into a WaveShaperNode without sharing mutable data', () => {
+    const node = {} as WaveShaperNode;
+
+    BlendCurveCache.applyTo(node, 3, 1);
+    const firstCurve = node.curve!;
+    firstCurve[0] = 99;
+
+    BlendCurveCache.applyTo(node, 3, 1);
+
+    expect(node.curve).not.toBe(firstCurve);
+    expect(node.curve![0]).not.toBe(99);
+  });
+
   it.each([
     [1, 0],
     [17, 0],

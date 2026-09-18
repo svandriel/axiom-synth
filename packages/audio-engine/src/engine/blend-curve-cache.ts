@@ -4,7 +4,7 @@ const MAX_VOICES = 16;
 const curves = new Map<string, Float32Array>();
 
 export class BlendCurveCache {
-  static curveFor(voiceCount: number, index: number): Float32Array {
+  static curveFor(voiceCount: number, index: number): Readonly<Float32Array> {
     if (
       !Number.isInteger(voiceCount) ||
       voiceCount < 2 ||
@@ -43,5 +43,13 @@ export class BlendCurveCache {
 
     curves.set(key, curve);
     return curve;
+  }
+
+  static applyTo(
+    node: WaveShaperNode,
+    voiceCount: number,
+    index: number,
+  ): void {
+    node.curve = Float32Array.from(this.curveFor(voiceCount, index));
   }
 }
