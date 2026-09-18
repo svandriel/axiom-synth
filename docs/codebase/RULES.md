@@ -73,4 +73,3 @@ engine, never the reverse).
 - Rule 6 ("New engine modules stay internal") superseded by rule 6
   (2026-09-18): engine building blocks (`Oscillator`, `ModulationRouter`, …)
   are now public API so `@axiom/axiom-synth` can consume them.
-- _(none yet — this is the initial ruleset, recorded 2026-09-17)_
