@@ -83,3 +83,12 @@ To be recorded separately from the original Task 4 commit.
 - Added coverage for partial sibling end, direct connection rollback, pre-arm
   setup failure, callback clearing, disconnect-failure counters, live a-rate
   links, and free-path silence.
+
+## Latest Review Fixes
+
+- Pooled `onended` cleanup now explicitly disconnects each raw oscillator from
+  the shared frequency and detune sources before path disarm.
+- Raw sources enter the rollback collection immediately after allocation;
+  callbacks are registered for every source before any source starts.
+- Direct failed setup clears its callback before exact-link rollback.
+- Added assertions for disconnect operation history and setup ordering.

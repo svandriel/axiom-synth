@@ -172,6 +172,27 @@ describe('UnisonOscillator', () => {
       expect(
         pooledSources.every(source => source.connections.length === 0),
       ).toBe(true);
+      const [frequencySource, detuneSource] = ctxt.constantSources;
+      expect(
+        pooledSources.every(source =>
+          ctxt.operations.some(
+            operation =>
+              operation.type === 'disconnect' &&
+              operation.source === frequencySource &&
+              operation.destination === source.frequency,
+          ),
+        ),
+      ).toBe(true);
+      expect(
+        pooledSources.every(source =>
+          ctxt.operations.some(
+            operation =>
+              operation.type === 'disconnect' &&
+              operation.source === detuneSource &&
+              operation.destination === source.detune,
+          ),
+        ),
+      ).toBe(true);
     } finally {
       restoreAudioParam();
     }
@@ -277,6 +298,7 @@ describe('UnisonOscillator', () => {
         'FakeAudioNode connect failed',
       );
       expect(ctxt.oscillators[0]!.connections).toHaveLength(0);
+      expect(ctxt.oscillators[0]!.onended).toBeNull();
       ctxt.createOscillator = originalCreate;
       oscillator.start(440, 1);
       expect(ctxt.oscillators).toHaveLength(2);
@@ -301,6 +323,7 @@ describe('UnisonOscillator', () => {
       expect(() => oscillator.start(440, 0)).toThrow(
         'FakeOscillatorNode type assignment failed',
       );
+      expect(ctxt.oscillators[0]!.stopCalls).toHaveLength(1);
       ctxt.createOscillator = originalCreate;
       oscillator.start(440, 1);
       expect(ctxt.oscillators).toHaveLength(3);

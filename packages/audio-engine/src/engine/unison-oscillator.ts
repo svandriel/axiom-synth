@@ -123,14 +123,19 @@ export class UnisonOscillator implements Destroyable {
     // Each path selects its cached (voices, index) blend curve role.
     const lease = this.pathPool.acquire(voices);
     const sources: PooledSource[] = [];
+    const bundle: VoiceBundle = { direct: null, pooled: sources, lease };
     try {
       // Raw oscillators are one-shot sources, so allocate them per note.
       lease.paths.forEach(path => {
         const oscillator = this.ctxt.createOscillator();
+        sources.push({ oscillator, path });
         oscillator.type = this.wave;
         oscillator.frequency.setValueAtTime(noteHz, now);
-        sources.push({ oscillator, path });
         path.arm(oscillator);
+      });
+      sources.forEach(source => {
+        source.oscillator.onended = () =>
+          this.onPooledEnded(bundle, source.path, source.oscillator);
       });
       sources.forEach(({ oscillator }) => oscillator.start(now));
     } catch (error) {
@@ -138,11 +143,6 @@ export class UnisonOscillator implements Destroyable {
       throw error;
     }
 
-    const bundle: VoiceBundle = { direct: null, pooled: sources, lease };
-    sources.forEach(source => {
-      source.oscillator.onended = () =>
-        this.onPooledEnded(bundle, source.path, source.oscillator);
-    });
     this.activeBundles.add(bundle);
     this.current = bundle;
   }
@@ -226,6 +226,7 @@ export class UnisonOscillator implements Destroyable {
       oscillator.connect(this.outputGain);
       oscillator.start(now);
     } catch (error) {
+      oscillator.onended = null;
       this.detachDirect(oscillator);
       throw error;
     }
@@ -240,6 +241,8 @@ export class UnisonOscillator implements Destroyable {
   ): void {
     if (!this.stoppedBundles.has(bundle)) return;
     oscillator.onended = null;
+    this.safe(() => this.frequencySource.disconnect(oscillator.frequency));
+    this.safe(() => this.detuneSource.disconnect(oscillator.detune));
     path.disarm(oscillator);
     if (bundle.pooled.every(source => source.path.state === 'free')) {
       this.pathPool.release(bundle.lease!);
@@ -260,6 +263,8 @@ export class UnisonOscillator implements Destroyable {
     sources.forEach(({ path, oscillator }) => {
       path.abort();
       oscillator.onended = null;
+      this.safe(() => this.frequencySource.disconnect(oscillator.frequency));
+      this.safe(() => this.detuneSource.disconnect(oscillator.detune));
       this.safe(() => oscillator.stop());
     });
     this.pathPool.abort(lease!);
