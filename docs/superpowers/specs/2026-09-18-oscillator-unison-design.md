@@ -77,7 +77,8 @@ owned source is explicitly zeroed and started before any patching, per rule 3.
 
 `voices` is a plain number getter/setter since it changes graph topology. Round
 then clamp it to `[1, 16]`. Clamp continuous controls where their signals enter
-the live calculation graph:
+the live calculation graph. Out-of-range values do not throw. Calls after
+`destroy()` do not create or reconnect nodes:
 
 | Jack           | Effective range | Default |
 | -------------- | --------------- | ------- |
@@ -111,6 +112,7 @@ curve[n] = curveFunction(curveInput(n))
 ```
 
 `input` is the normalization-gain node; `output` is owned WaveShaperNode. It
+does not expose curve data or sample-count configuration.
 
 ## Per-Note Topology
 
@@ -157,6 +159,7 @@ mix results, and scale with `1 / V`. Pass mean power through private
 `CurveNode(value => 1 / Math.sqrt(Math.max(value, 0.0001)), { inputMin: 0.25,
 inputMax: 1 })`. Apply static `1 / sqrt(V)` gain, then connect this shared
 normalizer signal to every `normalizerGain_i.gain`. The raw gain signal connects
+to each `rawGain_i.gain`.
 
 Legal signals remain inside `WaveShaperNode` domain `[-1, 1]`, so neither
 curve clips. The positive floor prevents division by zero for malformed input.
@@ -174,6 +177,9 @@ leftGain(q)^2 + rightGain(q)^2 = 1
 
 Never use manual linear gain panning. Stereo starts at per-subvoice panners and
 continues through oscillator mix, waveshaper, filter, envelope, synth output,
+and AudioEngine master chain with no forced downmix. `V = 1` creates one raw
+oscillator at normal pitch and gain, centered in stereo; it is behaviorally
+equivalent to current plain oscillator.
 
 ## Axiom Integration
 
@@ -184,8 +190,14 @@ unison: { voices: 1, detune: 0, depth: 0, blend: 1 }
 ```
 
 `AxiomSynth` owns three `FixedArray<ConstantSourceNode, OscillatorCount>`
+collections for unison detune, depth, and blend. It initializes each from
+config. It owns `Observable<FixedArray<number, OscillatorCount>>` for voices.
+`AxiomVoiceConfig` carries all four shared controls.
 
 `setOscillatorConfiguration()` updates unison fields. Voices publishes new
+fixed array through observable. Detune, depth, and blend cancel scheduled
+values then ramp matching shared sources over 10 ms. Store complete copied
+configuration afterward.
 
 `AxiomVoice` replaces `Oscillator` with `UnisonOscillator`. Construction wires:
 
@@ -198,16 +210,31 @@ unison: { voices: 1, detune: 0, depth: 0, blend: 1 }
 7. Existing LFO oscillator targets to normal `detune`, never unison detune.
 
 Subscribe once to shared voices and apply each updated count. Unsubscribe during
+destroy. Existing waveform subscription, start, stop, and router ownership stay
+intact.
 
 Enable `OscillatorPanel` controls through `modelValue.unison`. UI ranges: Voices
+1–16 integer, Detune 0–50 cents, Depth 0–100%, Blend 0–100%. Rename Spread to
+Depth. Bind controls to config; no UI owns DSP or raw nodes.
 
 ## Lifecycle And Capacity
 
 Timed `stop()` stops all subvoices in current bundle at same time. New start
+stops prior bundle before building replacement, preserving voice-steal choke
+behavior. Each raw oscillator `onended` disconnects inbound frequency, normal
+detune, and fixed-unison-detune paths; disconnects audio and control outputs;
+removes its record; and destroys shared per-note CurveNodes after all relevant
+subvoices end. This meets rule 4.
 
 `destroy()` is idempotent. It stops active nodes, tears down all bundle control
+and audio connections, destroys curves, then disconnects/stops owned sources and
+disconnects output. `AxiomVoice.destroy()` destroys `ModulationRouter` before
+unison modules, per rule 5.
 
 Worst active graph: `3 * 16 * 16 = 768` raw oscillator nodes, with matching
+panners and audio gains, plus per-active-oscillator control graphs. Do not lower
+requested Voices based on polyphony. Normalization controls nominal power, not
+coherent attack peaks; master compression remains final peak protection.
 
 ## Verification
 
