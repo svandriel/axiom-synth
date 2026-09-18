@@ -38,4 +38,25 @@ describe('BlendCurveCache', () => {
       );
     }
   });
+
+  it('matches the blend equation for an outer voice role', () => {
+    const curve = BlendCurveCache.curveFor(3, 0);
+
+    for (const sampleIndex of [0, 512, CURVE_SAMPLES - 1]) {
+      const blend = sampleIndex / (CURVE_SAMPLES - 1);
+      const rolePosition = -1;
+      const roleWeight = 1 / (1 + Math.abs(rolePosition));
+      const rawGain = roleWeight + blend * (1 - roleWeight);
+      const totalPower = [-1, 0, 1].reduce((sum, position) => {
+        const weight = 1 / (1 + Math.abs(position));
+        const gain = weight + blend * (1 - weight);
+        return sum + gain * gain;
+      }, 0);
+
+      expect(curve[sampleIndex]).toBeCloseTo(
+        rawGain / Math.sqrt(totalPower),
+        5,
+      );
+    }
+  });
 });

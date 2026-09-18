@@ -1,10 +1,12 @@
-# Task 1 report
+# Task reports
+
+## Task 1
 
 Added explanatory comments in `packages/audio-engine/src/engine/unison-oscillator.ts` for unison position distribution, center-weight blend behavior, power aggregation, reciprocal RMS normalization, and equal-gain `1/sqrt(V)` scaling. No behavior changed.
 
 Verification passed on 2026-09-18: `pnpm build && pnpm lint && git diff --check`.
 
-# Task 2 report
+## Task 2
 
 ## Implementation
 
@@ -50,3 +52,10 @@ Results:
 - The cache uses the fixed 16-voice limit already used by the synth.
 - No pool integration or unrelated `CurveNode` API change was added.
 - Existing worktree changes were not present in the task files, and no unrelated files were modified.
+
+## Reviewer follow-up
+
+- Added direct-formula assertions for the outer role (`voiceCount = 3`, `index = 0`) at the first, midpoint, and last samples.
+- Preserved the existing center-role, cache identity, and invalid-input tests.
+- Verification passed: `pnpm test`, `pnpm build`, `pnpm lint`, and `git diff --check`.
+- Full suite result: 8 tests passed.
