@@ -1,4 +1,5 @@
 export * from './engine';
+export * from './utils/observable';
 export type * from './types/envelope-config';
 export type * from './types/filter-config';
 export type * from './types/oscillator-config';
