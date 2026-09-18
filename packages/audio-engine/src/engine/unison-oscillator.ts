@@ -1,18 +1,20 @@
 import type { WaveFormType } from '../types';
-import { CurveNode } from './curve-node';
 import type { Destroyable } from './destroyable';
+import { UnisonVoicePathPool } from './unison-voice-path';
 
-interface Subvoice {
-  oscillator: OscillatorNode;
-  gain: GainNode | null;
-  panner: StereoPannerNode | null;
-  detuneGain: GainNode | null;
-  depthGain: GainNode | null;
-  blendCurve: CurveNode | null;
+interface DirectSource {
+  readonly oscillator: OscillatorNode;
+}
+
+interface PooledSource {
+  readonly oscillator: OscillatorNode;
+  readonly path: ReturnType<UnisonVoicePathPool['acquire']>['paths'][number];
 }
 
 interface VoiceBundle {
-  subvoices: Set<Subvoice>;
+  readonly direct: DirectSource | null;
+  readonly pooled: readonly PooledSource[];
+  readonly lease: ReturnType<UnisonVoicePathPool['acquire']> | null;
 }
 
 export class UnisonOscillator implements Destroyable {
@@ -23,6 +25,7 @@ export class UnisonOscillator implements Destroyable {
   private readonly unisonDetuneSource: ConstantSourceNode;
   private readonly unisonDepthSource: ConstantSourceNode;
   private readonly unisonBlendSource: ConstantSourceNode;
+  private readonly pathPool: UnisonVoicePathPool;
   private readonly activeBundles = new Set<VoiceBundle>();
   private readonly stoppedBundles = new Set<VoiceBundle>();
   private voicesValue = 1;
@@ -34,20 +37,26 @@ export class UnisonOscillator implements Destroyable {
     this.ctxt = ctxt;
     this.outputGain = ctxt.createGain();
     this.outputGain.gain.setValueAtTime(0, ctxt.currentTime);
-
     this.frequencySource = this.createSource(0);
     this.detuneSource = this.createSource(0);
     this.unisonDetuneSource = this.createSource(0);
     this.unisonDepthSource = this.createSource(0);
     this.unisonBlendSource = this.createSource(0);
+    this.pathPool = new UnisonVoicePathPool(
+      ctxt,
+      this.outputGain,
+      this.unisonDetuneSource,
+      this.unisonDepthSource,
+      this.unisonBlendSource,
+    );
   }
 
   set waveform(value: WaveFormType) {
     this.wave = value;
-    this.activeBundles.forEach(bundle => this.setBundleWaveform(bundle, value));
-    this.stoppedBundles.forEach(bundle =>
-      this.setBundleWaveform(bundle, value),
-    );
+    [...this.activeBundles, ...this.stoppedBundles].forEach(bundle => {
+      bundle.direct?.oscillator && (bundle.direct.oscillator.type = value);
+      bundle.pooled.forEach(({ oscillator }) => (oscillator.type = value));
+    });
   }
 
   get voices(): number {
@@ -93,9 +102,8 @@ export class UnisonOscillator implements Destroyable {
   }
 
   disconnect(destination: AudioNode | AudioParam | null = null): void {
-    if (destination === null) {
-      this.outputGain.disconnect();
-    } else if (destination instanceof AudioParam) {
+    if (destination === null) this.outputGain.disconnect();
+    else if (destination instanceof AudioParam) {
       this.outputGain.disconnect(destination);
     } else {
       this.outputGain.disconnect(destination);
@@ -103,19 +111,38 @@ export class UnisonOscillator implements Destroyable {
   }
 
   start(noteHz: number, now: number): void {
-    if (this.destroyed) {
-      return;
-    }
+    if (this.destroyed) return;
     this.stop();
 
     const voices = this.voicesValue;
-    const positions = Array.from({ length: voices }, (_, index) =>
-      voices === 1 ? 0 : -1 + (2 * index) / (voices - 1),
-    );
-    const bundle: VoiceBundle = { subvoices: new Set() };
-    for (let index = 0; index < voices; index += 1) {
-      this.createSubvoice(bundle, noteHz, now, positions[index]!, positions);
+    if (voices === 1) {
+      this.startDirect(noteHz, now);
+      return;
     }
+
+    // Each path selects its cached (voices, index) blend curve role.
+    const lease = this.pathPool.acquire(voices);
+    const sources: PooledSource[] = [];
+    try {
+      // Raw oscillators are one-shot sources, so allocate them per note.
+      lease.paths.forEach(path => {
+        const oscillator = this.ctxt.createOscillator();
+        oscillator.type = this.wave;
+        oscillator.frequency.setValueAtTime(noteHz, now);
+        path.arm(oscillator);
+        sources.push({ oscillator, path });
+      });
+      sources.forEach(({ oscillator }) => oscillator.start(now));
+    } catch (error) {
+      this.rollbackPooled(lease, sources);
+      throw error;
+    }
+
+    const bundle: VoiceBundle = { direct: null, pooled: sources, lease };
+    sources.forEach(source => {
+      source.oscillator.onended = () =>
+        this.onPooledEnded(bundle, source.path, source.oscillator);
+    });
     this.activeBundles.add(bundle);
     this.current = bundle;
   }
@@ -123,49 +150,121 @@ export class UnisonOscillator implements Destroyable {
   stop(): void;
   stop(time: number): void;
   stop(time?: number): void {
-    if (!this.current) {
-      return;
-    }
     const bundle = this.current;
+    if (!bundle) return;
     this.current = null;
     this.activeBundles.delete(bundle);
     this.stoppedBundles.add(bundle);
-    bundle.subvoices.forEach(({ oscillator }) => {
-      if (time === undefined) {
-        oscillator.stop();
-      } else {
-        oscillator.stop(time);
-      }
-    });
+    if (bundle.direct) {
+      this.stopSource(bundle.direct.oscillator, time);
+    } else {
+      bundle.pooled.forEach(({ path, oscillator }) => {
+        path.beginDrain();
+        this.stopSource(oscillator, time);
+      });
+    }
   }
 
   destroy(): void {
-    if (this.destroyed) {
-      return;
-    }
+    if (this.destroyed) return;
     this.destroyed = true;
-    this.current = null;
     [...this.activeBundles, ...this.stoppedBundles].forEach(bundle => {
-      bundle.subvoices.forEach(subvoice => {
-        subvoice.oscillator.onended = null;
-        subvoice.oscillator.stop();
-      });
-      this.destroyBundle(bundle);
+      if (bundle.direct) {
+        bundle.direct.oscillator.onended = null;
+        this.stopSource(bundle.direct.oscillator);
+        this.detachDirect(bundle.direct.oscillator);
+      } else {
+        bundle.pooled.forEach(({ oscillator }) => {
+          oscillator.onended = null;
+          this.stopSource(oscillator);
+        });
+      }
     });
     this.activeBundles.clear();
     this.stoppedBundles.clear();
+    this.pathPool.destroy();
+    [
+      this.frequencySource,
+      this.detuneSource,
+      this.unisonDetuneSource,
+      this.unisonDepthSource,
+      this.unisonBlendSource,
+    ].forEach(source => {
+      this.safe(() => source.disconnect());
+      this.safe(() => source.stop());
+    });
+    this.safe(() => this.outputGain.disconnect());
+  }
 
-    this.frequencySource.disconnect();
-    this.frequencySource.stop();
-    this.detuneSource.disconnect();
-    this.detuneSource.stop();
-    this.unisonDetuneSource.disconnect();
-    this.unisonDetuneSource.stop();
-    this.unisonDepthSource.disconnect();
-    this.unisonDepthSource.stop();
-    this.unisonBlendSource.disconnect();
-    this.unisonBlendSource.stop();
-    this.outputGain.disconnect();
+  private startDirect(noteHz: number, now: number): void {
+    const oscillator = this.ctxt.createOscillator();
+    oscillator.type = this.wave;
+    oscillator.frequency.setValueAtTime(noteHz, now);
+    this.frequencySource.connect(oscillator.frequency);
+    this.detuneSource.connect(oscillator.detune);
+    oscillator.connect(this.outputGain);
+    const bundle: VoiceBundle = {
+      direct: { oscillator },
+      pooled: [],
+      lease: null,
+    };
+    oscillator.onended = () => {
+      if (!bundle.direct || !this.stoppedBundles.has(bundle)) return;
+      this.detachDirect(oscillator);
+      this.finishBundle(bundle);
+    };
+    try {
+      oscillator.start(now);
+    } catch (error) {
+      this.detachDirect(oscillator);
+      throw error;
+    }
+    this.activeBundles.add(bundle);
+    this.current = bundle;
+  }
+
+  private onPooledEnded(
+    bundle: VoiceBundle,
+    path: PooledSource['path'],
+    oscillator: OscillatorNode,
+  ): void {
+    if (!this.stoppedBundles.has(bundle)) return;
+    path.disarm(oscillator);
+    if (bundle.pooled.every(source => source.path.state === 'free')) {
+      this.pathPool.release(bundle.lease!);
+      this.finishBundle(bundle);
+    }
+  }
+
+  private finishBundle(bundle: VoiceBundle): void {
+    this.activeBundles.delete(bundle);
+    this.stoppedBundles.delete(bundle);
+    if (this.current === bundle) this.current = null;
+  }
+
+  private rollbackPooled(
+    lease: VoiceBundle['lease'],
+    sources: readonly PooledSource[],
+  ): void {
+    sources.forEach(({ path, oscillator }) => {
+      path.beginDrain();
+      path.disarm(oscillator);
+      oscillator.onended = null;
+      this.safe(() => oscillator.stop());
+    });
+    this.pathPool.release(lease!);
+  }
+
+  private detachDirect(oscillator: OscillatorNode): void {
+    this.safe(() => this.frequencySource.disconnect(oscillator.frequency));
+    this.safe(() => this.detuneSource.disconnect(oscillator.detune));
+    this.safe(() => oscillator.disconnect());
+  }
+
+  private stopSource(oscillator: OscillatorNode, time?: number): void {
+    this.safe(() =>
+      time === undefined ? oscillator.stop() : oscillator.stop(time),
+    );
   }
 
   private createSource(value: number): ConstantSourceNode {
@@ -175,118 +274,11 @@ export class UnisonOscillator implements Destroyable {
     return source;
   }
 
-  private createSubvoice(
-    bundle: VoiceBundle,
-    noteHz: number,
-    now: number,
-    position: number,
-    positions: number[],
-  ): void {
-    const oscillator = this.ctxt.createOscillator();
-
-    oscillator.type = this.wave;
-    oscillator.frequency.setValueAtTime(noteHz, now);
-
-    this.frequencySource.connect(oscillator.frequency);
-    this.detuneSource.connect(oscillator.detune);
-
-    if (positions.length === 1) {
-      oscillator.connect(this.outputGain);
-      const subvoice: Subvoice = {
-        oscillator,
-        gain: null,
-        panner: null,
-        detuneGain: null,
-        depthGain: null,
-        blendCurve: null,
-      };
-      oscillator.onended = () => this.onSubvoiceEnded(bundle, subvoice);
-      bundle.subvoices.add(subvoice);
-      oscillator.start(now);
-      return;
+  private safe(action: () => void): void {
+    try {
+      action();
+    } catch {
+      // Teardown is best effort when a source or context is already gone.
     }
-
-    const centerWeight = 1 / (1 + Math.abs(position));
-    const gain = this.ctxt.createGain();
-    const panner = this.ctxt.createStereoPanner();
-    const detuneGain = this.ctxt.createGain();
-    const depthGain = this.ctxt.createGain();
-    const blendCurve = new CurveNode(
-      this.ctxt,
-      blend => {
-        const rawGain = centerWeight + blend * (1 - centerWeight);
-        const power = positions.reduce((sum, subvoicePosition) => {
-          const weight = 1 / (1 + Math.abs(subvoicePosition));
-          const subvoiceGain = weight + blend * (1 - weight);
-          return sum + subvoiceGain * subvoiceGain;
-        }, 0);
-        return rawGain / Math.sqrt(power);
-      },
-      { inputMin: 0, inputMax: 1 },
-    );
-
-    gain.gain.setValueAtTime(0, now);
-    detuneGain.gain.value = position;
-    depthGain.gain.value = position;
-    this.unisonDetuneSource.connect(detuneGain);
-    detuneGain.connect(oscillator.detune);
-    this.unisonDepthSource.connect(depthGain);
-    depthGain.connect(panner.pan);
-    this.unisonBlendSource.connect(blendCurve.input);
-    blendCurve.connect(gain.gain);
-    oscillator.connect(gain);
-    gain.connect(panner);
-    panner.connect(this.outputGain);
-
-    const subvoice: Subvoice = {
-      oscillator,
-      gain,
-      panner,
-      detuneGain,
-      depthGain,
-      blendCurve,
-    };
-    oscillator.onended = () => this.onSubvoiceEnded(bundle, subvoice);
-    bundle.subvoices.add(subvoice);
-    oscillator.start(now);
-  }
-
-  private onSubvoiceEnded(bundle: VoiceBundle, subvoice: Subvoice): void {
-    this.detachSubvoice(subvoice);
-    bundle.subvoices.delete(subvoice);
-    if (bundle.subvoices.size === 0) {
-      this.activeBundles.delete(bundle);
-      this.stoppedBundles.delete(bundle);
-      this.destroyBundle(bundle);
-    }
-  }
-
-  private detachSubvoice(subvoice: Subvoice): void {
-    this.frequencySource.disconnect(subvoice.oscillator.frequency);
-    this.detuneSource.disconnect(subvoice.oscillator.detune);
-    if (subvoice.detuneGain && subvoice.depthGain && subvoice.panner) {
-      subvoice.detuneGain.disconnect(subvoice.oscillator.detune);
-      subvoice.depthGain.disconnect(subvoice.panner.pan);
-      this.unisonDetuneSource.disconnect(subvoice.detuneGain);
-      this.unisonDepthSource.disconnect(subvoice.depthGain);
-      this.unisonBlendSource.disconnect(subvoice.blendCurve!.input);
-    }
-    subvoice.oscillator.disconnect();
-    subvoice.gain?.disconnect();
-    subvoice.panner?.disconnect();
-    subvoice.detuneGain?.disconnect();
-    subvoice.depthGain?.disconnect();
-    subvoice.blendCurve?.destroy();
-  }
-
-  private destroyBundle(bundle: VoiceBundle): void {
-    bundle.subvoices.forEach(subvoice => this.detachSubvoice(subvoice));
-    bundle.subvoices.clear();
-  }
-
-  private setBundleWaveform(bundle: VoiceBundle, waveform: WaveFormType): void {
-    bundle.subvoices.forEach(({ oscillator }) => {
-      oscillator.type = waveform;
-    });
   }
 }
