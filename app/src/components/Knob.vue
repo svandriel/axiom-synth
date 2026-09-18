@@ -38,13 +38,16 @@
         '--sweep-start': `${sweepStart}deg`,
         '--sweep': `${sweep}deg`,
         '--arc-thickness': `${arcThickness}px`,
+        '--knob-color-300': `var(--color-${color}-300)`,
+        '--knob-color-500': `var(--color-${color}-500)`,
+        '--knob-color-700': `var(--color-${color}-700)`,
       }"
     >
       <div class="arc absolute rounded-full"></div>
       <div class="pointer absolute"></div>
     </div>
     <div
-      class="knob-label mt-0 tracking-wide text-primary-500 dark:text-primary-400"
+      class="knob-label mt-0 w-20 text-center tracking-wide text-primary-500 dark:text-primary-400"
     >
       <span v-if="!showValue && active">
         {{ format(value) }}
@@ -75,6 +78,7 @@ const props = withDefaults(
     logBase?: number;
     format?: (value: number) => string;
     size?: 'xs' | 'sm' | 'md' | 'lg';
+    color?: 'accent' | 'accent2';
     showValue?: boolean;
     disabled?: boolean;
   }>(),
@@ -85,12 +89,14 @@ const props = withDefaults(
     logBase: 0,
     format: (value: number) => `${value}`,
     size: 'lg',
+    color: 'accent',
     showValue: true,
     disabled: false,
   },
 );
 const angleMin = -135; // corresponds to normalized 0
 const angleRange = 270;
+const color = props.color;
 
 const normalizedZeroValue = convertValueToNormalized(Math.max(0, props.from));
 const sweepZero = convertNormalizedToAngle(normalizedZeroValue);
@@ -220,7 +226,7 @@ function resetToDefault() {
 .knob:focus-visible {
   box-shadow:
     var(--shadow-out-sm),
-    0 0 0 3px var(--color-accent-500);
+    0 0 0 3px var(--knob-color-500);
 }
 
 .knob.active {
@@ -248,37 +254,6 @@ function resetToDefault() {
   display: none;
 }
 
-@variant dark {
-  .knob {
-    background: linear-gradient(
-      145deg,
-      var(--color-primary-300),
-      var(--color-primary-700),
-      var(--color-primary-800)
-    );
-  }
-
-  .knob:focus-visible {
-    box-shadow:
-      var(--shadow-out-sm-dark),
-      0 0 0 3px var(--color-accent-500);
-  }
-  .knob.active {
-    box-shadow: var(--shadow-in-sm-dark);
-  }
-  .knob::before {
-    background: linear-gradient(
-      145deg,
-      var(--color-primary-700),
-      var(--color-primary-600),
-      var(--color-primary-400)
-    );
-    box-shadow:
-      inset 2px 2px 4px var(--color-primary-900),
-      inset -2px -2px 4px var(--color-primary-500);
-  }
-}
-
 .knob .pointer {
   left: 50%;
   top: 50%;
@@ -288,9 +263,8 @@ function resetToDefault() {
   transform-origin: 50% 100%;
   transform: translateY(-100%) rotate(var(--angle)) translateY(-8px);
   border-radius: 2px;
-  background: var(--color-accent-500);
-  box-shadow: 0 0 3px
-    color-mix(in srgb, var(--color-accent-500) 60%, transparent);
+  background: var(--knob-color-500);
+  box-shadow: 0 0 3px color-mix(in srgb, var(--knob-color-500) 60%, transparent);
 
   transition: transform 0.01s ease-in-out;
 }
@@ -310,8 +284,8 @@ function resetToDefault() {
   inset: calc(-2 * var(--arc-thickness));
   background: conic-gradient(
     from var(--sweep-start),
-    var(--color-accent-300) 0deg,
-    var(--color-accent-700) var(--sweep),
+    var(--knob-color-300) 0deg,
+    var(--knob-color-500) var(--sweep),
     transparent var(--sweep)
   );
   mask: radial-gradient(
@@ -335,5 +309,40 @@ function resetToDefault() {
   width: 3px;
   height: 15px;
   transform: translateY(-100%) rotate(var(--angle)) translateY(-6px);
+}
+
+@variant dark {
+  .knob {
+    background: linear-gradient(
+      145deg,
+      var(--color-primary-300),
+      var(--color-primary-700),
+      var(--color-primary-800)
+    );
+  }
+
+  .knob .pointer {
+    background: var(--knob-color-300);
+  }
+
+  .knob:focus-visible {
+    box-shadow:
+      var(--shadow-out-sm-dark),
+      0 0 0 3px var(--knob-color-500);
+  }
+  .knob.active {
+    box-shadow: var(--shadow-in-sm-dark);
+  }
+  .knob::before {
+    background: linear-gradient(
+      145deg,
+      var(--color-primary-700),
+      var(--color-primary-600),
+      var(--color-primary-400)
+    );
+    box-shadow:
+      inset 2px 2px 4px var(--color-primary-900),
+      inset -2px -2px 4px var(--color-primary-500);
+  }
 }
 </style>

@@ -54,6 +54,7 @@
         v-model="unison"
         size="sm"
         class="row-start-2"
+        color="accent2"
         :from="0"
         :to="8"
         :default="0"
@@ -67,6 +68,7 @@
         v-model="unisonDetune"
         size="sm"
         class="row-start-2"
+        color="accent2"
         :from="0"
         :to="50"
         :default="0"
@@ -79,6 +81,7 @@
         v-model="unisonSpread"
         size="sm"
         class="row-start-2"
+        color="accent2"
         :from="-50"
         :to="50"
         :default="0"
@@ -91,11 +94,13 @@
         v-model="unisonBlend"
         size="sm"
         class="row-start-2"
+        color="accent2"
         :from="-50"
         :to="50"
         :default="0"
         :format="fractionDisplay(1)"
         :show-value="false"
+        :disabled="true"
       />
     </div>
   </Panel>
