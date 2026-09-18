@@ -39,6 +39,11 @@ This keeps one-shot source lifecycle separate from reusable processing graph
 lifecycle. It gives callers the same small interface and keeps allocation,
 cache, graph, and tail behavior local to `UnisonOscillator`.
 
+Implementation comments must document this ownership split, why raw
+`OscillatorNode`s cannot be pooled, why a stopped path remains leased until
+`onended`, and why Blend curves are cached by `(voiceCount, index)`. Comments
+must explain lifecycle or mathematical intent, not restate code.
+
 ## BlendCurveCache Flyweight
 
 Blend transfer data depends only on `(voiceCount, index)`. It is independent
