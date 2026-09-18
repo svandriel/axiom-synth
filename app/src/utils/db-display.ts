@@ -13,6 +13,6 @@ export function dbDisplay(value: number) {
   }
 }
 
-export function fractionsToDecibels(fraction: number) {
+function fractionsToDecibels(fraction: number) {
   return Math.log10(fraction) * 20;
 }

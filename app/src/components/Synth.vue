@@ -30,15 +30,15 @@
       />
       <EnvelopePanel
         class="col-span-12 row-start-5 sm:col-span-6 sm:col-start-7 sm:row-start-2 lg:col-span-4"
-        v-model:amp="engine.ampEnvelope"
-        v-model:filter="engine.filterEnvelope"
+        v-model:amp="synth.ampEnvelope"
+        v-model:filter="synth.filterEnvelope"
       />
       <WaveshaperPanel
         class="col-span-12 row-start-6 sm:col-span-6 sm:col-start-7 sm:row-start-3 lg:col-span-4 lg:col-start-9 lg:row-start-1"
         v-model:distortionAmount="waveshaperDistortion"
         v-model:drive="waveshaperDrive"
         v-model:type="waveshaperType"
-        :curve="engine.shaperCurve"
+        :curve="synth.shaperCurve"
       />
       <LfoPanel
         class="col-span-12 row-span-2 row-start-7 sm:col-span-12 sm:col-start-1 sm:row-start-4 lg:col-span-4 lg:row-start-2"
@@ -57,6 +57,7 @@
 import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import type { LfoConfig, LfoIndex } from '@axiom/audio-engine';
 import { useAudioEngine } from '../composables/use-audio-context.ts';
+import { useAxiomSynth } from '../composables/use-axiom-synth.ts';
 import EnvelopePanel from './EnvelopePanel.vue';
 import FilterPanel from './FilterPanel.vue';
 import Keyboard from './Keyboard.vue';
@@ -65,16 +66,17 @@ import OscillatorPanel from './OscillatorPanel.vue';
 import ScopePanel from './ScopePanel.vue';
 import WaveshaperPanel from './WaveshaperPanel.vue';
 
+const synth = useAxiomSynth();
 const engine = useAudioEngine();
-const filterQ = Math.log2(2 * engine.value.filterConfig.q) / Math.log2(40);
-const cutoff = ref(engine.value.filterConfig.frequency);
+const filterQ = Math.log2(2 * synth.value.filterConfig.q) / Math.log2(40);
+const cutoff = ref(synth.value.filterConfig.frequency);
 const resonance = ref(filterQ);
-const envAmount = ref(engine.value.filterConfig.envAmount / 9600);
-const tracking = ref(engine.value.filterConfig.tracking);
-const filterType = ref(engine.value.filterType);
-const waveshaperType = ref(engine.value.waveshaperType);
-const waveshaperDistortion = ref(engine.value.distortionAmount);
-const waveshaperDrive = ref(engine.value.waveshaperDrive);
+const envAmount = ref(synth.value.filterConfig.envAmount / 9600);
+const tracking = ref(synth.value.filterConfig.tracking);
+const filterType = ref(synth.value.filterType);
+const waveshaperType = ref(synth.value.waveshaperType);
+const waveshaperDistortion = ref(synth.value.distortionAmount);
+const waveshaperDrive = ref(synth.value.waveshaperDrive);
 
 function cloneLfoConfig(c: LfoConfig): LfoConfig {
   return {
@@ -85,10 +87,10 @@ function cloneLfoConfig(c: LfoConfig): LfoConfig {
 }
 
 const lfoConfigs = [
-  reactive(cloneLfoConfig(engine.value.lfoConfigs[0])),
-  reactive(cloneLfoConfig(engine.value.lfoConfigs[1])),
-  reactive(cloneLfoConfig(engine.value.lfoConfigs[2])),
-  reactive(cloneLfoConfig(engine.value.lfoConfigs[3])),
+  reactive(cloneLfoConfig(synth.value.lfoConfigs[0])),
+  reactive(cloneLfoConfig(synth.value.lfoConfigs[1])),
+  reactive(cloneLfoConfig(synth.value.lfoConfigs[2])),
+  reactive(cloneLfoConfig(synth.value.lfoConfigs[3])),
 ];
 
 const selectedLfo = ref('0');
@@ -97,60 +99,58 @@ const activeLfo = computed(() => lfoConfigs[Number(selectedLfo.value)]!);
 watch(
   activeLfo,
   cfg => {
-    engine.value.setLfoConfiguration(
-      Number(selectedLfo.value) as LfoIndex,
-      cfg,
-    );
+    synth.value.setLfoConfiguration(Number(selectedLfo.value) as LfoIndex, cfg);
   },
   { deep: true },
 );
 
-let osc1 = reactive({ ...engine.value.oscillatorConfigs[0] });
-let osc2 = reactive({ ...engine.value.oscillatorConfigs[1] });
-let osc3 = reactive({ ...engine.value.oscillatorConfigs[2] });
+let osc1 = reactive({ ...synth.value.oscillatorConfigs[0] });
+let osc2 = reactive({ ...synth.value.oscillatorConfigs[1] });
+let osc3 = reactive({ ...synth.value.oscillatorConfigs[2] });
 
 watch(cutoff, newCutoff => {
-  engine.value.filterCutOff = newCutoff;
+  synth.value.filterCutOff = newCutoff;
 });
 
 watch(resonance, newResonance => {
   const q = 0.5 * Math.pow(40, newResonance);
-  engine.value.filterQ = q;
+  synth.value.filterQ = q;
 });
 
 watch(envAmount, newEnvAmount => {
-  engine.value.filterEnvAmount = newEnvAmount * 9600;
+  synth.value.filterEnvAmount = newEnvAmount * 9600;
 });
 
 watch(tracking, newTracking => {
-  engine.value.filterKeyTrack = newTracking;
+  synth.value.filterKeyTrack = newTracking;
 });
 
 watch(filterType, newType => {
-  engine.value.filterType = newType;
+  synth.value.filterType = newType;
 });
 
 watch(osc1, newOsc1 => {
-  engine.value.setOscillatorConfiguration(0, newOsc1);
+  synth.value.setOscillatorConfiguration(0, newOsc1);
 });
 watch(osc2, newOsc2 => {
-  engine.value.setOscillatorConfiguration(1, newOsc2);
+  synth.value.setOscillatorConfiguration(1, newOsc2);
 });
 watch(osc3, newOsc3 => {
-  engine.value.setOscillatorConfiguration(2, newOsc3);
+  synth.value.setOscillatorConfiguration(2, newOsc3);
 });
 
 watch(waveshaperDistortion, value => {
-  engine.value.distortionAmount = value;
+  synth.value.distortionAmount = value;
 });
 watch(waveshaperDrive, value => {
-  engine.value.waveshaperDrive = value;
+  synth.value.waveshaperDrive = value;
 });
 watch(waveshaperType, value => {
-  engine.value.waveshaperType = value;
+  synth.value.waveshaperType = value;
 });
 
 onUnmounted(() => {
+  synth.value.destroy();
   engine.value.destroy();
 });
 </script>

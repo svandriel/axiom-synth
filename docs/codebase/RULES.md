@@ -54,14 +54,36 @@ When a composite (`AxiomVoice`) owns a connection registry (`ModulationRouter`)
 and child units, `router.destroy()` runs first in `.destroy()` — before any
 child `.destroy()` — so registered pairs are disconnected while both ends still
 exist. `destroy()` implementations are idempotent and defensively skip
-already-gone connections (try/catch precedent: `axiom-voice.ts`).
+already-gone connections (try/catch precedent:
+`packages/axiom-synth/src/axiom-voice.ts`).
 
-### 6. New engine modules stay internal
+### 6. Building-block units are public; Axiom classes live in @axiom/axiom-synth
 
-`Oscillator`, `ModulationRouter`, and other engine-internal classes are not
+Sound-generation units and the abstract `Voice`/`Synth` bases are public API
 exported from the `@axiom/audio-engine` barrel (`packages/audio-engine/src/
-index.ts`) unless a consumer outside the package needs them.
+index.ts`) — `@axiom/axiom-synth` requires them. `AudioEngine` stays the
+package facade. Axiom-specific classes (`AxiomSynth`, `AxiomVoice`,
+`AxiomVoiceConfig`) live in `packages/axiom-synth/` (`@axiom/axiom-synth`),
+never in the engine package. `@axiom/audio-engine` contains no Axiom
+identifiers; dependency direction is one-way (`@axiom/axiom-synth` imports the
+engine, never the reverse).
+
+### 7. Only export what crosses a seam
+
+A symbol gets an `export` only if it is (a) actually referenced outside its
+module or (b) declared public API from a package entry barrel
+(`packages/*/src/index.ts`). Exports that nothing imports and that are not
+barrel-guaranteed public API are dead and must be removed. Internal plumbing
+(patch structs, shared node wiring, per-voice glue) must not be exported from
+a package barrel even when two files in the same package share it — that seam
+stays package-internal. A package's public API is exactly what its `index.ts`
+barrel declares.
+
+Reference: `packages/axiom-synth/src/index.ts` earns its keep — it exports only
+`AxiomSynth`/`AxiomVoice`; `AxiomVoiceConfig` stays package-internal.
 
 ## History
 
-- _(none yet — this is the initial ruleset, recorded 2026-09-17)_
+- Rule 6 ("New engine modules stay internal") superseded by rule 6
+  (2026-09-18): engine building blocks (`Oscillator`, `ModulationRouter`, …)
+  are now public API so `@axiom/axiom-synth` can consume them.

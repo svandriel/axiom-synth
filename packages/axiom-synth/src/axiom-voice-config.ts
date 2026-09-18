@@ -1,10 +1,17 @@
-import type { EnvelopeConfig, FixedArray, WaveFormType } from '../types';
-import type { Observable } from '../utils/observable';
-import type { LfoCount, LfoTargetCount, OscillatorCount } from './constants';
-import type { FilterType } from './filter';
-import type { FilterResonance } from './filter-resonance';
-import type { LfoWaveformType } from '../types/lfo-config';
-import type { WaveshaperCurve } from './waveshaper-curve';
+import type {
+  EnvelopeConfig,
+  FixedArray,
+  LfoWaveformType,
+  WaveFormType,
+} from '@axiom/audio-engine';
+import type {
+  FilterResonance,
+  FilterType,
+  OscillatorCount,
+  WaveshaperCurve,
+} from '@axiom/audio-engine';
+import type { LfoCount, LfoTargetCount } from '@axiom/audio-engine';
+import type { Observable } from '@axiom/audio-engine';
 
 export interface AxiomVoiceConfig {
   ampEnvelope: EnvelopeConfig;

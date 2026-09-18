@@ -53,10 +53,10 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
-import { useAudioEngine } from '../composables/use-audio-context';
-import { noteForKey, notes } from '../utils/key-map';
+import { useAxiomSynth } from '../composables/use-axiom-synth';
+import { noteForKey, notes } from '../utils';
 
-const engine = useAudioEngine();
+const synth = useAxiomSynth();
 const octave = ref(4);
 
 const whiteNotes = notes.filter(note => !note.black);
@@ -65,7 +65,7 @@ const blackNotes = notes.filter(note => note.black);
 const pressed = ref<{ [semi: number]: boolean }>({});
 
 function onPianoKeyDown(semi: number, e?: PointerEvent) {
-  engine.value.noteOn(semi + octave.value * 12, 127);
+  synth.value.noteOn(semi + octave.value * 12, 127);
   pressed.value[semi] = true;
   if (e?.currentTarget && e.currentTarget instanceof HTMLDivElement) {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -73,7 +73,7 @@ function onPianoKeyDown(semi: number, e?: PointerEvent) {
 }
 
 function onPianoKeyUp(semi: number, e?: PointerEvent) {
-  engine.value.noteOff(semi + octave.value * 12);
+  synth.value.noteOff(semi + octave.value * 12);
   pressed.value[semi] = false;
   if (e?.currentTarget && e.currentTarget instanceof HTMLDivElement) {
     e.currentTarget.releasePointerCapture(e.pointerId);
@@ -92,7 +92,7 @@ function onKeyDown(e: KeyboardEvent) {
       octave.value = Math.min(8, octave.value + 1);
       break;
     case 'escape':
-      engine.value.allNotesOff();
+      synth.value.allNotesOff();
       break;
   }
 
