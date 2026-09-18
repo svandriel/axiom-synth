@@ -50,7 +50,7 @@
         :show-value="false"
       />
       <Knob
-        label="Voices"
+        label="Unison"
         v-model="modelValue.unison.voices"
         size="sm"
         class="row-start-2"
