@@ -8,6 +8,7 @@
     "build": "pnpm -r --sort build",
     "build:pages": "pnpm --filter @axiom/app build:pages",
     "preview": "pnpm --filter @axiom/app preview",
+    "test": "pnpm --filter @axiom/audio-engine test",
     "lint": "prettier --check .",
     "format": "prettier --write .",
     "prepare": "husky"
