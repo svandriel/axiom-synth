@@ -25,7 +25,8 @@ The required focused red run failed because the cache module did not exist:
 Error: Cannot find module './blend-curve-cache'
 ```
 
-After implementation, the focused run passed:
+After implementation, the focused run passed before the later outer-role test was
+added:
 
 ```text
 Test Files  2 passed (2)
@@ -40,7 +41,7 @@ pnpm test && pnpm build && pnpm lint
 
 Results:
 
-- Vitest: 7 tests passed.
+- Vitest: 8 tests passed.
 - TypeScript and application build: passed for all workspace packages.
 - Prettier: all files matched the configured style.
 
@@ -59,3 +60,10 @@ Results:
 - Preserved the existing center-role, cache identity, and invalid-input tests.
 - Verification passed: `pnpm test`, `pnpm build`, `pnpm lint`, and `git diff --check`.
 - Full suite result: 8 tests passed.
+
+## Documentation fix
+
+- Clarified that the earlier focused run covered 7 tests before the outer-role
+  test was added, and corrected final verification to 8 tests.
+- Updated `docs/codebase/TESTING.md` to cite the current Vitest scripts and CI
+  workflow instead of the removed no-test-runner claim.

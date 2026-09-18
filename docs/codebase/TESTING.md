@@ -55,8 +55,9 @@ pnpm lint       # prettier --check .
 
 ### 6) Evidence
 
-- `package.json` (`test` script delegates to audio-engine tests)
+- `package.json` (`test` script delegates to the audio-engine test script)
 - `packages/audio-engine/package.json` (Vitest test script and dependency)
-- `.github/workflows/test.yml` (CI runs test, build, and lint gates)
-- `AGENTS.md` ("There is no test runner configured.")
+- `.github/workflows/test.yml` (CI runs `pnpm test`, `pnpm build`, and
+  `pnpm lint`)
+- `AGENTS.md` (current command list and CI summary)
 - `.lintstagedrc.json`, `.husky/pre-commit` (only formatting as pre-commit gate)
