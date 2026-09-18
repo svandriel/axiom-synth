@@ -43,6 +43,7 @@ export class FakeAudioParam {
 
 export class FakeAudioNode {
   private readonly activeConnections: FakeConnection[] = [];
+  throwOnConnect = false;
   throwOnDisconnect = false;
   readonly context: FakeAudioContext;
 
@@ -55,6 +56,9 @@ export class FakeAudioNode {
   }
 
   connect(destination: FakeAudioDestination): void {
+    if (this.throwOnConnect) {
+      throw new Error('FakeAudioNode connect failed');
+    }
     const connection = { source: this, destination };
     this.activeConnections.push(connection);
     this.context.connections.push(connection);
@@ -97,6 +101,7 @@ export class FakeOscillatorNode extends FakeAudioNode {
   type: OscillatorType = 'sine';
   onended: (() => void) | null = null;
   stopped = false;
+  throwOnStop = false;
   stopTime: number | undefined;
   readonly startCalls: { when?: number }[] = [];
   readonly stopCalls: { when?: number }[] = [];
@@ -106,6 +111,9 @@ export class FakeOscillatorNode extends FakeAudioNode {
   }
 
   stop(when?: number): void {
+    if (this.throwOnStop) {
+      throw new Error('FakeOscillatorNode stop failed');
+    }
     this.stopped = true;
     this.stopTime = when;
     this.stopCalls.push({ when });
@@ -126,7 +134,19 @@ export class FakeStereoPannerNode extends FakeAudioNode {
 }
 
 export class FakeWaveShaperNode extends FakeAudioNode {
-  curve: Float32Array<ArrayBuffer> | null = null;
+  private curveValue: Float32Array<ArrayBuffer> | null = null;
+  throwOnCurveSet = false;
+
+  get curve(): Float32Array<ArrayBuffer> | null {
+    return this.curveValue;
+  }
+
+  set curve(value: Float32Array<ArrayBuffer> | null) {
+    if (this.throwOnCurveSet) {
+      throw new Error('FakeWaveShaperNode curve assignment failed');
+    }
+    this.curveValue = value;
+  }
 }
 
 export class FakeConstantSourceNode extends FakeAudioNode {

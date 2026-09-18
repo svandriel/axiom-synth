@@ -111,6 +111,21 @@ class UnisonVoicePath {
     this.stateValue = 'free';
   }
 
+  abort(): void {
+    if (this.stateValue === 'destroyed' || this.stateValue === 'free') {
+      return;
+    }
+    const source = this.source;
+    if (source) {
+      this.disconnect(() => this.detuneScale.disconnect(source.detune));
+      this.disconnect(() => source.disconnect(this.audioGain));
+    }
+    this.source = null;
+    this.audioGain.gain.cancelScheduledValues(this.context.currentTime);
+    this.audioGain.gain.setValueAtTime(0, this.context.currentTime);
+    this.stateValue = 'free';
+  }
+
   destroy(): void {
     if (this.stateValue === 'destroyed') {
       return;
@@ -218,10 +233,15 @@ export class UnisonVoicePathPool {
       this.countersValue.overflowCreated++;
       paths.push(path);
     }
-    paths.forEach((path, index) => {
-      const position = -1 + (2 * index) / (voiceCount - 1);
-      path.configure(voiceCount, index, position);
-    });
+    try {
+      paths.forEach((path, index) => {
+        const position = -1 + (2 * index) / (voiceCount - 1);
+        path.configure(voiceCount, index, position);
+      });
+    } catch (error) {
+      this.abort({ paths, usesOverflow });
+      throw error;
+    }
     return { paths, usesOverflow };
   }
 
@@ -234,6 +254,11 @@ export class UnisonVoicePathPool {
         this.countersValue.overflowDestroyed++;
       }
     });
+  }
+
+  abort(lease: PathLease): void {
+    lease.paths.forEach(path => path.abort());
+    this.release(lease);
   }
 
   destroy(): void {

@@ -46,4 +46,27 @@ The pre-existing changes in `app/src/components/FilterPanel.vue` and
 
 ## Commit
 
-To be recorded as `perf(engine): reuse unison processing paths`.
+## Review Fixes
+
+- Added an explicit `UnisonVoicePath.abort()` transition for partially
+  configured, armed, or draining paths.
+- Made pool configuration atomic: failed `configure()` calls abort the complete
+  lease and reconcile release/overflow counters before rethrowing.
+- Recorded every created oscillator before `arm()` so failures in source
+  connection setup detach all partial links and return every path.
+- Added terminal cleanup when a source `stop()` throws, preventing paths from
+  remaining draining forever.
+- Added fake-context integration coverage for configuration failure, arm
+  connection failure, full acquired-path rollback, and stop failure.
+
+## Review Fix Verification
+
+- `pnpm test`: passed, 3 files and 30 tests.
+- `pnpm --filter @axiom/audio-engine build`: passed.
+- `pnpm build`: passed for audio-engine, axiom-synth, and app.
+- `pnpm lint`: passed.
+- `git diff --check`: passed.
+
+## Review Fix Commit
+
+To be recorded separately from the original Task 4 commit.

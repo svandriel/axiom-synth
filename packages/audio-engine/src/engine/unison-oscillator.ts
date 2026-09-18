@@ -129,8 +129,8 @@ export class UnisonOscillator implements Destroyable {
         const oscillator = this.ctxt.createOscillator();
         oscillator.type = this.wave;
         oscillator.frequency.setValueAtTime(noteHz, now);
-        path.arm(oscillator);
         sources.push({ oscillator, path });
+        path.arm(oscillator);
       });
       sources.forEach(({ oscillator }) => oscillator.start(now));
     } catch (error) {
@@ -158,10 +158,19 @@ export class UnisonOscillator implements Destroyable {
     if (bundle.direct) {
       this.stopSource(bundle.direct.oscillator, time);
     } else {
+      let stopFailed = false;
       bundle.pooled.forEach(({ path, oscillator }) => {
         path.beginDrain();
-        this.stopSource(oscillator, time);
+        if (!this.stopSource(oscillator, time)) stopFailed = true;
       });
+      if (stopFailed) {
+        bundle.pooled.forEach(({ path, oscillator }) => {
+          path.abort();
+          oscillator.onended = null;
+        });
+        this.pathPool.abort(bundle.lease!);
+        this.finishBundle(bundle);
+      }
     }
   }
 
@@ -247,12 +256,11 @@ export class UnisonOscillator implements Destroyable {
     sources: readonly PooledSource[],
   ): void {
     sources.forEach(({ path, oscillator }) => {
-      path.beginDrain();
-      path.disarm(oscillator);
+      path.abort();
       oscillator.onended = null;
       this.safe(() => oscillator.stop());
     });
-    this.pathPool.release(lease!);
+    this.pathPool.abort(lease!);
   }
 
   private detachDirect(oscillator: OscillatorNode): void {
@@ -261,10 +269,14 @@ export class UnisonOscillator implements Destroyable {
     this.safe(() => oscillator.disconnect());
   }
 
-  private stopSource(oscillator: OscillatorNode, time?: number): void {
-    this.safe(() =>
-      time === undefined ? oscillator.stop() : oscillator.stop(time),
-    );
+  private stopSource(oscillator: OscillatorNode, time?: number): boolean {
+    try {
+      if (time === undefined) oscillator.stop();
+      else oscillator.stop(time);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private createSource(value: number): ConstantSourceNode {
