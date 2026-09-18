@@ -18,7 +18,7 @@ export type FilterType =
   | 'peaking'
   | 'allpass';
 
-export interface FilterSpec {
+interface FilterSpec {
   shape: BiquadFilterType;
   stages: 1 | 2 | 3 | 4;
 }
@@ -40,7 +40,7 @@ const FILTER_SPECS: Record<FilterType, FilterSpec> = {
   allpass: { shape: 'allpass', stages: 1 },
 };
 
-export function filterTypeToSpec(type: FilterType): FilterSpec {
+function filterTypeToSpec(type: FilterType): FilterSpec {
   return FILTER_SPECS[type];
 }
 

@@ -1,1 +1,16 @@
+export * from './analyser';
+export * from './constants';
+export * from './destroyable';
+export * from './envelope';
+export * from './filter';
+export * from './filter-resonance';
+export * from './helpers';
+export * from './lfo';
+export * from './meter';
+export * from './modulation-router';
+export * from './oscillator';
+export * from './voice';
+export * from './synth';
 export * from './engine';
+export * from './waveshaper-curve';
+export { Waveshaper } from './waveshaper';

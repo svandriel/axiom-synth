@@ -1,5 +1,3 @@
-import type { FixedArray } from '../types';
-import type { AxiomVoiceConfig } from './axiom-voice-config';
 import {
   LFO_COUNT,
   LFO_TARGET_INDEX,
@@ -7,18 +5,19 @@ import {
   type LfoCount,
   type OscillatorCount,
   type OscillatorIndex,
-} from './constants';
-import type { Destroyable } from './destroyable';
-import { Envelope } from './envelope';
-import { Filter } from './filter';
-import { freqOf } from './helpers';
-import { Lfo } from './lfo';
-import { ModulationRouter } from './modulation-router';
-import { Oscillator } from './oscillator';
-import { Voice } from './voice';
-import { Waveshaper } from './waveshaper';
+} from '@axiom/audio-engine';
+import type { FixedArray } from '@axiom/audio-engine';
+import { Envelope } from '@axiom/audio-engine';
+import { Filter } from '@axiom/audio-engine';
+import { freqOf } from '@axiom/audio-engine';
+import { Lfo } from '@axiom/audio-engine';
+import { ModulationRouter } from '@axiom/audio-engine';
+import { Oscillator } from '@axiom/audio-engine';
+import { Voice } from '@axiom/audio-engine';
+import { Waveshaper } from '@axiom/audio-engine';
+import type { AxiomVoiceConfig } from './axiom-voice-config';
 
-export class AxiomVoice extends Voice implements Destroyable {
+export class AxiomVoice extends Voice {
   private areOscillatorsActive = false;
   private oscillators: FixedArray<Oscillator, OscillatorCount>;
 

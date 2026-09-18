@@ -66,9 +66,8 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watchEffect } from 'vue';
 import type { EnvelopeConfig } from '@axiom/audio-engine';
-import type { NumericKeys } from '../types/numeric-keys.ts';
-import { dbDisplay } from '../utils/db-display.ts';
-import { timeDisplayMs } from '../utils/time-display.ts';
+import type { NumericKeys } from '../types';
+import { dbDisplay, timeDisplayMs } from '../utils';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';

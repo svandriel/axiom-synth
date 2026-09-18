@@ -1,4 +1,4 @@
-export function timeDisplay(seconds: number) {
+function timeDisplay(seconds: number) {
   if (seconds < 0.1) {
     return `${(seconds * 1000).toFixed(2)} ms`;
   } else if (seconds < 1) {
