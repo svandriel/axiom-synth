@@ -54,6 +54,50 @@ describe('UnisonVoicePathPool', () => {
     }
   });
 
+  it('maps Blend through gain 2 and offset -1', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const { pool } = createPool();
+      const lease = pool.acquire(2);
+      const path = lease.paths[0]! as unknown as {
+        blendMapper: { gain: { value: number } };
+        blendOffset: { offset: { value: number } };
+      };
+
+      expect(path.blendMapper.gain.value).toBe(2);
+      expect(path.blendOffset.offset.value).toBe(-1);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('resets reusable gain and position before reattachment', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const { context, pool } = createPool();
+      const first = pool.acquire(2);
+      const oscillator = context.createOscillator();
+      first.paths[0]!.arm(asOscillator(oscillator));
+      first.paths[0]!.beginDrain();
+      first.paths[0]!.disarm(asOscillator(oscillator));
+      pool.release(first);
+
+      const second = pool.acquire(2);
+      const path = second.paths[0]! as unknown as {
+        audioGain: { gain: { value: number } };
+        detuneScale: { gain: { value: number } };
+        depthScale: { gain: { value: number } };
+        panner: { pan: { value: number } };
+      };
+      expect(path.audioGain.gain.value).toBe(0);
+      expect(path.detuneScale.gain.value).toBe(-1);
+      expect(path.depthScale.gain.value).toBe(-1);
+      expect(path.panner.pan.value).toBe(0);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
   it('returns a disarmed path after its matching source ends', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
@@ -177,6 +221,40 @@ describe('UnisonVoicePathPool', () => {
     }
   });
 
+  it('disconnects raw audio and every shared source link on destroy', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const { context, pool, detuneSource, depthSource, blendSource } =
+        createPool();
+      const lease = pool.acquire(2);
+      const oscillator = context.createOscillator();
+      lease.paths[0]!.arm(asOscillator(oscillator));
+      pool.destroy();
+
+      expect(oscillator.connections).toHaveLength(0);
+      expect(detuneSource.connections).toHaveLength(0);
+      expect(depthSource.connections).toHaveLength(0);
+      expect(blendSource.connections).toHaveLength(0);
+      expect(lease.paths[0]!.state).toBe('destroyed');
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('stops each path offset source during destroy', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const { context, pool } = createPool();
+      pool.acquire(2);
+      const offsetSources = context.constantSources.slice(-2);
+      pool.destroy();
+
+      expect(offsetSources.every(source => source.stopped)).toBe(true);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
   it('allows repeated release and destroy after disconnect failure', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
@@ -190,6 +268,7 @@ describe('UnisonVoicePathPool', () => {
       pool.release(lease);
       expect(() => pool.destroy()).not.toThrow();
       expect(() => pool.destroy()).not.toThrow();
+      expect(lease.paths[1]!.state).toBe('destroyed');
     } finally {
       restoreAudioParam();
     }

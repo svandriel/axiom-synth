@@ -2,12 +2,12 @@ import { BlendCurveCache } from './blend-curve-cache';
 
 type PathState = 'free' | 'leased' | 'armed' | 'draining' | 'destroyed';
 
-export interface PathLease {
+interface PathLease {
   readonly paths: readonly UnisonVoicePath[];
   readonly usesOverflow: boolean;
 }
 
-export class UnisonVoicePath {
+class UnisonVoicePath {
   readonly audioGain: GainNode;
   readonly detuneScale: GainNode;
   private readonly depthScale: GainNode;
@@ -16,6 +16,9 @@ export class UnisonVoicePath {
   private readonly blendMapper: GainNode;
   private readonly blendOffset: ConstantSourceNode;
   private readonly blendShaper: WaveShaperNode;
+  private readonly detuneSource: ConstantSourceNode;
+  private readonly depthSource: ConstantSourceNode;
+  private readonly blendSource: ConstantSourceNode;
   private readonly context: AudioContext;
   private readonly overflow: boolean;
   private stateValue: PathState = 'free';
@@ -31,6 +34,9 @@ export class UnisonVoicePath {
   ) {
     this.context = context;
     this.overflow = overflow;
+    this.detuneSource = detuneSource;
+    this.depthSource = depthSource;
+    this.blendSource = blendSource;
     this.audioGain = context.createGain();
     this.panner = context.createStereoPanner();
     this.detuneScale = context.createGain();
@@ -40,9 +46,11 @@ export class UnisonVoicePath {
     this.blendOffset = context.createConstantSource();
     this.blendShaper = context.createWaveShaper();
 
+    // Blend maps the shared [0, 1] input into the shaper's [-1, 1] range.
     this.audioGain.gain.setValueAtTime(0, context.currentTime);
     this.blendMapper.gain.setValueAtTime(2, context.currentTime);
     this.blendOffset.offset.setValueAtTime(-1, context.currentTime);
+    // ConstantSourceNode is one-shot; each path must stop its own offset source.
     this.blendOffset.start();
 
     detuneSource.connect(this.detuneScale);
@@ -67,6 +75,7 @@ export class UnisonVoicePath {
 
   configure(voiceCount: number, index: number, position: number): void {
     this.expectState('free');
+    // Free paths are silent; reset every reusable control before attachment.
     this.audioGain.gain.cancelScheduledValues(this.context.currentTime);
     this.audioGain.gain.setValueAtTime(0, this.context.currentTime);
     this.detuneScale.gain.setValueAtTime(position, this.context.currentTime);
@@ -113,6 +122,10 @@ export class UnisonVoicePath {
       this.disconnect(() => source.disconnect(this.audioGain));
     }
     this.source = null;
+    // Node disconnect is outbound only; remove every shared inbound link exactly.
+    this.disconnect(() => this.detuneSource.disconnect(this.detuneScale));
+    this.disconnect(() => this.depthSource.disconnect(this.depthScale));
+    this.disconnect(() => this.blendSource.disconnect(this.blendInput));
     [
       this.detuneScale,
       this.depthScale,
@@ -146,6 +159,13 @@ export class UnisonVoicePath {
 export class UnisonVoicePathPool {
   private readonly stablePaths: UnisonVoicePath[] = [];
   private readonly overflowPaths = new Set<UnisonVoicePath>();
+  private readonly countersValue = {
+    created: 0,
+    acquired: 0,
+    released: 0,
+    overflowCreated: 0,
+    overflowDestroyed: 0,
+  };
   private destroyed = false;
 
   private readonly context: AudioContext;
@@ -168,6 +188,10 @@ export class UnisonVoicePathPool {
     this.blendSource = blendSource;
   }
 
+  get counters(): Readonly<typeof this.countersValue> {
+    return { ...this.countersValue };
+  }
+
   acquire(voiceCount: number): PathLease {
     if (this.destroyed) {
       throw new Error('UnisonVoicePathPool is destroyed');
@@ -176,17 +200,22 @@ export class UnisonVoicePathPool {
       throw new RangeError('Invalid unison voice count');
     }
 
+    this.countersValue.acquired++;
+    // Draining paths remain unavailable until their exact source has ended.
     const available = this.stablePaths.filter(path => path.state === 'free');
     const paths = available.slice(0, voiceCount);
+    // Stable capacity covers the current bundle and one normal draining bundle.
     while (paths.length < voiceCount && this.stablePaths.length < voiceCount) {
       const path = this.createPath(false);
       this.stablePaths.push(path);
       paths.push(path);
     }
     const usesOverflow = paths.length < voiceCount;
+    // Concurrent generations beyond stable capacity use temporary overflow paths.
     while (paths.length < voiceCount) {
       const path = this.createPath(true);
       this.overflowPaths.add(path);
+      this.countersValue.overflowCreated++;
       paths.push(path);
     }
     paths.forEach((path, index) => {
@@ -197,10 +226,12 @@ export class UnisonVoicePathPool {
   }
 
   release(lease: PathLease): void {
+    this.countersValue.released++;
     lease.paths.forEach(path => {
       if (path.state === 'free' && path.isOverflow) {
         this.overflowPaths.delete(path);
         path.destroy();
+        this.countersValue.overflowDestroyed++;
       }
     });
   }
@@ -210,6 +241,7 @@ export class UnisonVoicePathPool {
       return;
     }
     this.destroyed = true;
+    this.countersValue.overflowDestroyed += this.overflowPaths.size;
     [...this.stablePaths, ...this.overflowPaths].forEach(path =>
       path.destroy(),
     );
@@ -218,6 +250,7 @@ export class UnisonVoicePathPool {
   }
 
   private createPath(overflow: boolean): UnisonVoicePath {
+    this.countersValue.created++;
     return new UnisonVoicePath(
       this.context,
       this.outputGain,
