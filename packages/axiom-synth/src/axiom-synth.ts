@@ -61,21 +61,21 @@ export class AxiomSynth extends Synth<AxiomVoice> {
       detune: 5,
       waveform: 'sawtooth',
       gain: 1,
-      unison: { voices: 1, detune: 0, depth: 0, blend: 1 },
+      unison: { voices: 4, detune: 20, depth: 0.5, blend: 1 },
     },
     {
       octave: 0,
       semi: 0,
       detune: -5,
-      waveform: 'square',
-      gain: 1,
+      waveform: 'sawtooth',
+      gain: 0,
       unison: { voices: 1, detune: 0, depth: 0, blend: 1 },
     },
     {
-      octave: -2,
+      octave: -1,
       semi: 0,
       detune: 0,
-      waveform: 'triangle',
+      waveform: 'sawtooth',
       gain: 1,
       unison: { voices: 1, detune: 0, depth: 0, blend: 1 },
     },
@@ -100,7 +100,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
   };
 
   public readonly filterEnvelope: EnvelopeConfig = {
-    attackSeconds: 0.01,
+    attackSeconds: 0.028,
     attackCurve: 'linear',
     decaySeconds: 0.2,
     decayCurve: 'analog',
