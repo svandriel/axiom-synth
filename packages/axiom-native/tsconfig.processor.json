@@ -8,6 +8,7 @@
   "include": [
     "src/processors/**/*.ts",
     "src/worklet-message.ts",
-    "worklet.d.ts"
+    "worklet.d.ts.x",
+    "src/@types/worklet.d.ts"
   ]
 }
