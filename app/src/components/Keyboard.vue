@@ -57,7 +57,7 @@ import { useAxiomSynth } from '../composables/use-axiom-synth';
 import { noteForKey, notes } from '../utils';
 
 const synth = useAxiomSynth();
-const octave = ref(4);
+const octave = ref(3);
 
 const whiteNotes = notes.filter(note => !note.black);
 const blackNotes = notes.filter(note => note.black);
