@@ -4,16 +4,17 @@
 
 ### 1) Test Stack and Commands
 
-- Primary test framework: **Vitest** for `@axiom/audio-engine`.
-- Assertion/mocking tools: Vitest assertions plus focused fake Web Audio nodes
-  for engine graph tests. Do not require a real browser for deterministic graph
+- Primary test framework: **Vitest** for `@axiom/audio-engine`; **cargo test** (Rust unit tests) for the `@axiom/audio-native` DSP.
+- Assertion/mocking tools: Vitest assertions plus focused fake Web Audio
+  nodes for engine graph tests. Do not require a real browser for deterministic graph
   lifecycle tests.
 - Commands:
 
 ```bash
-pnpm test       # Vitest engine tests
-pnpm build      # vue-tsc -b && vite build
-pnpm lint       # prettier --check .
+pnpm test            # Vitest engine tests
+pnpm --filter @axiom/audio-native test   # cargo test for the WASM DSP
+pnpm build           # wasm-pack + tsc (native), vue-tsc -b && vite build (app)
+pnpm lint            # prettier --check .
 ```
 
 ### 2) Test Layout
@@ -28,7 +29,7 @@ pnpm lint       # prettier --check .
 
 | Scope       | Covered? | Typical target                                             | Notes                                                  |
 | ----------- | -------- | ---------------------------------------------------------- | ------------------------------------------------------ |
-| Unit        | yes      | engine math and cached transfer curves                     | Vitest                                                 |
+| Unit        | yes      | engine math and cached transfer curves; Rust saw DSP       | Vitest; `cargo test` in `packages/axiom-native/rust/`  |
 | Integration | partial  | voice-to-engine wiring and Web Audio graph lifecycle       | fake context; browser smoke tests for audible behavior |
 | E2E         | no       | UI → keyboard → audio events (`Keyboard.vue`, `Synth.vue`) | manual browser validation                              |
 

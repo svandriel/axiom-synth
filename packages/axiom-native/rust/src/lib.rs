@@ -37,3 +37,44 @@ impl SawOscillator {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SawOscillator;
+
+    fn process(oscillator: &mut SawOscillator, frames: usize) -> Vec<f32> {
+        let mut buffer = vec![0.0f32; frames];
+        oscillator.process(&mut buffer);
+        buffer
+    }
+
+    #[test]
+    fn first_frame_is_minimum() {
+        let samples = process(&mut SawOscillator::new(48_000.0, 440.0), 1);
+        assert!((samples[0] - (-1.0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn full_cycle_per_sample_sticks_to_minimum() {
+        let samples = process(&mut SawOscillator::new(48_000.0, 48_000.0), 8);
+        assert!(samples.iter().all(|s| (*s - (-1.0)).abs() < 1e-6));
+    }
+
+    #[test]
+    fn half_cycle_alternates_phase() {
+        let samples = process(&mut SawOscillator::new(48_000.0, 24_000.0), 4);
+        assert!((samples[0] - (-1.0)).abs() < 1e-6);
+        assert!((samples[1] - 0.0).abs() < 1e-6);
+        assert!((samples[2] - (-1.0)).abs() < 1e-6);
+        assert!((samples[3] - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn set_frequency_changes_phase_increment() {
+        let mut oscillator = SawOscillator::new(48_000.0, 24_000.0);
+        process(&mut oscillator, 4);
+        oscillator.set_frequency(48_000.0);
+        let samples = process(&mut oscillator, 4);
+        assert!(samples.iter().all(|s| (*s - (-1.0)).abs() < 1e-6));
+    }
+}

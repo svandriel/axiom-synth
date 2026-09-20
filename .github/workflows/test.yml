@@ -22,11 +22,20 @@ jobs:
           runtime: node@24
           install: false
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup wasm-pack
+        uses: jetli/wasm-pack-action@v0.5.0
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Test
         run: pnpm test
+
+      - name: Native Rust tests
+        run: pnpm --filter @axiom/audio-native test
 
       - name: Build
         run: pnpm build

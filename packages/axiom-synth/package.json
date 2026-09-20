@@ -13,7 +13,6 @@
     "build": "tsc --noEmit"
   },
   "devDependencies": {
-    "@vue/tsconfig": "^0.9.1",
     "typescript": "^6.0.3"
   },
   "dependencies": {

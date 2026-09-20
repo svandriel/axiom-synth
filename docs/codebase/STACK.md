@@ -15,13 +15,14 @@
 
 The app is a browser Web Audio synthesizer; `vue` is the only external production dependency (`@axiom/audio-engine` and `@axiom/axiom-synth` are internal workspace packages, consumed as source).
 
-| Dependency            | Version   | Role in system                                                                                                                                           | Evidence                                                                   |
-| --------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| vue                   | 3.5.42    | UI framework (`<script setup>` SFCs, `defineModel`)                                                                                                      | `app/package.json`, `pnpm-lock.yaml`                                       |
-| `@axiom/audio-engine` | workspace | Internal source library (`packages/audio-engine/`); host `AudioEngine`, building-block units, abstract `Voice`/`Synth` bases, config types, `Observable` | `packages/audio-engine/package.json`, `packages/audio-engine/src/index.ts` |
-| `@axiom/axiom-synth`  | workspace | Internal source library (`packages/axiom-synth/`); owns the Axiom synth (`AxiomSynth`/`AxiomVoice`), consumed as source                                  | `packages/axiom-synth/package.json`, `packages/axiom-synth/src/index.ts`   |
-| Web Audio API         | —         | Native browser API wrapping all audio (oscillators, `WaveShaperNode`, `BiquadFilterNode`, compressor, analyser)                                          | `packages/audio-engine/src/engine/*`, `packages/axiom-synth/src/*`         |
-| Tailwind CSS          | 4.3.3     | Utility CSS + `@theme inline` color/shadow system                                                                                                        | `app/src/style.css`                                                        |
+| Dependency            | Version   | Role in system                                                                                                                                                                        | Evidence                                                                            |
+| --------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| vue                   | 3.5.42    | UI framework (`<script setup>` SFCs, `defineModel`)                                                                                                                                   | `app/package.json`, `pnpm-lock.yaml`                                                |
+| `@axiom/audio-engine` | workspace | Internal source library (`packages/audio-engine/`); host `AudioEngine`, building-block units, abstract `Voice`/`Synth` bases, config types, `Observable`                              | `packages/audio-engine/package.json`, `packages/audio-engine/src/index.ts`          |
+| `@axiom/axiom-synth`  | workspace | Internal source library (`packages/axiom-synth/`); owns the Axiom synth (`AxiomSynth`/`AxiomVoice`), consumed as source                                                               | `packages/axiom-synth/package.json`, `packages/axiom-synth/src/index.ts`            |
+| `@axiom/audio-native` | workspace | Internal WASM/AudioWorklet package (`packages/axiom-native/`); Rust `SawOscillator` via `wasm-pack`, `src/processors/saw.ts` worklet, `src/worklet-message.ts`, `src/index.ts` loader | `packages/axiom-native/package.json`, `packages/axiom-native/src/processors/saw.ts` |
+| Web Audio API         | —         | Native browser API wrapping all audio (oscillators, `WaveShaperNode`, `BiquadFilterNode`, compressor, analyser)                                                                       | `packages/audio-engine/src/engine/*`, `packages/axiom-synth/src/*`                  |
+| Tailwind CSS          | 4.3.3     | Utility CSS + `@theme inline` color/shadow system                                                                                                                                     | `app/src/style.css`                                                                 |
 
 ### 3) Development Toolchain
 
@@ -29,6 +30,7 @@ The app is a browser Web Audio synthesizer; `vue` is the only external productio
 | --------------------------- | --------------------------------------------------------------- | ------------------------------------------------- |
 | Vite 8.2.2                  | Dev server + build                                              | `app/package.json`, `app/vite.config.ts`          |
 | vue-tsc 3.3.11              | Type-check `.vue`/`.ts` in `pnpm build`                         | `app/package.json`                                |
+| Rust (stable) + wasm-pack   | `SawOscillator` DSP compiled to WASM (`--target web`)           | `packages/axiom-native/rust/Cargo.toml`           |
 | TypeScript ~6.0.2           | `strict`, `noUnusedLocals/Params`, `erasableSyntaxOnly`         | `app/tsconfig.app.json`                           |
 | Prettier 3.9.6              | Only linter/formatter (single quotes, trailing commas, 80-char) | `.prettierrc.yaml`                                |
 | prettier-plugin-tailwindcss | Tailwind class ordering in Prettier                             | `.prettierrc.yaml`                                |

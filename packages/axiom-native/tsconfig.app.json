@@ -3,5 +3,6 @@
   "compilerOptions": {
     "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.axiom-native.tsbuildinfo"
   },
-  "include": ["kjsdhdjksadjsahdasjkdhasrc/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/processors"]
 }

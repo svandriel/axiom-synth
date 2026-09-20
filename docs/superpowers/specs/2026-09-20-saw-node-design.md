@@ -18,7 +18,7 @@ exposes a real `AudioWorkletNode` ready for connection.
 2. `src/worklet-url.ts` — default processor URL resolution helper.
 3. `vite.config.ts` — library-mode worklet bundle build.
 4. `vitest` devDependency + tests that stub Web Audio globals.
-5. Message protocol extension in `worklet-message.ts`.
+5. Message protocol extension in `src/worklet-message.ts`.
 
 The package ships two artifacts:
 
@@ -99,6 +99,10 @@ export type WorkletMessage =
 
 ## Worklet Build
 
+`src/processors/saw.ts` is the worklet-only module; everything else in `src/`
+is ordinary frontend TS. The rule: `src/processors/` holds only
+`AudioWorkletProcessor` modules.
+
 Native `package.json` scripts become:
 
 ```json
@@ -110,14 +114,14 @@ Native `package.json` scripts become:
 }
 ```
 
-`exports` gains `"./worklet": "./dist/worklet/processor.js"` for consumers who
-want the bundle directly (future app integration).
+`exports` gains `"./worklet": "./dist/worklet/saw-processor.js"` for consumers
+who want the bundle directly (future app integration).
 
 `vite.config.ts`:
 
-- `build.lib` entry: `processor.ts`, `formats: ['es']`.
+- `build.lib` entry: `src/processors/saw.ts`, `formats: ['es']`.
 - `rollupOptions.output` `inlineDynamicImports: true`, entryFileNames
-  `worklet/processor.js`.
+  `worklet/saw-processor.js`.
 - The wasm-pack glue's default wasm URL (`new URL('axiom_native_bg.wasm',
 import.meta.url)`) is statically rewritten by Vite into the emitted sibling
   asset, so the bundle stays self-consistent for the AudioWorklet scope.
@@ -127,7 +131,7 @@ import.meta.url)`) is statically rewritten by Vite into the emitted sibling
 
 ```ts
 export const defaultProcessorUrl: string | URL = new URL(
-  '../../dist/worklet/processor.js',
+  '../../dist/worklet/saw-processor.js',
   import.meta.url,
 );
 ```
