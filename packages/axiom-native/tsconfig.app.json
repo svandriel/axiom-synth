@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.axiom-native.tsbuildinfo"
+  },
+  "include": ["kjsdhdjksadjsahdasjkdhasrc/**/*.ts"]
+}

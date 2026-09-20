@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.axiom-native-processor.tsbuildinfo",
+    "libReplacement": true,
+    "lib": [],
+    "types": ["@types/audioworklet"],
+    "outDir": "./dist"
+  },
+  "include": ["**/*.ts"]
+}
