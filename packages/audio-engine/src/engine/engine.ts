@@ -2,6 +2,7 @@ import type { Destroyable } from './destroyable';
 import { FeedbackDelay } from './feedback-delay';
 import { resumeIfSuspended } from './helpers';
 import { Meter } from './meter';
+import { createSawWorkletNode } from '@axiom/axiom-native';
 
 export class AudioEngine implements Destroyable {
   public readonly ctxt: AudioContext;
@@ -37,6 +38,10 @@ export class AudioEngine implements Destroyable {
     this.comp.connect(this.analyser);
     this.comp.connect(this.meter.input);
     this.analyser.connect(ctxt.destination);
+
+    createSawWorkletNode(this.ctxt).then(node => {
+      console.log('node', node);
+    });
   }
 
   getScopeData(buffer: Float32Array<ArrayBuffer>) {

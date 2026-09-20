@@ -1,5 +1,5 @@
 import init, { SawOscillator } from '../../pkg/axiom_native';
-import type { WorkletMessage } from '../worklet-message';
+import type { WorkletMessage } from '../shared/worklet-message';
 
 class SawProcessor extends AudioWorkletProcessor {
   private oscillator: SawOscillator | null = null;

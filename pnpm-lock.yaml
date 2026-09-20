@@ -56,6 +56,10 @@ importers:
         version: 3.3.11(typescript@6.0.3)
 
   packages/audio-engine:
+    dependencies:
+      '@axiom/axiom-native':
+        specifier: workspace:*
+        version: link:../axiom-native
     devDependencies:
       typescript:
         specifier: ^6.0.3

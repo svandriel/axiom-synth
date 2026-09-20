@@ -1,4 +1,7 @@
-import type { WorkletMessage } from './worklet-message';
+/// <reference path="./@types/vite-env.d.ts" />
+
+import type { WorkletMessage } from './shared/worklet-message';
+import wasmUrl from '../pkg/axiom_native_bg.wasm?url';
 
 export interface SawWorkletOptions {
   frequency?: number;
@@ -6,12 +9,14 @@ export interface SawWorkletOptions {
 
 export async function createSawWorkletNode(
   context: BaseAudioContext,
-  wasmBytes: ArrayBuffer,
   options?: SawWorkletOptions,
 ): Promise<AudioWorkletNode> {
+  console.log('wasmUrl', wasmUrl);
   await context.audioWorklet.addModule(
     new URL('../processor.ts', import.meta.url),
   );
+
+  const wasmBytes = await (await fetch(wasmUrl)).arrayBuffer();
 
   const node = new AudioWorkletNode(context, 'saw-processor', {
     numberOfInputs: 0,
