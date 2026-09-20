@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@vue/tsconfig": "^0.9.1",
-    "typescript": "~6.0.2"
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "@axiom/audio-engine": "workspace:*"
