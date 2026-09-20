@@ -64,7 +64,7 @@ class SawProcessor extends AudioWorkletProcessor {
 
   private async initialize(message: WorkletMessage): Promise<void> {
     try {
-      await init(message.wasmBytes);
+      await init({ module_or_path: message.wasmBytes });
       this.oscillator = new SawOscillator(
         message.sampleRate,
         message.frequency ?? 440,

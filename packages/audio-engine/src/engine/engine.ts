@@ -41,6 +41,7 @@ export class AudioEngine implements Destroyable {
 
     createSawWorkletNode(this.ctxt).then(node => {
       console.log('node', node);
+      // node.connect(this.master);
     });
   }
 
