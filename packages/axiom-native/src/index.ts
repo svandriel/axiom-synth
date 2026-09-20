@@ -13,7 +13,7 @@ export async function createSawWorkletNode(
 ): Promise<AudioWorkletNode> {
   console.log('wasmUrl', wasmUrl);
   await context.audioWorklet.addModule(
-    new URL('../processor.ts', import.meta.url),
+    new URL('./processors/saw.ts', import.meta.url),
   );
 
   const wasmBytes = await (await fetch(wasmUrl)).arrayBuffer();

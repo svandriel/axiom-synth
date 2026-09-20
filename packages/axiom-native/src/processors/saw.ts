@@ -1,3 +1,9 @@
+// MUST stay the first import: ESM evaluates imports in source order, so this
+// side-effect module defines `TextDecoder`/`TextEncoder` on the worklet scope
+// before the wasm-bindgen glue below evaluates (`new TextDecoder` at its top
+// level). Upstream context: https://github.com/rustwasm/wasm-bindgen/issues/2367.
+// Reordering breaks the worklet (see text-encoding-polyfill.ts).
+import './text-encoding-polyfill';
 import init, { SawOscillator } from '../../pkg/axiom_native';
 import type { WorkletMessage } from '../shared/worklet-message';
 
