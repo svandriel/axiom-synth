@@ -9,6 +9,10 @@
       "default": "./src/index.ts"
     }
   },
+  "files": [
+    "src",
+    "pkg"
+  ],
   "scripts": {
     "build": "pnpm run build:wasm && pnpm run build:ts",
     "build:wasm": "wasm-pack build ./rust --target web --out-dir ../pkg",
