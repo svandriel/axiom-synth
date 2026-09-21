@@ -51,7 +51,7 @@ const LFO_DEPTH_SCALES: Record<LfoTarget, number> = {
 export class AxiomSynth extends Synth<AxiomVoice> {
   public readonly output: GainNode;
 
-  public readonly oscillatorConfigs: FixedArray<
+  private readonly _oscillatorConfigs: FixedArray<
     OscillatorConfig,
     OscillatorCount
   > = [
@@ -81,7 +81,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     },
   ];
 
-  public readonly ampEnvelope: EnvelopeConfig = {
+  private readonly _ampEnvelope: EnvelopeConfig = {
     attackSeconds: 0.032,
     attackCurve: 'analog',
     decaySeconds: 0.3,
@@ -99,7 +99,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     tracking: 0.9,
   };
 
-  public readonly filterEnvelope: EnvelopeConfig = {
+  private readonly _filterEnvelope: EnvelopeConfig = {
     attackSeconds: 0.2,
     attackCurve: 'linear',
     decaySeconds: 0.7,
@@ -192,44 +192,44 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     );
 
     this.oscillatorDetuneSources = this.createConstantSources(
-      this.oscillatorConfigs.map(c => c.detune) as FixedArray<
+      this._oscillatorConfigs.map(c => c.detune) as FixedArray<
         number,
         OscillatorCount
       >,
     );
     this.oscillatorGainSources = this.createConstantSources(
-      this.oscillatorConfigs.map(c => c.gain) as FixedArray<
+      this._oscillatorConfigs.map(c => c.gain) as FixedArray<
         number,
         OscillatorCount
       >,
     );
     this.oscillatorUnisonDetuneSources = this.createConstantSources(
-      this.oscillatorConfigs.map(c => c.unison.detune) as FixedArray<
+      this._oscillatorConfigs.map(c => c.unison.detune) as FixedArray<
         number,
         OscillatorCount
       >,
     );
     this.oscillatorUnisonDepthSources = this.createConstantSources(
-      this.oscillatorConfigs.map(c => c.unison.depth) as FixedArray<
+      this._oscillatorConfigs.map(c => c.unison.depth) as FixedArray<
         number,
         OscillatorCount
       >,
     );
     this.oscillatorUnisonBlendSources = this.createConstantSources(
-      this.oscillatorConfigs.map(c => c.unison.blend) as FixedArray<
+      this._oscillatorConfigs.map(c => c.unison.blend) as FixedArray<
         number,
         OscillatorCount
       >,
     );
     this.oscillatorUnisonVoices = new Observable(
-      this.oscillatorConfigs.map(c => c.unison.voices) as FixedArray<
+      this._oscillatorConfigs.map(c => c.unison.voices) as FixedArray<
         number,
         OscillatorCount
       >,
     );
 
     this.oscillatorWaveForms = new Observable(
-      this.oscillatorConfigs.map(c => c.waveform) as FixedArray<
+      this._oscillatorConfigs.map(c => c.waveform) as FixedArray<
         WaveFormType,
         OscillatorCount
       >,
@@ -265,7 +265,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
       ),
     ) as FixedArray<FixedArray<ConstantSourceNode, LfoTargetCount>, LfoCount>;
 
-    this.oscillatorConfigs.forEach((config, index) => {
+    this._oscillatorConfigs.forEach((config, index) => {
       this.oscillatorDetuneSources[
         index as OscillatorIndex
       ].offset.setValueAtTime(
@@ -275,8 +275,8 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     });
 
     this.voiceConfig = {
-      ampEnvelope: this.ampEnvelope,
-      filterEnvelope: this.filterEnvelope,
+      ampEnvelope: this._ampEnvelope,
+      filterEnvelope: this._filterEnvelope,
       filterCutoff: this.filterCutOffSource,
       filterResonance: this.filterResonance,
       filterType: this._filterType,
@@ -299,6 +299,26 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
   protected override createVoice(): AxiomVoice {
     return new AxiomVoice(this.ctxt, this.output, this.voiceConfig);
+  }
+
+  get oscillatorConfigs(): FixedArray<OscillatorConfig, OscillatorCount> {
+    return structuredClone(this._oscillatorConfigs);
+  }
+
+  get ampEnvelope(): EnvelopeConfig {
+    return structuredClone(this._ampEnvelope);
+  }
+
+  set ampEnvelope(config: EnvelopeConfig) {
+    Object.assign(this._ampEnvelope, config);
+  }
+
+  get filterEnvelope(): EnvelopeConfig {
+    return structuredClone(this._filterEnvelope);
+  }
+
+  set filterEnvelope(config: EnvelopeConfig) {
+    Object.assign(this._filterEnvelope, config);
   }
 
   get filterCutOff(): number {
@@ -391,7 +411,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
   }
 
   setOscillatorConfiguration(index: OscillatorIndex, config: OscillatorConfig) {
-    const currentConfig = this.oscillatorConfigs[index];
+    const currentConfig = this._oscillatorConfigs[index];
     const unison = {
       voices: Math.min(16, Math.max(1, Math.round(config.unison.voices))),
       detune: clamp(config.unison.detune, 0, 50),
@@ -436,7 +456,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
       this.oscillatorUnisonBlendSources[index],
       unison.blend,
     );
-    this.oscillatorConfigs[index] = {
+    this._oscillatorConfigs[index] = {
       ...config,
       unison,
     };

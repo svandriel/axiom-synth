@@ -30,8 +30,8 @@
       />
       <EnvelopePanel
         class="col-span-12 row-start-5 sm:col-span-6 sm:col-start-7 sm:row-start-2 lg:col-span-4"
-        v-model:amp="synth.ampEnvelope"
-        v-model:filter="synth.filterEnvelope"
+        v-model:amp="ampEnvelope"
+        v-model:filter="filterEnvelope"
       />
       <WaveshaperPanel
         class="col-span-12 row-start-6 sm:col-span-6 sm:col-start-7 sm:row-start-3 lg:col-span-4 lg:col-start-9 lg:row-start-1"
@@ -92,6 +92,25 @@ const lfoConfigs = [
   reactive(cloneLfoConfig(synth.value.lfoConfigs[2])),
   reactive(cloneLfoConfig(synth.value.lfoConfigs[3])),
 ];
+
+const ampEnvelope = reactive({ ...synth.value.ampEnvelope });
+const filterEnvelope = reactive({ ...synth.value.filterEnvelope });
+
+watch(
+  ampEnvelope,
+  cfg => {
+    synth.value.ampEnvelope = cfg;
+  },
+  { deep: true },
+);
+
+watch(
+  filterEnvelope,
+  cfg => {
+    synth.value.filterEnvelope = cfg;
+  },
+  { deep: true },
+);
 
 const selectedLfo = ref('0');
 const activeLfo = computed(() => lfoConfigs[Number(selectedLfo.value)]!);
