@@ -1,4 +1,5 @@
 import type { Destroyable } from './destroyable';
+import { FeedbackDelay } from './feedback-delay';
 import { resumeIfSuspended } from './helpers';
 import { Meter } from './meter';
 
@@ -9,6 +10,7 @@ export class AudioEngine implements Destroyable {
   private readonly meter: Meter;
   private readonly analyser: AnalyserNode;
   private readonly comp: DynamicsCompressorNode;
+  private readonly feedbackDelay: FeedbackDelay;
   private destroyed = false;
 
   constructor(ctxt: AudioContext) {
@@ -24,10 +26,16 @@ export class AudioEngine implements Destroyable {
     this.analyser.smoothingTimeConstant = 0.82;
     this.comp = ctxt.createDynamicsCompressor();
 
-    this.masterInput.connect(this.master);
-    this.masterInput.connect(this.meter.input);
+    this.feedbackDelay = new FeedbackDelay(ctxt);
+    this.feedbackDelay.wet.setValueAtTime(0.2, ctxt.currentTime);
+    this.feedbackDelay.cutoff.setValueAtTime(400, ctxt.currentTime);
+    this.feedbackDelay.delayTime.setValueAtTime(0.55, ctxt.currentTime);
+
+    this.masterInput.connect(this.feedbackDelay.input);
+    this.feedbackDelay.connect(this.master);
     this.master.connect(this.comp);
     this.comp.connect(this.analyser);
+    this.comp.connect(this.meter.input);
     this.analyser.connect(ctxt.destination);
   }
 

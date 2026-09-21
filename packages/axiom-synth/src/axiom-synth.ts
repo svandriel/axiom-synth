@@ -1,15 +1,9 @@
 import {
+  FilterResonance,
   LFO_COUNT,
   LFO_TARGET_COUNT,
   LFO_TARGET_INDEX,
   LFO_TARGETS,
-  type LfoCount,
-  type LfoIndex,
-  type LfoTarget,
-  type LfoTargetCount,
-  type OscillatorCount,
-  type OscillatorIndex,
-  FilterResonance,
   Observable,
   Synth,
   WaveshaperCurve,
@@ -18,8 +12,14 @@ import {
   type FilterType,
   type FixedArray,
   type LfoConfig,
+  type LfoCount,
+  type LfoIndex,
+  type LfoTarget,
+  type LfoTargetCount,
   type LfoWaveformType,
   type OscillatorConfig,
+  type OscillatorCount,
+  type OscillatorIndex,
   type WaveFormType,
   type WaveshaperConfig,
   type WaveshaperType,
@@ -61,28 +61,28 @@ export class AxiomSynth extends Synth<AxiomVoice> {
       detune: 5,
       waveform: 'sawtooth',
       gain: 1,
-      unison: { voices: 4, detune: 20, depth: 0.5, blend: 1 },
+      unison: { voices: 2, detune: 20, depth: 0.5, blend: 1 },
     },
     {
-      octave: 0,
-      semi: 0,
-      detune: -5,
-      waveform: 'sawtooth',
-      gain: 0,
-      unison: { voices: 1, detune: 0, depth: 0, blend: 1 },
-    },
-    {
-      octave: -1,
+      octave: 2,
       semi: 0,
       detune: 0,
       waveform: 'sawtooth',
       gain: 1,
       unison: { voices: 1, detune: 0, depth: 0, blend: 1 },
     },
+    {
+      octave: -1,
+      semi: 0,
+      detune: 0,
+      waveform: 'triangle',
+      gain: 1,
+      unison: { voices: 1, detune: 0, depth: 0, blend: 1 },
+    },
   ];
 
   public readonly ampEnvelope: EnvelopeConfig = {
-    attackSeconds: 0.02,
+    attackSeconds: 0.032,
     attackCurve: 'analog',
     decaySeconds: 0.3,
     decayCurve: 'analog',
@@ -93,16 +93,16 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
   public readonly filterConfig: FilterConfig = {
     type: 'lowpass24',
-    frequency: 360,
+    frequency: 3000,
     q: 6,
     envAmount: 4800,
     tracking: 0.9,
   };
 
   public readonly filterEnvelope: EnvelopeConfig = {
-    attackSeconds: 0.028,
+    attackSeconds: 0.2,
     attackCurve: 'linear',
-    decaySeconds: 0.2,
+    decaySeconds: 0.7,
     decayCurve: 'analog',
     sustainLevel: 0.4,
     releaseSeconds: 3,
@@ -117,9 +117,9 @@ export class AxiomSynth extends Synth<AxiomVoice> {
   ];
 
   private readonly waveshaperConfig: WaveshaperConfig = {
-    distortion: 50,
-    drive: 0,
-    type: 'soft-algebraic',
+    distortion: 70,
+    drive: 2,
+    type: 'hard-clipper',
   };
 
   private readonly oscillatorWaveForms: Observable<
@@ -264,6 +264,15 @@ export class AxiomSynth extends Synth<AxiomVoice> {
         this.createConstantSource(this.lfoConfigs[i]!.depths[j]!),
       ),
     ) as FixedArray<FixedArray<ConstantSourceNode, LfoTargetCount>, LfoCount>;
+
+    this.oscillatorConfigs.forEach((config, index) => {
+      this.oscillatorDetuneSources[
+        index as OscillatorIndex
+      ].offset.setValueAtTime(
+        config.detune + config.semi * 100 + config.octave * 1200,
+        this.ctxt.currentTime,
+      );
+    });
 
     this.voiceConfig = {
       ampEnvelope: this.ampEnvelope,
