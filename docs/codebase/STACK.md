@@ -20,22 +20,22 @@ The app is a browser Web Audio synthesizer; `vue` is the only external productio
 | vue                   | 3.5.42    | UI framework (`<script setup>` SFCs, `defineModel`)                                                                                                                                   | `app/package.json`, `pnpm-lock.yaml`                                                |
 | `@axiom/audio-engine` | workspace | Internal source library (`packages/audio-engine/`); host `AudioEngine`, building-block units, abstract `Voice`/`Synth` bases, config types, `Observable`                              | `packages/audio-engine/package.json`, `packages/audio-engine/src/index.ts`          |
 | `@axiom/axiom-synth`  | workspace | Internal source library (`packages/axiom-synth/`); owns the Axiom synth (`AxiomSynth`/`AxiomVoice`), consumed as source                                                               | `packages/axiom-synth/package.json`, `packages/axiom-synth/src/index.ts`            |
-| `@axiom/audio-native` | workspace | Internal WASM/AudioWorklet package (`packages/axiom-native/`); Rust `SawOscillator` via `wasm-pack`, `src/processors/saw.ts` worklet, `src/worklet-message.ts`, `src/index.ts` loader | `packages/axiom-native/package.json`, `packages/axiom-native/src/processors/saw.ts` |
+| `@axiom/axiom-native` | workspace | Internal WASM/AudioWorklet package (`packages/axiom-native/`); Rust `SawOscillator` via `wasm-pack`, `src/processors/saw.ts` worklet, `src/worklet-message.ts`, `src/index.ts` loader | `packages/axiom-native/package.json`, `packages/axiom-native/src/processors/saw.ts` |
 | Web Audio API         | —         | Native browser API wrapping all audio (oscillators, `WaveShaperNode`, `BiquadFilterNode`, compressor, analyser)                                                                       | `packages/audio-engine/src/engine/*`, `packages/axiom-synth/src/*`                  |
 | Tailwind CSS          | 4.3.3     | Utility CSS + `@theme inline` color/shadow system                                                                                                                                     | `app/src/style.css`                                                                 |
 
 ### 3) Development Toolchain
 
-| Tool                        | Purpose                                                         | Evidence                                          |
-| --------------------------- | --------------------------------------------------------------- | ------------------------------------------------- |
-| Vite 8.2.2                  | Dev server + build                                              | `app/package.json`, `app/vite.config.ts`          |
-| vue-tsc 3.3.11              | Type-check `.vue`/`.ts` in `pnpm build`                         | `app/package.json`                                |
-| Rust (stable) + wasm-pack   | `SawOscillator` DSP compiled to WASM (`--target web`)           | `packages/axiom-native/rust/Cargo.toml`           |
-| TypeScript ~6.0.2           | `strict`, `noUnusedLocals/Params`, `erasableSyntaxOnly`         | `app/tsconfig.app.json`                           |
-| Prettier 3.9.6              | Only linter/formatter (single quotes, trailing commas, 80-char) | `.prettierrc.yaml`                                |
-| prettier-plugin-tailwindcss | Tailwind class ordering in Prettier                             | `.prettierrc.yaml`                                |
-| Husky 9 + lint-staged 17    | Pre-commit auto-format of staged files                          | `.husky/pre-commit`, `.lintstagedrc.json`         |
-| GitHub Actions              | PR build + GitHub Pages deploy                                  | `.github/workflows/build.yml`, `deploy-pages.yml` |
+| Tool                        | Purpose                                                                                   | Evidence                                                     |
+| --------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Vite 8.2.2                  | Dev server + build                                                                        | `app/package.json`, `app/vite.config.ts`                     |
+| vue-tsc 3.3.11              | Type-check `.vue`/`.ts` in `pnpm build`                                                   | `app/package.json`                                           |
+| Rust (stable) + wasm-pack   | `SawOscillator` DSP compiled to WASM (`--target web`)                                     | `packages/axiom-native/rust/Cargo.toml`                      |
+| TypeScript ~6.0.2           | `strict`, `noUnusedLocals/Params`, `erasableSyntaxOnly`                                   | `app/tsconfig.app.json`                                      |
+| Prettier 3.9.6              | Only linter/formatter (single quotes, trailing commas, 80-char)                           | `.prettierrc.yaml`                                           |
+| prettier-plugin-tailwindcss | Tailwind class ordering in Prettier                                                       | `.prettierrc.yaml`                                           |
+| Husky 9 + lint-staged 17    | Pre-commit prettier auto-format + `cargo fmt --check`; pre-push full build + `cargo test` | `.husky/pre-commit`, `.husky/pre-push`, `.lintstagedrc.json` |
+| GitHub Actions              | PR build (incl. Rust/WASM) + GitHub Pages deploy; Cargo cache                             | `.github/workflows/build.yml`, `deploy-pages.yml`            |
 
 ### 4) Key Commands
 
@@ -43,14 +43,18 @@ The app is a browser Web Audio synthesizer; `vue` is the only external productio
 pnpm install
 pnpm dev          # dev server on port 4000 (app/vite.config.ts)
 pnpm build        # pnpm -r --sort build (all workspace packages)
-pnpm build:pages  # build the app with --base=/axiom-synth/ (Pages deploy)
+pnpm build:pages  # native wasm build + app build with --base=/axiom-synth/ (Pages deploy)
+pnpm test         # vitest for @axiom/audio-engine
+pnpm test:native  # cargo test for @axiom/axiom-native
 pnpm lint         # prettier --check .   (not run manually; pre-commit handles it)
+pnpm lint:native  # cargo fmt --check + cargo clippy -D warnings (@axiom/axiom-native)
 pnpm format       # prettier --write .
+pnpm format:native  # cargo fmt (@axiom/axiom-native)
 ```
 
 Tooling lives at the workspace root: prettier/husky/lint-staged live in the root `package.json` (packages ship no prettier tooling); `pnpm dev`/`pnpm build:pages` run through `pnpm --filter @axiom/app`.
 
-There is **no test runner** configured (no `test` script). Verification is `pnpm build` + lint.
+Verification is `pnpm test` (+`pnpm test:native`), `pnpm build`, and lint.
 
 ### 5) Environment and Config
 

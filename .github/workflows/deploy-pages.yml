@@ -29,6 +29,23 @@ jobs:
           runtime: node@24
           install: false
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup wasm-pack
+        uses: jetli/wasm-pack-action@v0.5.0
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/axiom-native/rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('packages/axiom-native/rust/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: Install dependencies
         run: pnpm install
 

@@ -28,6 +28,17 @@ jobs:
       - name: Setup wasm-pack
         uses: jetli/wasm-pack-action@v0.5.0
 
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/axiom-native/rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('packages/axiom-native/rust/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -35,10 +46,10 @@ jobs:
         run: pnpm test
 
       - name: Native Rust tests
-        run: pnpm --filter @axiom/audio-native test
+        run: pnpm run test:native
 
       - name: Build
         run: pnpm build
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint && pnpm run lint:native

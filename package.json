@@ -6,11 +6,14 @@
   "scripts": {
     "dev": "pnpm --filter @axiom/app dev",
     "build": "pnpm -r --sort build",
-    "build:pages": "pnpm --filter @axiom/app build:pages",
+    "build:pages": "pnpm --filter @axiom/axiom-native build && pnpm --filter @axiom/app build:pages",
     "preview": "pnpm --filter @axiom/app preview",
     "test": "pnpm --filter @axiom/audio-engine test",
+    "test:native": "pnpm --filter @axiom/axiom-native test",
     "lint": "prettier --check .",
+    "lint:native": "pnpm --filter @axiom/axiom-native lint",
     "format": "prettier --write .",
+    "format:native": "pnpm --filter @axiom/axiom-native format",
     "prepare": "husky"
   },
   "devDependencies": {

@@ -17,7 +17,9 @@
     "build": "pnpm run build:wasm && pnpm run build:ts",
     "build:wasm": "wasm-pack build ./rust --target web --out-dir ../pkg",
     "build:ts": "tsc -p tsconfig.app.json && tsc -p tsconfig.processor.json",
-    "test": "cargo test --manifest-path rust/Cargo.toml"
+    "test": "cargo test --manifest-path rust/Cargo.toml",
+    "lint": "cargo fmt --manifest-path rust/Cargo.toml -- --check && cargo clippy --manifest-path rust/Cargo.toml -- -D warnings",
+    "format": "cargo fmt --manifest-path rust/Cargo.toml"
   },
   "devDependencies": {
     "@types/audioworklet": "^0.0.100",
