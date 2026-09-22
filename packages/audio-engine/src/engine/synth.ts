@@ -2,9 +2,6 @@ import type { Destroyable } from './destroyable';
 import { resumeIfSuspended } from './helpers';
 import type { Voice } from './voice';
 
-/** Release progress past which a released voice is quiet enough to steal. */
-const RELEASE_STEAL_THRESHOLD = 0.9;
-
 export abstract class Synth<V extends Voice> implements Destroyable {
   protected readonly ctxt: AudioContext;
   protected readonly audioSink: AudioNode;
@@ -36,10 +33,10 @@ export abstract class Synth<V extends Voice> implements Destroyable {
   }
 
   /**
-   * Chooses a victim when every voice is busy. Released voices whose release
-   * tail is more than 90% spent are inaudible to cut, so steal the one closest
-   * to silence (largest progress toward endTime). Only when no release tail
-   * qualifies does it fall back to the oldest triggered (held) voice.
+   * Chooses a victim when every voice is busy. A released voice is always
+   * preferred over a held one: steal the released voice closest to silence
+   * (largest progress toward endTime), and only when no released voice exists
+   * fall back to the oldest triggered (held) voice.
    */
   private pickStealVictim(now: number, voicePool: V[]): V | null {
     const heldVoices = new Set(this.noteToVoiceMap.values());
@@ -64,7 +61,7 @@ export abstract class Synth<V extends Voice> implements Destroyable {
       }
       const tailMs = voice.endTime - voice.releasedAt;
       const progress = tailMs > 0 ? (now - voice.releasedAt) / tailMs : 1;
-      if (progress > RELEASE_STEAL_THRESHOLD && progress > bestProgress) {
+      if (progress > bestProgress) {
         bestProgress = progress;
         bestReleased = voice;
       }

@@ -43,36 +43,37 @@ is held.
 
 When no voice satisfies `isAvailable(now)`:
 
-1. **Releasing voice with mature release** — among voices with
-   `currentNote !== null`, `now < endTime`, and release progress
-   `(now - releasedAt) / (endTime - releasedAt) > 0.9`, steal the one with the
-   largest progress (closest to silence). The ratio is pure clock math, no
-   envelope-config knowledge; it self-tunes to any release length.
+1. **Released voice** — among voices with `currentNote !== null`,
+   `now < endTime`, and `releasedAt !== null`, steal the one with the largest
+   release progress `(now - releasedAt) / (endTime - releasedAt)` (closest to
+   silence). The ratio is pure clock math, no envelope-config knowledge; it
+   self-tunes to any release length. Any released voice is preferred over a
+   held one, regardless of how recently it was released.
 2. **Oldest triggered (held) voice** — fallback, unchanged current behavior:
-   min `lastUsed`, including voices still in `noteToVoiceMap`.
+   min `lastUsed`, including voices still in `noteToVoiceMap`. Used only when
+   every busy voice is held.
 
 When a qualifying releasing voice is stolen, the existing victim handling stays:
 unmap its note from `noteToVoiceMap`, `fastChoke(now)`, `startDelay = chokeDuration`,
 then `noteOn` the new note. `releasedAt` is cleared by the subsequent `noteOn`.
 
-Rationale for the 0.9 progress guard: immediately after key-up the release tail
-is at full loudness; cutting it there is as audible as cutting a held note. Past
-90% of the tail the voice is near-instant-above-silence, so the cut is inaudible
-and the new note keeps the 0-intrusion attack (`startDelay` unchanged).
+Rationale: a released voice is already decaying and key-up (a key the musician
+no longer holds), so cutting it preserves every sustained note. Among released
+voices, the one furthest through its tail is quietest, so cutting it is the
+least audible. Young releases are sacrificed before any held note.
 
 ### 3. Edge cases
 
-- **All voices held**: no releasing voice qualifies, so tier 2 steals the oldest
+- **All voices held**: no released voice exists, so tier 2 steals the oldest
   triggered note. `noteToVoiceMap` signals all-held, exactly like today.
-- **Young release tails only**: no voice past 90%, tier 2 steals a held note.
-  This preserves the chosen "oldest released when release over threshold,
-  otherwise oldest triggered" policy.
+- **Young release tails only**: the young released voice is still the tier-1
+  victim — every released voice beats a held one, so held notes stay protected.
 - **Duplicate note retrigger** (`noteOn` of an active note): unchanged — the old
   voice is `noteOff`'d first, moving it into the release tier with progress ≈ 0.
-  It is skipped by tier 1 (not yet silent), so the retrigger reuses a free voice
-  when one exists; if the pool is exhausted, an unrelated voice is stolen per
-  the normal tier order. The just-released voice is never itself the retrigger's
-  steal victim.
+  As a released voice it is now the natural tier-1 candidate, so the retrigger
+  reuses that same voice when the pool is exhausted (still-ringing note cut is
+  acceptable — it was the note being retriggered); if any voice is free, the
+  free voice wins as usual.
 - **Stolen voice then released again**: `releasedAt` only ever reflects the
   _current_ note's release; stale values are impossible because `noteOn` and the
   cleanup timer both clear it.
@@ -86,11 +87,9 @@ returns a configurable `silentAt` from `internalNoteOff`.
 
 Covered behaviors:
 
-- Held note not stolen while any mature releasing voice exists; the mature
-  releasing voice is the victim.
-- Young releasing tail (< 90% progress) is skipped; the oldest triggered held
-  voice is stolen instead.
-- Mature progress comparison: closes-to-silence releasing voice wins the steal.
+- Held note not stolen while any released voice exists; the released voice is
+  the victim (mature and young releases alike).
+- Among released voices, the one closest to silence wins the steal.
 - Free voice preferred before any theft.
 - Victim unmapping from `noteToVoiceMap`; fastChoke + startDelay applied;
   `releasedAt` cleared after retrigger.
@@ -103,6 +102,6 @@ Covered behaviors:
 
 - No amplitude meters / true loudness tracking.
 - No sustain pedal; `releasedAt` is future-ready but no pedal exists.
-- No configurable steal policy hooks; thresholds stay constants.
+- No configurable steal policy hooks.
 - No UI changes.
 - `AxiomVoice`, envelope, and choke internals untouched.
