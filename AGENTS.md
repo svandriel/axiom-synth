@@ -19,6 +19,8 @@ automated tests. GitHub Actions runs `pnpm test`, `pnpm build`, and `pnpm lint`.
 
 - Work on a feature branch; ask the user if a worktree is needed.
 - Never commit to `main` directly; always go through a pull request.
+- No magic numbers: every literal with meaning gets a named constant, so
+  intent is self-documenting (e.g. `1 / OSCILLATOR_COUNT` in `axiom-voice.ts`).
 
 ## Repo structure
 
