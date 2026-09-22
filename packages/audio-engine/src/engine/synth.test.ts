@@ -119,4 +119,78 @@ describe('Synth voice allocation', () => {
     expect(v0.releasedAt).toBeNull();
     expect(v0.currentNote).toBe(64);
   });
+
+  it('steals a mature release tail instead of a held voice', () => {
+    const { ctx, synth } = makeSynth(2);
+    ctx.currentTime = 0;
+    synth.noteOn(60, 1); // v0 held
+    synth.noteOn(62, 1); // v1 held
+    ctx.currentTime = 1;
+    synth.noteOff(62); // v1 released, endTime = 1 + 0.2*5 = 2
+    const v0 = synth.voices[0]!;
+    const v1 = synth.voices[1]!;
+
+    ctx.currentTime = 1.95; // v1 progress 0.95 > 0.9, tail not over
+    synth.noteOn(64, 1);
+
+    expect(v1.fastChokeCalls).toHaveLength(1);
+    expect(v0.fastChokeCalls).toHaveLength(0);
+    expect(v1.noteOnCalls.some(call => call.note === 64)).toBe(true);
+    expect(v0.noteOnCalls.some(call => call.note === 64)).toBe(false);
+  });
+
+  it('skips a young release tail and steals the oldest held voice', () => {
+    const { ctx, synth } = makeSynth(2);
+    ctx.currentTime = 0;
+    synth.noteOn(60, 1); // v0 held from 0
+    synth.noteOn(62, 1); // v1 held from 0
+    ctx.currentTime = 1;
+    synth.noteOff(62); // v1 released, tail to 2
+    const v0 = synth.voices[0]!;
+    const v1 = synth.voices[1]!;
+
+    ctx.currentTime = 1.8; // v1 progress 0.8 < 0.9
+    synth.noteOn(64, 1);
+
+    expect(v0.fastChokeCalls).toHaveLength(1);
+    expect(v1.fastChokeCalls).toHaveLength(0);
+    expect(v0.noteOnCalls.some(call => call.note === 64)).toBe(true);
+  });
+
+  it('steals the release tail closest to silence', () => {
+    const { ctx, synth } = makeSynth(3);
+    ctx.currentTime = 0;
+    synth.noteOn(60, 1);
+    synth.noteOn(61, 1);
+    synth.noteOn(62, 1);
+    ctx.currentTime = 1;
+    synth.noteOff(61); // v1 tail to 2
+    ctx.currentTime = 1.5;
+    synth.noteOff(62); // v2 tail to 2.5
+    const v0 = synth.voices[0]!;
+    const v1 = synth.voices[1]!;
+    const v2 = synth.voices[2]!;
+
+    ctx.currentTime = 1.95; // v1 progress 0.95, v2 progress 0.45
+    synth.noteOn(64, 1);
+
+    expect(v1.fastChokeCalls).toHaveLength(1);
+    expect(v2.fastChokeCalls).toHaveLength(0);
+    expect(v0.fastChokeCalls).toHaveLength(0);
+    expect(v1.noteOnCalls.some(call => call.note === 64)).toBe(true);
+  });
+
+  it('reuses a free voice when retriggering an active note', () => {
+    const { ctx, synth } = makeSynth(2);
+    ctx.currentTime = 5;
+    synth.noteOn(60, 1);
+    const v0 = synth.voices[0]!;
+    const v1 = synth.voices[1]!;
+
+    synth.noteOn(60, 1); // noteOff(60) on v0, then free v1 picks it up
+
+    expect(v0.noteOffCount).toBe(1);
+    expect(v1.noteOnCalls).toEqual([{ note: 60, velocity: 1, now: 5 }]);
+    expect(v1.fastChokeCalls).toHaveLength(0);
+  });
 });

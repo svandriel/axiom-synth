@@ -32,6 +32,44 @@ export abstract class Synth<V extends Voice> implements Destroyable {
     return this.voicePool;
   }
 
+  /**
+   * Chooses a victim when every voice is busy. Released voices whose release
+   * tail is more than 90% spent are inaudible to cut, so steal the one closest
+   * to silence (largest progress toward endTime). Only when no release tail
+   * qualifies does it fall back to the oldest triggered (held) voice.
+   */
+  private pickStealVictim(now: number, voicePool: V[]): V | null {
+    const heldVoices = new Set(this.noteToVoiceMap.values());
+    let bestReleased: V | null = null;
+    let bestProgress = -Infinity;
+    let oldestHeld: V | null = null;
+    let oldestTime = Infinity;
+
+    for (const voice of voicePool) {
+      if (voice.isAvailable(now)) {
+        continue;
+      }
+      if (heldVoices.has(voice)) {
+        if (voice.lastUsed < oldestTime) {
+          oldestTime = voice.lastUsed;
+          oldestHeld = voice;
+        }
+        continue;
+      }
+      if (voice.releasedAt === null) {
+        continue;
+      }
+      const tailMs = voice.endTime - voice.releasedAt;
+      const progress = tailMs > 0 ? (now - voice.releasedAt) / tailMs : 1;
+      if (progress > 0.9 && progress > bestProgress) {
+        bestProgress = progress;
+        bestReleased = voice;
+      }
+    }
+
+    return bestReleased ?? oldestHeld;
+  }
+
   noteOn(noteNumber: number, velocity: number) {
     if (this.destroyed) {
       return;
@@ -57,22 +95,13 @@ export abstract class Synth<V extends Voice> implements Destroyable {
     }
 
     if (!targetVoice) {
-      let oldestTime = Infinity;
-      let oldestVoice: V | null = null;
+      targetVoice = this.pickStealVictim(now, voicePool);
 
-      for (const voice of voicePool) {
-        if (voice.lastUsed < oldestTime) {
-          oldestTime = voice.lastUsed;
-          oldestVoice = voice;
-        }
-      }
-
-      if (oldestVoice) {
-        const age = now - oldestTime;
+      if (targetVoice) {
+        const age = now - targetVoice.lastUsed;
         console.warn(
-          `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber} - oldest voice is ${oldestVoice.id}, age ${age.toFixed(1)} s`,
+          `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber} - victim is ${targetVoice.id}, age ${age.toFixed(1)} s`,
         );
-        targetVoice = oldestVoice;
 
         for (const [note, voice] of this.noteToVoiceMap.entries()) {
           if (voice === targetVoice) {
