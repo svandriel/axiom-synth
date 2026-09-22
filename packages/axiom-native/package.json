@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "build": "pnpm run build:wasm && pnpm run build:ts",
+    "dev": "pnpm run build:wasm && chokidar \"rust/**/*.rs\" \"rust/Cargo.toml\" -c \"pnpm run build:wasm\" --silent",
     "build:wasm": "wasm-pack build ./rust --target web --out-dir ../pkg",
     "build:ts": "tsc -p tsconfig.app.json && tsc -p tsconfig.processor.json",
     "test": "cargo test --manifest-path rust/Cargo.toml",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@types/audioworklet": "^0.0.100",
+    "chokidar-cli": "^3.0.0",
     "typescript": "^6.0.3",
     "vite": "^8.2.2"
   }
