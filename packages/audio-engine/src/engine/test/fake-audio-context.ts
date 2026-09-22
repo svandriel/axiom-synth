@@ -207,6 +207,10 @@ export class FakeAudioContext {
   readonly compressors: FakeDynamicsCompressorNode[] = [];
   private readonly operationHistory: FakeOperation[] = [];
   currentTime = 0;
+  state: AudioContextState = 'running';
+  resume(): Promise<void> {
+    return Promise.resolve();
+  }
 
   get operations(): readonly FakeOperation[] {
     return Object.freeze([...this.operationHistory]);
