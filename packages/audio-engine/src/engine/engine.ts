@@ -39,10 +39,14 @@ export class AudioEngine implements Destroyable {
     this.comp.connect(this.meter.input);
     this.analyser.connect(ctxt.destination);
 
-    createSawWorkletNode(this.ctxt).then(node => {
-      console.log('node', node);
-      // node.connect(this.master);
-    });
+    createSawWorkletNode(this.ctxt)
+      .then(node => {
+        console.log('node', node);
+        // node.connect(this.master);
+      })
+      .catch(err => {
+        console.log('Error creating worklet', err);
+      });
   }
 
   getScopeData(buffer: Float32Array<ArrayBuffer>) {

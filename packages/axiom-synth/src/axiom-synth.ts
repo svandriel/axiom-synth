@@ -43,7 +43,7 @@ const LFO_DEPTH_SCALES: Record<LfoTarget, number> = {
   osc1: 150,
   osc2: 150,
   osc3: 150,
-  cutoff: 1200,
+  cutoff: 2400,
   amp: 1,
   drive: 4,
 };
