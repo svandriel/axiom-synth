@@ -120,6 +120,23 @@ describe('Synth voice allocation', () => {
     expect(v0.currentNote).toBe(64);
   });
 
+  it('retriggers an active note on its own released voice when the pool is full', () => {
+    const { ctx, synth } = makeSynth(2);
+    ctx.currentTime = 0;
+    synth.noteOn(60, 1); // v0 held
+    synth.noteOn(62, 1); // v1 held
+    const v0 = synth.voices[0]!;
+    const v1 = synth.voices[1]!;
+
+    ctx.currentTime = 1;
+    synth.noteOn(60, 1); // retrigger: v0 noteOff'd (released), then noteOn 60
+
+    expect(v0.fastChokeCalls).toHaveLength(1);
+    expect(v1.fastChokeCalls).toHaveLength(0);
+    expect(v0.currentNote).toBe(60);
+    expect(v1.currentNote).toBe(62);
+  });
+
   it('steals a mature release tail instead of a held voice', () => {
     const { ctx, synth } = makeSynth(2);
     ctx.currentTime = 0;
@@ -130,7 +147,7 @@ describe('Synth voice allocation', () => {
     const v0 = synth.voices[0]!;
     const v1 = synth.voices[1]!;
 
-    ctx.currentTime = 1.95; // v1 progress 0.95 > 0.9, tail not over
+    ctx.currentTime = 1.95; // v1 progress 0.95, tail not over
     synth.noteOn(64, 1);
 
     expect(v1.fastChokeCalls).toHaveLength(1);
