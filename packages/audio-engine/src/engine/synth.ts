@@ -85,7 +85,7 @@ export abstract class Synth<V extends Voice> implements Destroyable {
       this.noteOff(noteNumber);
     }
 
-    let targetVoice = voicePool.find(v => v.isAvailable(now));
+    let targetVoice: V | null = voicePool.find(v => v.isAvailable(now)) ?? null;
     let startDelay = 0;
 
     if (targetVoice) {
