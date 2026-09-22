@@ -84,4 +84,39 @@ describe('Synth voice allocation', () => {
     expect(v1.fastChokeCalls).toHaveLength(0);
     expect(v0.fastChokeCalls).toHaveLength(0);
   });
+
+  it('sets releasedAt on noteOff and clears it after the release tail ends', () => {
+    const { ctx, synth } = makeSynth(1);
+
+    ctx.currentTime = 4;
+    synth.noteOn(60, 1);
+    const v0 = synth.voices[0]!;
+    expect(v0.releasedAt).toBeNull();
+
+    ctx.currentTime = 5;
+    synth.noteOff(60);
+    expect(v0.releasedAt).toBe(5);
+    expect(v0.currentNote).toBe(60);
+
+    // silentAt 0.2 -> endTime 5 + 0.2*5 = 6, cleanup timer fires at 1000ms.
+    vi.advanceTimersByTime(1001);
+    expect(v0.releasedAt).toBeNull();
+    expect(v0.currentNote).toBeNull();
+  });
+
+  it('clears releasedAt when retriggered by a steal', () => {
+    const { ctx, synth } = makeSynth(1);
+
+    ctx.currentTime = 0;
+    synth.noteOn(60, 1);
+    const v0 = synth.voices[0]!;
+    ctx.currentTime = 1;
+    synth.noteOff(60);
+    expect(v0.releasedAt).toBe(1);
+
+    ctx.currentTime = 1.95;
+    synth.noteOn(64, 1);
+    expect(v0.releasedAt).toBeNull();
+    expect(v0.currentNote).toBe(64);
+  });
 });

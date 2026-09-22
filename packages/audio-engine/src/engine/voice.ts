@@ -13,6 +13,10 @@ export abstract class Voice implements Destroyable {
   public currentNote: number | null = null;
   public endTime = 0;
   public lastUsed = 0;
+  /**
+   * Audio-clock time the current note's release began; null while silent or held.
+   */
+  public releasedAt: number | null = null;
   public readonly id = counter++;
 
   constructor(ctxt: AudioContext, audioSink: AudioNode) {
@@ -44,6 +48,7 @@ export abstract class Voice implements Destroyable {
 
     this.currentNote = noteNumber;
     this.lastUsed = this.ctxt.currentTime + startTimeOffset;
+    this.releasedAt = null;
 
     console.log(`[${now.toFixed(4)}] Voice ${this.id}: noteOn(${noteNumber})`);
 
@@ -79,6 +84,7 @@ export abstract class Voice implements Destroyable {
 
     // 5 time-constants completely flattens setTargetAtTime
     this.endTime = now + silentAt * 5;
+    this.releasedAt = now;
 
     this.cleanupTimer = setTimeout(
       () => {
@@ -87,6 +93,7 @@ export abstract class Voice implements Destroyable {
         );
         this.onSoundStop();
         this.currentNote = null;
+        this.releasedAt = null;
         this.cleanupTimer = null;
       },
       silentAt * 5 * 1000,
