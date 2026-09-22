@@ -2,6 +2,9 @@ import type { Destroyable } from './destroyable';
 import { resumeIfSuspended } from './helpers';
 import type { Voice } from './voice';
 
+/** Release progress past which a released voice is quiet enough to steal. */
+const RELEASE_STEAL_THRESHOLD = 0.9;
+
 export abstract class Synth<V extends Voice> implements Destroyable {
   protected readonly ctxt: AudioContext;
   protected readonly audioSink: AudioNode;
@@ -61,7 +64,7 @@ export abstract class Synth<V extends Voice> implements Destroyable {
       }
       const tailMs = voice.endTime - voice.releasedAt;
       const progress = tailMs > 0 ? (now - voice.releasedAt) / tailMs : 1;
-      if (progress > 0.9 && progress > bestProgress) {
+      if (progress > RELEASE_STEAL_THRESHOLD && progress > bestProgress) {
         bestProgress = progress;
         bestReleased = voice;
       }

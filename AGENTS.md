@@ -19,6 +19,8 @@ automated tests. GitHub Actions runs `pnpm test`, `pnpm build`, and `pnpm lint`.
 
 - Work on a feature branch; ask the user if a worktree is needed.
 - Never commit to `main` directly; always go through a pull request.
+- No magic numbers: every literal with meaning gets a named constant (e.g.
+  `RELEASE_STEAL_THRESHOLD = 0.9` in `synth.ts`), so intent is self-documenting.
 
 ## Repo structure
 
