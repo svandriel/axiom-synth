@@ -68,8 +68,11 @@ and the new note keeps the 0-intrusion attack (`startDelay` unchanged).
   This preserves the chosen "oldest released when release over threshold,
   otherwise oldest triggered" policy.
 - **Duplicate note retrigger** (`noteOn` of an active note): unchanged — the old
-  voice is `noteOff`'d first, which moves it into the release tier and makes it
-  the natural steal candidate for the retrigger.
+  voice is `noteOff`'d first, moving it into the release tier with progress ≈ 0.
+  It is skipped by tier 1 (not yet silent), so the retrigger reuses a free voice
+  when one exists; if the pool is exhausted, an unrelated voice is stolen per
+  the normal tier order. The just-released voice is never itself the retrigger's
+  steal victim.
 - **Stolen voice then released again**: `releasedAt` only ever reflects the
   _current_ note's release; stale values are impossible because `noteOn` and the
   cleanup timer both clear it.

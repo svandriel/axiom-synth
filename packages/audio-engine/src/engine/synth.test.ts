@@ -142,19 +142,22 @@ describe('Synth voice allocation', () => {
   it('skips a young release tail and steals the oldest held voice', () => {
     const { ctx, synth } = makeSynth(2);
     ctx.currentTime = 0;
-    synth.noteOn(60, 1); // v0 held from 0
-    synth.noteOn(62, 1); // v1 held from 0
+    synth.noteOn(60, 1); // v0 held from 0, then released young
     ctx.currentTime = 1;
-    synth.noteOff(62); // v1 released, tail to 2
+    synth.noteOn(62, 1); // v1 held (lastUsed 1)
     const v0 = synth.voices[0]!;
     const v1 = synth.voices[1]!;
-
-    ctx.currentTime = 1.8; // v1 progress 0.8 < 0.9
+    ctx.currentTime = 1;
+    synth.noteOff(60); // v0 released young, tail to 1 + 0.2*5 = 2
+    ctx.currentTime = 1.8; // v0 progress 0.8 < 0.9 (young)
     synth.noteOn(64, 1);
 
-    expect(v0.fastChokeCalls).toHaveLength(1);
-    expect(v1.fastChokeCalls).toHaveLength(0);
-    expect(v0.noteOnCalls.some(call => call.note === 64)).toBe(true);
+    // Old LRU would steal v0 (young tail); new code must skip it
+    // and steal the oldest held voice, v1.
+    expect(v1.fastChokeCalls).toHaveLength(1);
+    expect(v0.fastChokeCalls).toHaveLength(0);
+    expect(v1.noteOnCalls.some(call => call.note === 64)).toBe(true);
+    expect(v0.noteOnCalls.some(call => call.note === 64)).toBe(false);
   });
 
   it('steals the release tail closest to silence', () => {
