@@ -4,7 +4,7 @@ Date: 2026-09-22
 
 ## Context
 
-`pnpm dev` runs plain `vite` (`app/package.json`). The native package
+`pnpm dev` runs the Vite dev server (`app/package.json`). The native package
 `packages/axiom-native` is built by `wasm-pack build ./rust --target web
 --out-dir ../pkg` (`build:wasm` script) into gitignored `pkg/`, which the
 library imports from `src/index.ts` (`../pkg/axiom_native_bg.wasm?url`) and
@@ -13,46 +13,53 @@ wasm when Rust sources change: editing `rust/src/lib.rs` serves stale
 artifacts silently, and a fresh clone fails outright because nothing in the
 dev path creates `pkg/`.
 
-Alternatives evaluated: `concurrently` + `cargo-watch` (extra process,
-install burden), third-party Vite plugins (`vite-plugin-wasm-pack-watcher`,
-`vite-plugin-rsw` — low stars, stale, heavy extra CLI), an own Vite plugin
-(now rejected — Vite already watches imported `pkg/` files and full-reloads
-on change, so a plugin buys little). Chosen: a package-level `dev` script in
-`@axiom/axiom-native` using chokidar, run in parallel with app's vite by the
-standard pnpm workspace convention.
+Alternatives evaluated: `concurrently` + `cargo-watch`, third-party Vite
+plugins (`vite-plugin-wasm-pack-watcher`, `vite-plugin-rsw`), and an own Vite
+plugin or custom `chokidar`-based script (rejected — Vite already
+full-reloads when the imported `pkg/` files change, and a bespoke
+debounce/serialize scheduler is over-engineering for dev tooling; cargo's
+target-dir lock already serializes concurrent `wasm-pack` runs). Chosen: a
+package-level `dev` script in `@axiom/axiom-native` built on `chokidar-cli`,
+run in parallel with app's vite via the standard pnpm workspace convention.
+Zero custom JS, one new devDependency.
 
 ## Design
 
 ### 1. Native package dev script
 
-- `packages/axiom-native/scripts/dev-watch.mjs` — plain Node ESM script,
-  `chokidar` as the only new devDependency. A `.mjs` script is deliberately
-  outside every tsconfig's `include`; no TypeScript/type-check coverage.
-- `"dev": "node scripts/dev-watch.mjs"` in `packages/axiom-native/package.json`.
+`packages/axiom-native/package.json`, `chokidar-cli` as the only new
+devDependency:
+
+```json
+"dev": "pnpm run build:wasm && chokidar \"rust/**/*.rs\" \"rust/Cargo.toml\" -c \"pnpm run build:wasm\" --silent"
+```
+
+- pnpm recursive (`pnpm -r --parallel dev`) runs each package script with
+  cwd = that package's directory, so the `rust/**/*.rs` glob, the
+  `Cargo.toml` glob, and the self-referencing `pnpm run build:wasm` all
+  resolve relative to `packages/axiom-native`.
+- No scripts file, no tsconfig involvement, nothing type-checked.
 
 ### 2. Watch and build behavior
 
-- Build command: `spawn('pnpm', ['--filter', '@axiom/axiom-native',
-'build:wasm'])` with repo-root cwd. The package.json script stays the
-  single source of truth for wasm-pack arguments.
-- On start: run one build immediately — catches fresh clones (no `pkg/`) and
-  stale/half-written artifacts, cheap when Cargo is incremental.
-- Watch globs (package root-relative): `rust/**/*.rs` and `rust/Cargo.toml` —
-  dependency edits must rebuild too.
-- Debounce `DEBOUNCE_MS = 250`. Builds serialize: never two concurrent
-  `wasm-pack` processes. Changes arriving mid-build set a dirty flag; a
-  follow-up build runs when the current one finishes.
-- Failure: keep the previous `pkg/` artifact, print the child process stderr
-  to the watcher terminal, continue watching. Next save retries.
+- `pnpm run build:wasm &&` runs one build before watching starts: catches
+  fresh clones (no `pkg/`) and stale/half-written artifacts; `&&` means a
+  failed initial build surfaces loudly and skips watching.
+- chokidar-cli watches `rust/**/*.rs` (source edits) and `rust/Cargo.toml`
+  (dependency edits) and re-runs `build:wasm` on change.
+- No debounce flags. When an edit arrives mid-build, cargo's target-dir lock
+  serializes the second `wasm-pack`; worst case is a redundant rebuild.
+  Accepted for dev tooling.
+- A failed rebuild keeps the previous `pkg/` artifact; chokidar-cli keeps
+  watching, next save retries. `--silent` avoids command-echo noise.
 
 ### 3. Browser refresh
 
 No coupling to Vite needed. The wasm asset (`?url` import) and the wasm-pack
 glue module are part of Vite's module graph; when the rebuild rewrites files
 under `pkg/`, Vite's own watcher invalidates and full-reloads the page.
-Accepted race, identical to any dev setup: a page load during a cold build —
-or when `pkg/` does not exist yet — may show an import error once; a manual
-refresh (or the post-rebuild reload once files exist) resolves it.
+Accepted race, identical to any dev setup: a page load before `pkg/` exists
+may show an import error once; a manual refresh resolves it.
 
 ### 4. Root dev wiring
 
@@ -63,32 +70,27 @@ refresh (or the post-rebuild reload once files exist) resolves it.
 
 ### 5. Testing
 
-- Extract the debounce/serialize/dirty-flag decision logic into a pure
-  `scripts/build-queue.mjs` (imported by `dev-watch.mjs`), so it tests
-  without spawning processes.
-- Test file `scripts/build-queue.test.mjs`: debounce coalescing, dirty-flag
-  re-run after in-flight build, no concurrent spawns, error path keeps
-  artifact (returns build outcome). Runs under vitest.
-- Add `vitest` devDependency and `"test": "cargo test --manifest-path
-rust/Cargo.toml && vitest run"` in `packages/axiom-native/package.json`, so
-  root `pnpm test:native` and the CI native job cover both suites. Root
-  `pnpm test` stays audio-engine-only (unchanged).
+No automated tests. The feature is a thin config change — one script line plus
+a devDependency — with no testable logic (debounce/serialize was removed with
+the custom-script variant). Behavior is integration-level and covered by the
+manual dev loop in Verification; CI already builds the crate (`test:native`,
+`pnpm build`), which stays unchanged. No vitest added to the native package.
 
 ## Explicit non-goals
 
-- No Vite plugin (either own or third-party).
+- No Vite plugin, no custom watcher script, no scheduler logic.
 - No `concurrently`, `cargo-watch`, or `rsw` toolchain.
 - No HMR of Rust/wasm — full reload only (via Vite's graph watcher).
 - No `--dev` vs release profile toggle — `build:wasm` unchanged.
+- No `chokidar` (JS API) package — CLI wrapper only.
 - No docs rewrite beyond what the implementation forces.
 
 ## Verification
 
 - Clean checkout (no `pkg/`): `pnpm dev` builds wasm without manual steps;
   app serves once build completes.
-- Edit `rust/src/lib.rs`, save: rebuild runs once (debounced), browser
-  reloads with new behavior.
-- Introduce a Rust compile error, save: watcher terminal prints stderr, old
+- Edit `rust/src/lib.rs`, save: rebuild runs, browser reloads with new
+  behavior.
+- Introduce a Rust compile error, save: terminal prints wasm-pack stderr, old
   wasm keeps playing; fix and save recovers, browser reloads.
-- `pnpm test:native` runs cargo tests + vitest queue tests; `pnpm lint`,
-  `pnpm build` clean.
+- `pnpm lint`, `pnpm build`, `pnpm test:native` clean.
