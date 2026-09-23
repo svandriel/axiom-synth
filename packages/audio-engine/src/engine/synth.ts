@@ -13,7 +13,7 @@ export abstract class Synth<V extends Voice> implements Destroyable {
   constructor(
     ctxt: AudioContext,
     audioSink: AudioNode,
-    options?: { maxVoices?: number },
+    options: { maxVoices: number },
   ) {
     this.ctxt = ctxt;
     this.audioSink = audioSink;

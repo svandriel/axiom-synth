@@ -85,6 +85,9 @@ describe('VoiceManager', () => {
     const synth = new TestSynth(
       context as unknown as AudioContext,
       context.destination as unknown as AudioNode,
+      {
+        maxVoices: 16,
+      },
     );
 
     synth.noteOn(60, 1);

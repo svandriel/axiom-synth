@@ -11,11 +11,11 @@ export class VoiceManager<V extends Voice> {
   constructor(
     ctxt: AudioContext,
     createVoice: () => V,
-    options?: { maxVoices?: number },
+    options: { maxVoices: number },
   ) {
     this.ctxt = ctxt;
     this.createVoice = createVoice;
-    this.maxVoices = options?.maxVoices ?? 16;
+    this.maxVoices = options.maxVoices;
   }
 
   noteOn(noteNumber: number, velocity: number): void {
