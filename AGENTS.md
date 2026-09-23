@@ -21,6 +21,7 @@ automated tests. GitHub Actions runs `pnpm test`, `pnpm build`, and `pnpm lint`.
 - Never commit to `main` directly; always go through a pull request.
 - No magic numbers: every literal with meaning gets a named constant, so
   intent is self-documenting (e.g. `1 / OSCILLATOR_COUNT` in `axiom-voice.ts`).
+- Never commit files under `.superpowers/`; treat them as local agent artifacts.
 
 ## Repo structure
 
