@@ -4,17 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @axiom/app dev",
+    "dev": "pnpm -r --parallel --if-present dev",
     "build": "pnpm -r --sort build",
-    "build:pages": "pnpm --filter @axiom/app build:pages",
-    "preview": "pnpm --filter @axiom/app preview",
+    "build:pages": "pnpm --filter @axiom/axiom-native build && pnpm --filter @axiom/app build:pages",
+    "preview": "pnpm --filter @axiom/app preview --port 4000",
     "test": "pnpm --filter @axiom/audio-engine test",
+    "test:native": "pnpm --filter @axiom/axiom-native test",
     "lint": "prettier --check .",
+    "lint:native": "pnpm --filter @axiom/axiom-native lint",
     "format": "prettier --write .",
+    "format:native": "pnpm --filter @axiom/axiom-native format",
     "prepare": "husky"
   },
   "devDependencies": {
-    "@vue/tsconfig": "^0.9.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.0",
     "prettier": "^3.9.6",

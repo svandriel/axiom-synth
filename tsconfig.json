@@ -1,4 +1,9 @@
 {
   "files": [],
-  "references": [{ "path": "./app/tsconfig.json" }]
+  "references": [
+    { "path": "./app/tsconfig.json" },
+    { "path": "./packages/audio-engine/tsconfig.json" },
+    { "path": "./packages/axiom-native/tsconfig.json" },
+    { "path": "./packages/axiom-synth/tsconfig.json" }
+  ]
 }

@@ -1,2 +1,3 @@
 #!/usr/bin/env sh
 pnpm exec lint-staged
+cargo fmt --manifest-path packages/axiom-native/rust/Cargo.toml -- --check

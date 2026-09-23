@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.axiom-native.tsbuildinfo",
+    "types": ["vite/client"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/processors"]
+}

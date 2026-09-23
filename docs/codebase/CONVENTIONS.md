@@ -10,7 +10,7 @@
 | Functions/methods  | camelCase; `void`-returning event/key handlers named `on*`/`handle*`                                                                                  | `onPointerDown`, `onSoundStart`, `osc.start` | `app/src/components/Knob.vue`, `packages/audio-engine/src/engine/voice.ts`, `packages/audio-engine/src/engine/oscillator.ts`                                                          |
 | Types/interfaces   | PascalCase (`OscillatorConfig`, `WaveshaperType`, `EnvelopeCurve`)                                                                                    | —                                            | `packages/audio-engine/src/types/*`, `packages/audio-engine/src/engine/waveshaper-curve.ts`                                                                                           |
 | Constants/env vars | `UPPER_SNAKE` for module constants and types (`MAX_VOICES`, `OSCILLATOR_COUNT`, `CURVE_SAMPLES`); camelCase for exported config objects               | —                                            | `packages/axiom-synth/src/axiom-synth.ts` (`MAX_VOICES`, `LFO_DEPTH_SCALES`), `packages/audio-engine/src/engine/constants.ts`, `packages/audio-engine/src/engine/waveshaper-curve.ts` |
-| Packages           | `@axiom/*` scoped workspace packages (`@axiom/app`, `@axiom/audio-engine`, `@axiom/axiom-synth`)                                                      | —                                            | `pnpm-workspace.yaml`, root `package.json`                                                                                                                                            |
+| Packages           | `@axiom/*` scoped workspace packages (`@axiom/app`, `@axiom/audio-engine`, `@axiom/axiom-synth`, `@axiom/audio-native`)                               | —                                            | `pnpm-workspace.yaml`, root `package.json`                                                                                                                                            |
 
 ### 2) Formatting and Linting
 
@@ -20,7 +20,7 @@
 - Most relevant enforced rules: `singleQuote: true`, `trailingComma: 'all'`, `arrowParens: 'avoid'`, `printWidth: 80`, and Tailwind class sorting (plugin reads `./app/src/style.css`).
 - Run commands: `pnpm format` (`prettier --write .`), `pnpm lint` (`prettier --check .`). Pre-commit automatically runs `pnpm exec lint-staged` which prettier-formats staged `.ts/.js/.vue/.css/.md/.json/.yml/.yaml` (`.lintstagedrc.json`).
 
-TypeScript flags (in `app/tsconfig.app.json`): `strict: true`, `noUncheckedIndexedAccess: true`, `noUnusedLocals: true`, `noUnusedParameters: true`, `erasableSyntaxOnly: true`, `noFallthroughCasesInSwitch: true`. `erasableSyntaxOnly` forbids enums and namespaces — use string-literal unions and plain aliases.
+TypeScript flags (in `tsconfig.base.json`, shared by all packages): `strict: true`, `noUncheckedIndexedAccess: true`, `noUnusedLocals: true`, `noUnusedParameters: true`, `erasableSyntaxOnly: true`, `noFallthroughCasesInSwitch: true`. `erasableSyntaxOnly` forbids enums and namespaces — use string-literal unions and plain aliases. The base is **not** Vue-specific; only the app sets Vue `jsx`/`jsxImportSource` options.
 
 ### 3) Import and Module Conventions
 

@@ -13,9 +13,12 @@
     "build": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@axiom/axiom-native": "workspace:*"
+  },
   "devDependencies": {
-    "@vue/tsconfig": "^0.9.1",
     "typescript": "^6.0.3",
+    "vite": "^8.2.2",
     "vitest": "^4.0.18"
   }
 }
