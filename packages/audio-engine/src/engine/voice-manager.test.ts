@@ -237,7 +237,7 @@ describe('VoiceManager', () => {
       );
       expect(logSpy).toHaveBeenCalledWith('allNotesOff');
       expect(warnSpy).toHaveBeenCalledWith(
-        `Voice stealing triggered for note 65 - oldest voice is ${voices[0]!.id}`,
+        `Voice stealing triggered for note 65 - victim is ${voices[0]!.id}`,
       );
     } finally {
       logSpy.mockRestore();

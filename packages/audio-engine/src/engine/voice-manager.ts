@@ -19,7 +19,8 @@ export class VoiceManager<V extends Voice> {
       this.noteOff(noteNumber);
     }
 
-    let targetVoice = voicePool.find(voice => voice.isAvailable(now));
+    let targetVoice: V | null =
+      voicePool.find(voice => voice.isAvailable(now)) ?? null;
     let startDelay = 0;
 
     if (targetVoice) {
@@ -28,9 +29,8 @@ export class VoiceManager<V extends Voice> {
       targetVoice = this.pickStealVictim(now, voicePool);
 
       if (targetVoice) {
-        const age = now - targetVoice.lastUsed;
         console.warn(
-          `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber} - victim is ${targetVoice.id}, age ${age.toFixed(1)} s`,
+          `Voice stealing triggered for note ${noteNumber} - victim is ${targetVoice.id}`,
         );
         for (const [note, voice] of this.noteToVoiceMap.entries()) {
           if (voice === targetVoice) {
