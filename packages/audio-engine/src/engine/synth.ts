@@ -1,15 +1,14 @@
 import type { Destroyable } from './destroyable';
 import { resumeIfSuspended } from './helpers';
 import type { Voice } from './voice';
+import { VoiceManager } from './voice-manager';
 
 export abstract class Synth<V extends Voice> implements Destroyable {
   protected readonly ctxt: AudioContext;
   protected readonly audioSink: AudioNode;
   protected destroyed = false;
 
-  private readonly maxVoices: number;
-  private voicePool: V[] | undefined;
-  private readonly noteToVoiceMap: Map<number, V> = new Map();
+  private readonly voiceManager: VoiceManager<V>;
 
   constructor(
     ctxt: AudioContext,
@@ -18,135 +17,35 @@ export abstract class Synth<V extends Voice> implements Destroyable {
   ) {
     this.ctxt = ctxt;
     this.audioSink = audioSink;
-    this.maxVoices = options?.maxVoices ?? 16;
+    this.voiceManager = new VoiceManager(
+      ctxt,
+      () => this.createVoice(),
+      options,
+    );
   }
 
   protected abstract createVoice(): V;
-
-  private ensureVoicePool(): V[] {
-    if (this.voicePool === undefined) {
-      this.voicePool = Array.from({ length: this.maxVoices }, () =>
-        this.createVoice(),
-      );
-    }
-    return this.voicePool;
-  }
-
-  /**
-   * Chooses a victim when every voice is busy. A released voice is always
-   * preferred over a held one: steal the released voice closest to silence
-   * (largest progress toward endTime), and only when no released voice exists
-   * fall back to the oldest triggered (held) voice.
-   */
-  private pickStealVictim(now: number, voicePool: V[]): V | null {
-    const heldVoices = new Set(this.noteToVoiceMap.values());
-    let bestReleased: V | null = null;
-    let bestProgress = -Infinity;
-    let oldestHeld: V | null = null;
-    let oldestTime = Infinity;
-
-    for (const voice of voicePool) {
-      if (voice.isAvailable(now)) {
-        continue;
-      }
-      if (heldVoices.has(voice)) {
-        if (voice.lastUsed < oldestTime) {
-          oldestTime = voice.lastUsed;
-          oldestHeld = voice;
-        }
-        continue;
-      }
-      if (voice.releasedAt === null) {
-        continue;
-      }
-      const tailMs = voice.endTime - voice.releasedAt;
-      const progress = tailMs > 0 ? (now - voice.releasedAt) / tailMs : 1;
-      if (progress > bestProgress) {
-        bestProgress = progress;
-        bestReleased = voice;
-      }
-    }
-
-    return bestReleased ?? oldestHeld;
-  }
 
   noteOn(noteNumber: number, velocity: number) {
     if (this.destroyed) {
       return;
     }
     resumeIfSuspended(this.ctxt);
-    const now = this.ctxt.currentTime;
-    const voicePool = this.ensureVoicePool();
-
-    if (this.noteToVoiceMap.has(noteNumber)) {
-      console.log(
-        `[${now.toFixed(4)}] noteOn(${noteNumber}) - already active, retriggering`,
-      );
-      this.noteOff(noteNumber);
-    }
-
-    let targetVoice: V | null = voicePool.find(v => v.isAvailable(now)) ?? null;
-    let startDelay = 0;
-
-    if (targetVoice) {
-      console.log(
-        `[${now.toFixed(4)}] Voice ${targetVoice.id} available for note ${noteNumber}`,
-      );
-    }
-
-    if (!targetVoice) {
-      targetVoice = this.pickStealVictim(now, voicePool);
-
-      if (targetVoice) {
-        const age = now - targetVoice.lastUsed;
-        console.warn(
-          `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber} - victim is ${targetVoice.id}, age ${age.toFixed(1)} s`,
-        );
-
-        for (const [note, voice] of this.noteToVoiceMap.entries()) {
-          if (voice === targetVoice) {
-            this.noteToVoiceMap.delete(note);
-          }
-        }
-
-        targetVoice.fastChoke(now);
-        startDelay = targetVoice.chokeDuration;
-      }
-    }
-
-    if (targetVoice) {
-      targetVoice.noteOn(noteNumber, velocity, startDelay);
-      this.noteToVoiceMap.set(noteNumber, targetVoice);
-    }
+    this.voiceManager.noteOn(noteNumber, velocity);
   }
 
   noteOff(noteNumber: number) {
     if (this.destroyed) {
       return;
     }
-    const voice = this.noteToVoiceMap.get(noteNumber);
-    if (voice) {
-      console.log(
-        `[${this.ctxt.currentTime.toFixed(4)}] noteOff(${noteNumber}) - releasing voice`,
-      );
-      voice.noteOff();
-      this.noteToVoiceMap.delete(noteNumber);
-    } else {
-      console.log(
-        `[${this.ctxt.currentTime.toFixed(4)}] noteOff(${noteNumber}) - no active voice found`,
-      );
-    }
+    this.voiceManager.noteOff(noteNumber);
   }
 
   allNotesOff() {
     if (this.destroyed) {
       return;
     }
-    console.log('allNotesOff');
-    for (const [note, voice] of this.noteToVoiceMap.entries()) {
-      voice.noteOff();
-      this.noteToVoiceMap.delete(note);
-    }
+    this.voiceManager.allNotesOff();
   }
 
   destroy() {
@@ -154,7 +53,6 @@ export abstract class Synth<V extends Voice> implements Destroyable {
       return;
     }
     this.destroyed = true;
-    this.noteToVoiceMap.clear();
-    this.voicePool?.forEach(voice => voice.destroy());
+    this.voiceManager.destroy();
   }
 }

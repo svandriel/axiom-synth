@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { FakeAudioContext } from './test/fake-audio-context';
+import { Synth } from './synth';
 import { Voice } from './voice';
 import { VoiceManager } from './voice-manager';
 
@@ -68,7 +69,35 @@ function createManager(
   );
 }
 
+class TestSynth extends Synth<TestVoice> {
+  readonly voices: TestVoice[] = [];
+
+  protected override createVoice(): TestVoice {
+    const voice = new TestVoice(this.ctxt, this.audioSink);
+    this.voices.push(voice);
+    return voice;
+  }
+}
+
 describe('VoiceManager', () => {
+  it('keeps Synth destruction guard while delegating voice lifecycle', () => {
+    const context = new FakeAudioContext();
+    const synth = new TestSynth(
+      context as unknown as AudioContext,
+      context.destination as unknown as AudioNode,
+    );
+
+    synth.noteOn(60, 1);
+    const voice = synth.voices[0]!;
+    synth.noteOff(60);
+    synth.destroy();
+    synth.noteOn(61, 1);
+
+    expect(voice.noteOffSpy).toHaveBeenCalledOnce();
+    expect(voice.destroySpy).toHaveBeenCalledOnce();
+    expect(synth.voices).toHaveLength(16);
+  });
+
   it('creates voices lazily and assigns an available voice', () => {
     const context = new FakeAudioContext();
     const voices: TestVoice[] = [];
