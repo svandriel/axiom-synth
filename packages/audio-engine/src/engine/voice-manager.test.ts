@@ -1,0 +1,160 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import { FakeAudioContext } from './test/fake-audio-context';
+import { Voice } from './voice';
+import { VoiceManager } from './voice-manager';
+
+class TestVoice extends Voice {
+  readonly noteOnCalls: {
+    noteNumber: number;
+    velocity: number;
+    startTimeOffset: number;
+  }[] = [];
+  readonly noteOffSpy = vi.fn();
+  readonly fastChokeSpy = vi.fn();
+  readonly destroySpy = vi.fn();
+
+  override noteOn(
+    noteNumber: number,
+    velocity: number,
+    startTimeOffset: number,
+  ): void {
+    this.noteOnCalls.push({ noteNumber, velocity, startTimeOffset });
+    this.currentNote = noteNumber;
+    this.lastUsed = this.ctxt.currentTime + startTimeOffset;
+    this.endTime = Infinity;
+  }
+
+  override noteOff(): void {
+    this.noteOffSpy();
+    this.currentNote = null;
+  }
+
+  override fastChoke(now: number): void {
+    this.fastChokeSpy(now);
+  }
+
+  override destroy(): void {
+    this.destroySpy();
+  }
+
+  protected override onSoundStop(): void {}
+  protected override internalFastChoke(
+    _chokeTime: number,
+    _now: number,
+  ): void {}
+  protected override internalNoteOn(): void {}
+  protected override internalNoteOff(): { silentAt: number } {
+    return { silentAt: 0 };
+  }
+}
+
+function createManager(
+  context: FakeAudioContext,
+  voices: TestVoice[],
+  maxVoices = 2,
+): VoiceManager<TestVoice> {
+  return new VoiceManager(
+    context as unknown as AudioContext,
+    () => {
+      const voice = new TestVoice(
+        context as unknown as AudioContext,
+        context.destination as unknown as AudioNode,
+      );
+      voices.push(voice);
+      return voice;
+    },
+    { maxVoices },
+  );
+}
+
+describe('VoiceManager', () => {
+  it('creates voices lazily and assigns an available voice', () => {
+    const context = new FakeAudioContext();
+    const voices: TestVoice[] = [];
+    const manager = createManager(context, voices);
+
+    expect(voices).toHaveLength(0);
+    manager.noteOn(60, 0.8);
+    expect(voices).toHaveLength(2);
+    expect(voices[0]!.noteOnCalls).toEqual([
+      { noteNumber: 60, velocity: 0.8, startTimeOffset: 0 },
+    ]);
+  });
+
+  it('releases an active note before retriggering it', () => {
+    const context = new FakeAudioContext();
+    const voices: TestVoice[] = [];
+    const manager = createManager(context, voices);
+
+    manager.noteOn(60, 0.8);
+    manager.noteOn(60, 0.5);
+
+    expect(voices[0]!.noteOffSpy).toHaveBeenCalledOnce();
+    expect(voices[0]!.noteOnCalls).toEqual([
+      { noteNumber: 60, velocity: 0.8, startTimeOffset: 0 },
+      { noteNumber: 60, velocity: 0.5, startTimeOffset: 0 },
+    ]);
+  });
+
+  it('releases the voice mapped to a note', () => {
+    const context = new FakeAudioContext();
+    const voices: TestVoice[] = [];
+    const manager = createManager(context, voices);
+
+    manager.noteOn(60, 0.8);
+    manager.noteOff(60);
+    manager.noteOff(60);
+
+    expect(voices[0]!.noteOffSpy).toHaveBeenCalledOnce();
+  });
+
+  it('steals the oldest voice at capacity with choke delay', () => {
+    const context = new FakeAudioContext();
+    const voices: TestVoice[] = [];
+    const manager = createManager(context, voices);
+
+    manager.noteOn(60, 0.8);
+    context.currentTime = 1;
+    manager.noteOn(62, 0.8);
+    voices[0]!.lastUsed = 0.1;
+    voices[1]!.lastUsed = 0.2;
+    context.currentTime = 2;
+
+    manager.noteOn(64, 0.8);
+
+    expect(voices[0]!.fastChokeSpy).toHaveBeenCalledWith(2);
+    expect(voices[0]!.noteOnCalls.at(-1)).toEqual({
+      noteNumber: 64,
+      velocity: 0.8,
+      startTimeOffset: voices[0]!.chokeDuration,
+    });
+  });
+
+  it('releases all active voices', () => {
+    const context = new FakeAudioContext();
+    const voices: TestVoice[] = [];
+    const manager = createManager(context, voices);
+
+    manager.noteOn(60, 0.8);
+    manager.noteOn(62, 0.8);
+    manager.allNotesOff();
+
+    expect(voices[0]!.noteOffSpy).toHaveBeenCalledOnce();
+    expect(voices[1]!.noteOffSpy).toHaveBeenCalledOnce();
+  });
+
+  it('destroys the lazily-created voice pool', () => {
+    const context = new FakeAudioContext();
+    const voices: TestVoice[] = [];
+    const manager = createManager(context, voices);
+
+    manager.destroy();
+    expect(voices).toHaveLength(0);
+
+    manager.noteOn(60, 0.8);
+    manager.destroy();
+    expect(voices[0]!.destroySpy).toHaveBeenCalledOnce();
+    expect(voices[1]!.destroySpy).toHaveBeenCalledOnce();
+  });
+});
