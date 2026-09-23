@@ -163,6 +163,25 @@ describe('VoiceManager', () => {
     });
   });
 
+  it('cleans up the stolen note mapping before assigning the new note', () => {
+    const context = new FakeAudioContext();
+    const voices: TestVoice[] = [];
+    const manager = createManager(context, voices);
+
+    manager.noteOn(60, 0.8);
+    context.currentTime = 1;
+    manager.noteOn(62, 0.8);
+    voices[0]!.lastUsed = 0.1;
+    voices[1]!.lastUsed = 0.2;
+
+    manager.noteOn(64, 0.8);
+    manager.noteOff(60);
+    manager.noteOff(64);
+
+    expect(voices[0]!.noteOffSpy).toHaveBeenCalledOnce();
+    expect(voices[1]!.noteOffSpy).not.toHaveBeenCalled();
+  });
+
   it('releases all active voices', () => {
     const context = new FakeAudioContext();
     const voices: TestVoice[] = [];
@@ -197,33 +216,35 @@ describe('VoiceManager', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    manager.noteOn(60, 0.8);
-    manager.noteOn(60, 0.5);
-    manager.noteOff(60);
-    manager.noteOff(60);
-    manager.noteOn(62, 0.8);
-    manager.noteOn(64, 0.8);
-    manager.noteOn(65, 0.8);
-    manager.allNotesOff();
+    try {
+      manager.noteOn(60, 0.8);
+      manager.noteOn(60, 0.5);
+      manager.noteOff(60);
+      manager.noteOff(60);
+      manager.noteOn(62, 0.8);
+      manager.noteOn(64, 0.8);
+      manager.noteOn(65, 0.8);
+      manager.allNotesOff();
 
-    expect(logSpy).toHaveBeenCalledWith(
-      `[0.0000] Voice ${voices[0]!.id} available for note 60`,
-    );
-    expect(logSpy).toHaveBeenCalledWith(
-      '[0.0000] noteOn(60) - already active, retriggering',
-    );
-    expect(logSpy).toHaveBeenCalledWith(
-      '[0.0000] noteOff(60) - releasing voice',
-    );
-    expect(logSpy).toHaveBeenCalledWith(
-      '[0.0000] noteOff(60) - no active voice found',
-    );
-    expect(logSpy).toHaveBeenCalledWith('allNotesOff');
-    expect(warnSpy).toHaveBeenCalledWith(
-      `[0.0000] Voice stealing triggered for note 65 - oldest voice is ${voices[0]!.id}, age 0.0 s`,
-    );
-
-    logSpy.mockRestore();
-    warnSpy.mockRestore();
+      expect(logSpy).toHaveBeenCalledWith(
+        `[0.0000] Voice ${voices[0]!.id} available for note 60`,
+      );
+      expect(logSpy).toHaveBeenCalledWith(
+        '[0.0000] noteOn(60) - already active, retriggering',
+      );
+      expect(logSpy).toHaveBeenCalledWith(
+        '[0.0000] noteOff(60) - releasing voice',
+      );
+      expect(logSpy).toHaveBeenCalledWith(
+        '[0.0000] noteOff(60) - no active voice found',
+      );
+      expect(logSpy).toHaveBeenCalledWith('allNotesOff');
+      expect(warnSpy).toHaveBeenCalledWith(
+        `[0.0000] Voice stealing triggered for note 65 - oldest voice is ${voices[0]!.id}, age 0.0 s`,
+      );
+    } finally {
+      logSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
   });
 });
