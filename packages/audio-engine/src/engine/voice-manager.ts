@@ -1,32 +1,21 @@
-import { resumeIfSuspended } from './helpers';
 import type { Voice } from './voice';
 
 export class VoiceManager<V extends Voice> {
   private readonly maxVoices: number;
   private voicePool: V[] | undefined;
   private readonly noteToVoiceMap = new Map<number, V>();
-  private readonly ctxt: AudioContext;
   private readonly createVoice: () => V;
 
-  constructor(
-    ctxt: AudioContext,
-    createVoice: () => V,
-    options: { maxVoices: number },
-  ) {
-    this.ctxt = ctxt;
+  constructor(createVoice: () => V, options: { maxVoices: number }) {
     this.createVoice = createVoice;
     this.maxVoices = options.maxVoices;
   }
 
-  noteOn(noteNumber: number, velocity: number): void {
-    resumeIfSuspended(this.ctxt);
-    const now = this.ctxt.currentTime;
+  noteOn(noteNumber: number, velocity: number, now: number): void {
     const voicePool = this.ensureVoicePool();
 
     if (this.noteToVoiceMap.has(noteNumber)) {
-      console.log(
-        `[${now.toFixed(4)}] noteOn(${noteNumber}) - already active, retriggering`,
-      );
+      console.log(`noteOn(${noteNumber}) - already active, retriggering`);
       this.noteOff(noteNumber);
     }
 
@@ -34,9 +23,7 @@ export class VoiceManager<V extends Voice> {
     let startDelay = 0;
 
     if (targetVoice) {
-      console.log(
-        `[${now.toFixed(4)}] Voice ${targetVoice.id} available for note ${noteNumber}`,
-      );
+      console.log(`Voice ${targetVoice.id} available for note ${noteNumber}`);
     } else {
       targetVoice = this.pickStealVictim(now, voicePool);
 
@@ -64,15 +51,11 @@ export class VoiceManager<V extends Voice> {
   noteOff(noteNumber: number): void {
     const voice = this.noteToVoiceMap.get(noteNumber);
     if (voice) {
-      console.log(
-        `[${this.ctxt.currentTime.toFixed(4)}] noteOff(${noteNumber}) - releasing voice`,
-      );
+      console.log(`noteOff(${noteNumber}) - releasing voice`);
       voice.noteOff();
       this.noteToVoiceMap.delete(noteNumber);
     } else {
-      console.log(
-        `[${this.ctxt.currentTime.toFixed(4)}] noteOff(${noteNumber}) - no active voice found`,
-      );
+      console.log(`noteOff(${noteNumber}) - no active voice found`);
     }
   }
 

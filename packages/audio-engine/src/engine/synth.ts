@@ -17,11 +17,7 @@ export abstract class Synth<V extends Voice> implements Destroyable {
   ) {
     this.ctxt = ctxt;
     this.audioSink = audioSink;
-    this.voiceManager = new VoiceManager(
-      ctxt,
-      () => this.createVoice(),
-      options,
-    );
+    this.voiceManager = new VoiceManager(() => this.createVoice(), options);
   }
 
   protected abstract createVoice(): V;
@@ -31,7 +27,7 @@ export abstract class Synth<V extends Voice> implements Destroyable {
       return;
     }
     resumeIfSuspended(this.ctxt);
-    this.voiceManager.noteOn(noteNumber, velocity);
+    this.voiceManager.noteOn(noteNumber, velocity, this.ctxt.currentTime);
   }
 
   noteOff(noteNumber: number) {

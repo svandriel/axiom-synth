@@ -56,7 +56,6 @@ function createManager(
   maxVoices = 2,
 ): VoiceManager<TestVoice> {
   return new VoiceManager(
-    context as unknown as AudioContext,
     () => {
       const voice = new TestVoice(
         context as unknown as AudioContext,
@@ -107,7 +106,7 @@ describe('VoiceManager', () => {
     const manager = createManager(context, voices);
 
     expect(voices).toHaveLength(0);
-    manager.noteOn(60, 0.8);
+    manager.noteOn(60, 0.8, context.currentTime);
     expect(voices).toHaveLength(2);
     expect(voices[0]!.noteOnCalls).toEqual([
       { noteNumber: 60, velocity: 0.8, startTimeOffset: 0 },
@@ -119,8 +118,8 @@ describe('VoiceManager', () => {
     const voices: TestVoice[] = [];
     const manager = createManager(context, voices);
 
-    manager.noteOn(60, 0.8);
-    manager.noteOn(60, 0.5);
+    manager.noteOn(60, 0.8, context.currentTime);
+    manager.noteOn(60, 0.5, context.currentTime);
 
     expect(voices[0]!.noteOffSpy).toHaveBeenCalledOnce();
     expect(voices[0]!.noteOnCalls).toEqual([
@@ -134,7 +133,7 @@ describe('VoiceManager', () => {
     const voices: TestVoice[] = [];
     const manager = createManager(context, voices);
 
-    manager.noteOn(60, 0.8);
+    manager.noteOn(60, 0.8, context.currentTime);
     manager.noteOff(60);
     manager.noteOff(60);
 
@@ -146,14 +145,14 @@ describe('VoiceManager', () => {
     const voices: TestVoice[] = [];
     const manager = createManager(context, voices);
 
-    manager.noteOn(60, 0.8);
+    manager.noteOn(60, 0.8, context.currentTime);
     context.currentTime = 1;
-    manager.noteOn(62, 0.8);
+    manager.noteOn(62, 0.8, context.currentTime);
     voices[0]!.lastUsed = 0.1;
     voices[1]!.lastUsed = 0.2;
     context.currentTime = 2;
 
-    manager.noteOn(64, 0.8);
+    manager.noteOn(64, 0.8, context.currentTime);
 
     expect(voices[0]!.fastChokeSpy).toHaveBeenCalledWith(2);
     expect(voices[0]!.noteOnCalls.at(-1)).toEqual({
@@ -168,13 +167,13 @@ describe('VoiceManager', () => {
     const voices: TestVoice[] = [];
     const manager = createManager(context, voices);
 
-    manager.noteOn(60, 0.8);
+    manager.noteOn(60, 0.8, context.currentTime);
     context.currentTime = 1;
-    manager.noteOn(62, 0.8);
+    manager.noteOn(62, 0.8, context.currentTime);
     voices[0]!.lastUsed = 0.1;
     voices[1]!.lastUsed = 0.2;
 
-    manager.noteOn(64, 0.8);
+    manager.noteOn(64, 0.8, context.currentTime);
     manager.noteOff(60);
     manager.noteOff(64);
 
@@ -187,8 +186,8 @@ describe('VoiceManager', () => {
     const voices: TestVoice[] = [];
     const manager = createManager(context, voices);
 
-    manager.noteOn(60, 0.8);
-    manager.noteOn(62, 0.8);
+    manager.noteOn(60, 0.8, context.currentTime);
+    manager.noteOn(62, 0.8, context.currentTime);
     manager.allNotesOff();
 
     expect(voices[0]!.noteOffSpy).toHaveBeenCalledOnce();
@@ -203,7 +202,7 @@ describe('VoiceManager', () => {
     manager.destroy();
     expect(voices).toHaveLength(0);
 
-    manager.noteOn(60, 0.8);
+    manager.noteOn(60, 0.8, context.currentTime);
     manager.destroy();
     expect(voices[0]!.destroySpy).toHaveBeenCalledOnce();
     expect(voices[1]!.destroySpy).toHaveBeenCalledOnce();
@@ -217,30 +216,28 @@ describe('VoiceManager', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     try {
-      manager.noteOn(60, 0.8);
-      manager.noteOn(60, 0.5);
+      manager.noteOn(60, 0.8, context.currentTime);
+      manager.noteOn(60, 0.5, context.currentTime);
       manager.noteOff(60);
       manager.noteOff(60);
-      manager.noteOn(62, 0.8);
-      manager.noteOn(64, 0.8);
-      manager.noteOn(65, 0.8);
+      manager.noteOn(62, 0.8, context.currentTime);
+      manager.noteOn(64, 0.8, context.currentTime);
+      manager.noteOn(65, 0.8, context.currentTime);
       manager.allNotesOff();
 
       expect(logSpy).toHaveBeenCalledWith(
-        `[0.0000] Voice ${voices[0]!.id} available for note 60`,
+        `Voice ${voices[0]!.id} available for note 60`,
       );
       expect(logSpy).toHaveBeenCalledWith(
-        '[0.0000] noteOn(60) - already active, retriggering',
+        'noteOn(60) - already active, retriggering',
       );
+      expect(logSpy).toHaveBeenCalledWith('noteOff(60) - releasing voice');
       expect(logSpy).toHaveBeenCalledWith(
-        '[0.0000] noteOff(60) - releasing voice',
-      );
-      expect(logSpy).toHaveBeenCalledWith(
-        '[0.0000] noteOff(60) - no active voice found',
+        'noteOff(60) - no active voice found',
       );
       expect(logSpy).toHaveBeenCalledWith('allNotesOff');
       expect(warnSpy).toHaveBeenCalledWith(
-        `[0.0000] Voice stealing triggered for note 65 - oldest voice is ${voices[0]!.id}, age 0.0 s`,
+        `Voice stealing triggered for note 65 - oldest voice is ${voices[0]!.id}`,
       );
     } finally {
       logSpy.mockRestore();
