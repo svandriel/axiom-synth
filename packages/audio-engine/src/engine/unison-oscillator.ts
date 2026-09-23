@@ -1,22 +1,40 @@
 import type { WaveFormType } from '../types';
 import type { Destroyable } from './destroyable';
-import { UnisonVoicePathPool } from './unison-voice-path';
+import {
+  UnisonVoicePathPool,
+  type PathLease,
+  type UnisonVoicePath,
+} from './unison-voice-path';
 
+/**
+ * The single-voice path, which does not need the unison path pool.
+ */
 interface DirectSource {
   readonly oscillator: OscillatorNode;
 }
 
+/**
+ * A raw note oscillator attached to one reusable unison path.
+ */
 interface PooledSource {
   readonly oscillator: OscillatorNode;
-  readonly path: ReturnType<UnisonVoicePathPool['acquire']>['paths'][number];
+  readonly path: UnisonVoicePath;
 }
 
+/**
+ * All sources and pool ownership belonging to one note generation.
+ */
 interface VoiceBundle {
   readonly direct: DirectSource | null;
   readonly pooled: readonly PooledSource[];
-  readonly lease: ReturnType<UnisonVoicePathPool['acquire']> | null;
+  readonly lease: PathLease | null;
 }
 
+/**
+ * Runs one oscillator with either a direct path or a pool of blended voices.
+ * The control graph persists for the lifetime of the instance, while raw
+ * OscillatorNodes are created per note because Web Audio sources are one-shot.
+ */
 export class UnisonOscillator implements Destroyable {
   private readonly ctxt: AudioContext;
   private readonly outputGain: GainNode;
@@ -33,7 +51,9 @@ export class UnisonOscillator implements Destroyable {
   private current: VoiceBundle | null = null;
   private destroyed = false;
 
+  /** Build the persistent control graph and its reusable path pool. */
   constructor(ctxt: AudioContext) {
+    // Shared sources fan out parameter changes to every active note source.
     this.ctxt = ctxt;
     this.outputGain = ctxt.createGain();
     this.outputGain.gain.setValueAtTime(0, ctxt.currentTime);
@@ -51,7 +71,11 @@ export class UnisonOscillator implements Destroyable {
     );
   }
 
+  /**
+   * Change the waveform on both active and still-draining note bundles.
+   */
   set waveform(value: WaveFormType) {
+    // Stopped bundles still exist until their sources fire onended.
     this.wave = value;
     [...this.activeBundles, ...this.stoppedBundles].forEach(bundle => {
       bundle.direct?.oscillator && (bundle.direct.oscillator.type = value);
@@ -110,6 +134,9 @@ export class UnisonOscillator implements Destroyable {
     }
   }
 
+  /**
+   * Start a new note generation, stopping the previous one first.
+   */
   start(noteHz: number, now: number): void {
     if (this.destroyed) return;
     this.stop();
@@ -151,6 +178,8 @@ export class UnisonOscillator implements Destroyable {
 
   stop(): void;
   stop(time: number): void;
+  /**
+   * Stop the current generation; pooled paths remain reserved while draining. */
   stop(time?: number): void {
     const bundle = this.current;
     if (!bundle) return;
@@ -181,6 +210,9 @@ export class UnisonOscillator implements Destroyable {
     }
   }
 
+  /**
+   * Stop all sources and release the persistent graph and its path pool.
+   */
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
@@ -213,6 +245,9 @@ export class UnisonOscillator implements Destroyable {
     this.safe(() => this.outputGain.disconnect());
   }
 
+  /**
+   * Start the lightweight single-oscillator path.
+   */
   private startDirect(noteHz: number, now: number): void {
     const oscillator = this.ctxt.createOscillator();
     const bundle: VoiceBundle = {
@@ -242,6 +277,9 @@ export class UnisonOscillator implements Destroyable {
     this.current = bundle;
   }
 
+  /**
+   * Release a pooled lease only after every voice in its bundle has ended.
+   */
   private onPooledEnded(
     bundle: VoiceBundle,
     path: PooledSource['path'],
@@ -258,12 +296,18 @@ export class UnisonOscillator implements Destroyable {
     }
   }
 
+  /**
+   * Remove a generation after its source nodes and paths are detached.
+   */
   private finishBundle(bundle: VoiceBundle): void {
     this.activeBundles.delete(bundle);
     this.stoppedBundles.delete(bundle);
     if (this.current === bundle) this.current = null;
   }
 
+  /**
+   * Undo a partial start when source creation, connection, or start fails.
+   */
   private rollbackPooled(
     lease: VoiceBundle['lease'],
     sources: readonly PooledSource[],
