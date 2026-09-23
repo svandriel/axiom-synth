@@ -48,9 +48,10 @@ no-ops. `VoiceManager` does not add a second external lifecycle API.
 
 ## Tests
 
-Add `voice-manager.test.ts` beside its module. Use fake voices and a fake audio
-context to test lazy pool creation, note assignment, retriggering, release,
-oldest-voice stealing with choke delay, all-notes release, and destruction.
+Add `voice-manager.test.ts` beside its module. Use fake voices and the existing
+`FakeAudioContext` test helper to test lazy pool creation, note assignment,
+retriggering, release, oldest-voice stealing with choke delay, all-notes
+release, and destruction.
 
 Existing `Synth` behavior remains covered through delegation. Build, test, and
 format checks must pass.
