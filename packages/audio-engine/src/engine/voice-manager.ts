@@ -20,13 +20,20 @@ export class VoiceManager<V extends Voice> {
     const voicePool = this.ensureVoicePool();
 
     if (this.noteToVoiceMap.has(noteNumber)) {
+      console.log(
+        `[${now.toFixed(4)}] noteOn(${noteNumber}) - already active, retriggering`,
+      );
       this.noteOff(noteNumber);
     }
 
     let targetVoice = voicePool.find(voice => voice.isAvailable(now));
     let startDelay = 0;
 
-    if (!targetVoice) {
+    if (targetVoice) {
+      console.log(
+        `[${now.toFixed(4)}] Voice ${targetVoice.id} available for note ${noteNumber}`,
+      );
+    } else {
       let oldestTime = Infinity;
       let oldestVoice: V | null = null;
       for (const voice of voicePool) {
@@ -37,6 +44,10 @@ export class VoiceManager<V extends Voice> {
       }
 
       if (oldestVoice) {
+        const age = now - oldestTime;
+        console.warn(
+          `[${now.toFixed(4)}] Voice stealing triggered for note ${noteNumber} - oldest voice is ${oldestVoice.id}, age ${age.toFixed(1)} s`,
+        );
         targetVoice = oldestVoice;
         for (const [note, voice] of this.noteToVoiceMap.entries()) {
           if (voice === targetVoice) {
@@ -57,12 +68,20 @@ export class VoiceManager<V extends Voice> {
   noteOff(noteNumber: number): void {
     const voice = this.noteToVoiceMap.get(noteNumber);
     if (voice) {
+      console.log(
+        `[${this.ctxt.currentTime.toFixed(4)}] noteOff(${noteNumber}) - releasing voice`,
+      );
       voice.noteOff();
       this.noteToVoiceMap.delete(noteNumber);
+    } else {
+      console.log(
+        `[${this.ctxt.currentTime.toFixed(4)}] noteOff(${noteNumber}) - no active voice found`,
+      );
     }
   }
 
   allNotesOff(): void {
+    console.log('allNotesOff');
     for (const [note, voice] of this.noteToVoiceMap.entries()) {
       voice.noteOff();
       this.noteToVoiceMap.delete(note);

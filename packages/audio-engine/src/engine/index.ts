@@ -11,6 +11,7 @@ export * from './meter';
 export * from './modulation-router';
 export * from './oscillator';
 export * from './voice';
+export * from './voice-manager';
 export * from './synth';
 export * from './unison-oscillator';
 export * from './engine';
