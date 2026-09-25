@@ -1,6 +1,8 @@
 import type { EnvelopeConfig } from '../types';
 import type { Destroyable } from './destroyable';
 
+const AUDIO_RENDER_QUANTUM_FRAMES = 128;
+
 export class Envelope implements Destroyable {
   private readonly ctxt: AudioContext;
   private readonly ampEnv: GainNode;
@@ -52,7 +54,10 @@ export class Envelope implements Destroyable {
         throw new Error(`Unsupported attack curve: ${config.attackCurve}`);
     }
 
-    const decayStartTime = now + config.attackSeconds;
+    const decayStartTime =
+      now +
+      config.attackSeconds +
+      AUDIO_RENDER_QUANTUM_FRAMES / this.ctxt.sampleRate;
     const sustainVolume = targetVolume * config.sustainLevel;
 
     switch (config.decayCurve) {
