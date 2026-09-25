@@ -1,5 +1,29 @@
 export type FakeAudioDestination = FakeAudioNode | FakeAudioParam;
 
+export type FakeAudioParamOperation =
+  | {
+      readonly type: 'setValueAtTime';
+      readonly value: number;
+      readonly time: number;
+    }
+  | {
+      readonly type: 'linearRampToValueAtTime';
+      readonly value: number;
+      readonly time: number;
+    }
+  | {
+      readonly type: 'exponentialRampToValueAtTime';
+      readonly value: number;
+      readonly time: number;
+    }
+  | {
+      readonly type: 'setTargetAtTime';
+      readonly target: number;
+      readonly time: number;
+      readonly timeConstant: number;
+    }
+  | { readonly type: 'cancelScheduledValues'; readonly time: number };
+
 export interface FakeConnection {
   readonly source: FakeAudioNode;
   readonly destination: FakeAudioDestination;
@@ -25,20 +49,36 @@ export type FakeOperation =
 export class FakeAudioParam {
   value = 0;
   readonly connections: FakeConnection[] = [];
+  readonly operations: FakeAudioParamOperation[] = [];
 
-  setValueAtTime(value: number, _time: number): void {
+  setValueAtTime(value: number, time: number): void {
     this.value = value;
+    this.operations.push({ type: 'setValueAtTime', value, time });
   }
 
-  linearRampToValueAtTime(value: number, _time: number): void {
+  linearRampToValueAtTime(value: number, time: number): void {
     this.value = value;
+    this.operations.push({ type: 'linearRampToValueAtTime', value, time });
   }
 
-  exponentialRampToValueAtTime(value: number, _time: number): void {
+  exponentialRampToValueAtTime(value: number, time: number): void {
     this.value = value;
+    this.operations.push({ type: 'exponentialRampToValueAtTime', value, time });
   }
 
-  cancelScheduledValues(_time: number): void {}
+  setTargetAtTime(target: number, time: number, timeConstant: number): void {
+    this.value = target;
+    this.operations.push({
+      type: 'setTargetAtTime',
+      target,
+      time,
+      timeConstant,
+    });
+  }
+
+  cancelScheduledValues(time: number): void {
+    this.operations.push({ type: 'cancelScheduledValues', time });
+  }
 }
 
 export class FakeAudioNode {
@@ -207,6 +247,7 @@ export class FakeAudioContext {
   readonly compressors: FakeDynamicsCompressorNode[] = [];
   private readonly operationHistory: FakeOperation[] = [];
   currentTime = 0;
+  readonly sampleRate = 44100;
   state: AudioContextState = 'running';
   resume(): Promise<void> {
     return Promise.resolve();
