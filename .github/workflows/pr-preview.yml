@@ -48,6 +48,6 @@ jobs:
         with:
           source-dir: ./app/dist/
           preview-branch: gh-pages
-          wait-for-pages-deployment: true
+          wait-for-pages-deployment: false
           comment: true
           qr-code: false
