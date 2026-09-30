@@ -24,8 +24,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # The removal action also requires a checked-out Git repository.
+      # Keep checkout unconditional; only build-related steps are skipped on close.
       - name: Checkout
-        if: github.event.action != 'closed'
         uses: actions/checkout@v6
 
       - name: Setup pnpm and Node.js
