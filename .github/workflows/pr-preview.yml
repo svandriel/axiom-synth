@@ -14,9 +14,10 @@ permissions:
   contents: write
   pull-requests: write
 
+# Serialize every writer to gh-pages, including the production workflow.
 concurrency:
-  group: pr-preview-${{ github.event.number }}
-  cancel-in-progress: true
+  group: github-pages-publish
+  cancel-in-progress: false
 
 jobs:
   deploy-preview:
@@ -47,11 +48,12 @@ jobs:
         if: github.event.action != 'closed'
         run: pnpm --filter @axiom/app exec vite build --base="/axiom-synth/pr-preview/pr-${{ github.event.number }}/"
 
-      - name: Deploy PR preview
+      - name: Deploy or remove PR preview
         uses: rossjrw/pr-preview-action@v1
         with:
           source-dir: ./app/dist/
           preview-branch: gh-pages
+          action: auto
           wait-for-pages-deployment: true
           comment: true
           qr-code: false
