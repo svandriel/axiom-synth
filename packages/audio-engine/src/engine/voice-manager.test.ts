@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { FakeAudioContext } from './test/fake-audio-context';
+import { FakeAudioContext } from '@axiom/audio-testing';
 import { Synth } from './synth';
 import { Voice } from './voice';
 import { VoiceManager } from './voice-manager';

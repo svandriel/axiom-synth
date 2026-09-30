@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Synth } from './synth';
 import { Voice } from './voice';
-import { FakeAudioContext, FakeAudioNode } from './test/fake-audio-context';
+import { FakeAudioContext, FakeAudioNode } from '@axiom/audio-testing';
 
 class TestVoice extends Voice {
   readonly label: string;

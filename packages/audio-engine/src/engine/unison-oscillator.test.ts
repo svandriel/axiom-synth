@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { UnisonOscillator } from './unison-oscillator';
-import {
-  FakeAudioContext,
-  installFakeAudioParam,
-} from './test/fake-audio-context';
+import { FakeAudioContext, installFakeAudioParam } from '@axiom/audio-testing';
 
 describe('UnisonOscillator', () => {
   it('creates one direct oscillator for one voice', () => {
