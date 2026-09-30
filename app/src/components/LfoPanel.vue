@@ -34,12 +34,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { LfoConfig, LfoWaveformType } from '@axiom/audio-engine';
+import { computed } from 'vue';
+import { fractionDisplay, hzDisplay } from '../utils';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
-import { percentageDisplay, hzDisplay, fractionDisplay } from '../utils';
 
 const config = defineModel<LfoConfig>({ required: true });
 const selectedLfo = defineModel<string>('selectedLfo', { required: true });
@@ -81,10 +81,5 @@ function setDepth(index: number, value: number): void {
 
 function driveOnly(index: number): boolean {
   return depthLabels[index] === 'DRV';
-}
-
-function depthFormat(v: number): string {
-  const pct = Math.round(v * 100);
-  return `${pct >= 0 ? '+' : ''}${pct}%`;
 }
 </script>

@@ -35,11 +35,11 @@
 </template>
 <script setup lang="ts">
 import { type WaveshaperType } from '@axiom/audio-engine';
-import { dbDisplay, fractionDisplay, percentageDisplay } from '../utils';
+import { onMounted, useTemplateRef, watch } from 'vue';
+import { dbDisplay, percentageDisplay } from '../utils';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
-import { onMounted, useTemplateRef, watch } from 'vue';
 
 const curve = defineProps<{ curve: Float32Array }>();
 const distortionAmount = defineModel<number>('distortionAmount', {
