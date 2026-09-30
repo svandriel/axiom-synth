@@ -9,7 +9,7 @@
         label="Rate"
         size="md"
         :from="0.01"
-        :to="220"
+        :to="2200"
         :log-base="2"
         :default="2"
         :format="hzDisplay"
@@ -27,19 +27,19 @@
         :from="driveOnly(i) ? 0 : -1"
         :to="1"
         :default="0"
-        :format="depthFormat"
+        :format="fractionDisplay"
       />
     </div>
   </Panel>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { LfoConfig, LfoWaveformType } from '@axiom/audio-engine';
+import { computed } from 'vue';
+import { fractionDisplay, hzDisplay } from '../utils';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
-import { hzDisplay } from '../utils/hz-display.ts';
 
 const config = defineModel<LfoConfig>({ required: true });
 const selectedLfo = defineModel<string>('selectedLfo', { required: true });
@@ -81,10 +81,5 @@ function setDepth(index: number, value: number): void {
 
 function driveOnly(index: number): boolean {
   return depthLabels[index] === 'DRV';
-}
-
-function depthFormat(v: number): string {
-  const pct = Math.round(v * 100);
-  return `${pct >= 0 ? '+' : ''}${pct}%`;
 }
 </script>

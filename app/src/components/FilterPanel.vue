@@ -21,7 +21,7 @@
         :from="0"
         :to="1"
         :default="0.6"
-        :format="v => fractionDisplay(0)(v * 100)"
+        :format="fractionDisplay"
       />
       <Knob
         label="Env Amt"
@@ -30,7 +30,7 @@
         :from="-1"
         :to="1"
         :default="0"
-        :format="v => fractionDisplay(0)(v * 100)"
+        :format="fractionDisplay"
       />
       <Knob
         label="Tracking"
@@ -39,7 +39,7 @@
         :from="0"
         :to="2"
         :default="0"
-        :format="v => fractionDisplay(0)(v * 100)"
+        :format="fractionDisplay"
       />
     </div>
   </Panel>
@@ -47,11 +47,10 @@
 
 <script setup lang="ts">
 import { type FilterType } from '@axiom/audio-engine';
-import { fractionDisplay } from '../utils';
+import { fractionDisplay, hzDisplay } from '../utils';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
-import { hzDisplay } from '../utils/hz-display.ts';
 
 const type = defineModel<FilterType>('type', {
   required: true,
