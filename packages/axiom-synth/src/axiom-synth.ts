@@ -40,13 +40,18 @@ interface UnisonRampState {
 }
 
 const LFO_DEPTH_SCALES: Record<LfoTarget, number> = {
-  osc1: 150,
-  osc2: 150,
-  osc3: 150,
-  cutoff: 1200,
+  osc1: 1200,
+  osc2: 1200,
+  osc3: 1200,
+  cutoff: 2400,
   amp: 1,
   drive: 4,
 };
+
+function lfoDepthSignal(target: LfoTarget, depth: number): number {
+  const clamped = target === 'drive' ? Math.max(0, depth) : depth;
+  return clamped * LFO_DEPTH_SCALES[target];
+}
 
 export class AxiomSynth extends Synth<AxiomVoice> {
   public readonly output: GainNode;
@@ -261,7 +266,9 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     ) as FixedArray<ConstantSourceNode, LfoCount>;
     this.lfoDepthSources = Array.from({ length: LFO_COUNT }, (_, i) =>
       Array.from({ length: LFO_TARGET_COUNT }, (_, j) =>
-        this.createConstantSource(this.lfoConfigs[i]!.depths[j]!),
+        this.createConstantSource(
+          lfoDepthSignal(LFO_TARGETS[j]!, this.lfoConfigs[i]!.depths[j]!),
+        ),
       ),
     ) as FixedArray<FixedArray<ConstantSourceNode, LfoTargetCount>, LfoCount>;
 
@@ -477,12 +484,8 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
     for (const target of LFO_TARGETS) {
       const targetIndex = LFO_TARGET_INDEX[target];
-      const depth =
-        target === 'drive'
-          ? Math.max(0, config.depths[targetIndex]!)
-          : config.depths[targetIndex]!;
       this.lfoDepthSources[index]![targetIndex]!.offset.linearRampToValueAtTime(
-        depth * LFO_DEPTH_SCALES[target],
+        lfoDepthSignal(target, config.depths[targetIndex]!),
         now + 0.01,
       );
     }
