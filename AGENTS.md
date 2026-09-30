@@ -8,7 +8,7 @@ Work in progress. Use the caveman skill in ultra mode.
 
 - `pnpm dev` — Vite dev server on port 4000
 - `pnpm build` — `pnpm -r --sort build` (builds all workspace packages)
-- `pnpm test` — Vitest tests for `@axiom/audio-engine`
+- `pnpm test` — Vitest tests for `@axiom/audio-engine` and `@axiom/axiom-synth`
 - `pnpm lint` — `prettier --check .`
 - `pnpm format` — `prettier --write .`
 
@@ -30,6 +30,10 @@ pnpm workspaces monorepo on branch-based workflow (PRs to `main`):
 - `app/` — Vite + Vue application (`@axiom/app`)
 - `packages/audio-engine/` — Web Audio engine library (`@axiom/audio-engine`),
   internal-only, consumed as source (no build output)
+- `packages/axiom-synth/` — Axiom synth library (`@axiom/axiom-synth`),
+  internal-only, consumed as source (no build output)
+- `packages/audio-testing/` — fake Web Audio context/nodes shared by tests
+  (`@axiom/audio-testing`), internal-only
 - Root owns prettier/husky/lint-staged; packages ship no prettier tooling
 
 ## Codebase docs

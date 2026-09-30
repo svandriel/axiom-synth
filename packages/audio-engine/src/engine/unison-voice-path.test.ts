@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  FakeAudioContext,
-  installFakeAudioParam,
-} from './test/fake-audio-context';
+import { FakeAudioContext, installFakeAudioParam } from '@axiom/audio-testing';
 import { UnisonVoicePathPool } from './unison-voice-path';
 
 function createPool() {

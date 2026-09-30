@@ -1,5 +1,5 @@
 {
-  "name": "@axiom/axiom-synth",
+  "name": "@axiom/audio-testing",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,16 +10,10 @@
     }
   },
   "scripts": {
-    "build": "tsc --noEmit",
-    "test": "vitest run"
+    "build": "tsc --noEmit"
   },
   "devDependencies": {
-    "@axiom/audio-testing": "workspace:*",
     "@vue/tsconfig": "^0.9.1",
-    "typescript": "^6.0.3",
-    "vitest": "^4.0.18"
-  },
-  "dependencies": {
-    "@axiom/audio-engine": "workspace:*"
+    "typescript": "^6.0.3"
   }
 }

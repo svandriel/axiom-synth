@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { Envelope } from './envelope';
-import { FakeAudioContext, FakeGainNode } from './test/fake-audio-context';
+import { FakeAudioContext, FakeGainNode } from '@axiom/audio-testing';
 import type { EnvelopeConfig } from '../types';
 
 const SHORT_ATTACK_SECONDS = 0.001;
