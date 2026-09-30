@@ -99,7 +99,8 @@ function onPointerMove(e: PointerEvent) {
   // With pointer capture, event.target remains the capture element. Hit-test
   // the actual pointer position to detect keys crossed during a glissando.
   const hit = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-semi]');
-  if (!hit || !e.currentTarget || !(e.currentTarget as HTMLElement).contains(hit)) {
+  const keyboard = (e.currentTarget as HTMLElement | null)?.closest('.keyboard');
+  if (!hit || !keyboard?.contains(hit)) {
     movePointerTo(e.pointerId, -1);
     return;
   }
