@@ -24,10 +24,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # The removal action also requires a checked-out Git repository.
-      # Keep checkout unconditional; only build-related steps are skipped on close.
+      # The removal action requires a checked-out Git repository. On close,
+      # check out the base branch rather than the possibly unavailable PR merge ref.
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.action == 'closed' && github.event.pull_request.base.ref || github.sha }}
 
       - name: Setup pnpm and Node.js
         if: github.event.action != 'closed'
