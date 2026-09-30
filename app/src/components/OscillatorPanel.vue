@@ -46,7 +46,7 @@
         :from="-50"
         :to="50"
         :default="0"
-        :format="fractionDisplay(1)"
+        :format="percentageDisplay"
         :show-value="false"
       />
       <Knob
@@ -70,7 +70,7 @@
         :from="0"
         :to="50"
         :default="0"
-        :format="fractionDisplay(1)"
+        :format="percentageDisplay"
         :show-value="false"
         :disabled="unisonDisabled"
       />
@@ -83,7 +83,7 @@
         :from="0"
         :to="1"
         :default="0"
-        :format="percentageDisplay"
+        :format="fractionDisplay"
         :show-value="false"
         :disabled="unisonDisabled"
       />
@@ -96,7 +96,7 @@
         :from="0"
         :to="1"
         :default="1"
-        :format="percentageDisplay"
+        :format="fractionDisplay"
         :show-value="false"
         :disabled="unisonDisabled"
       />
@@ -106,11 +106,16 @@
 
 <script setup lang="ts">
 import type { OscillatorConfig, WaveFormType } from '@axiom/audio-engine';
-import { dbDisplay, fractionDisplay, semiDisplay } from '../utils';
+import { computed } from 'vue';
+import {
+  dbDisplay,
+  fractionDisplay,
+  percentageDisplay,
+  semiDisplay,
+} from '../utils';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
-import { computed } from 'vue';
 
 defineProps<{
   label?: string;
@@ -123,8 +128,6 @@ const modelProps = defineModel<OscillatorConfig>({
 const unisonDisabled = computed(() => {
   return modelProps.value.unison.voices === 1;
 });
-
-const percentageDisplay = (value: number) => fractionDisplay(0)(value * 100);
 
 const waveForms: Array<{ id: WaveFormType; label: string }> = [
   { id: 'sawtooth', label: 'Saw' },

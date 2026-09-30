@@ -11,7 +11,7 @@
         :to="100"
         label="Distortion"
         size="md"
-        :format="fractionDisplay(1)"
+        :format="percentageDisplay"
       />
       <Knob
         class="col-start-2 row-start-1"
@@ -35,7 +35,7 @@
 </template>
 <script setup lang="ts">
 import { type WaveshaperType } from '@axiom/audio-engine';
-import { dbDisplay, fractionDisplay } from '../utils';
+import { dbDisplay, fractionDisplay, percentageDisplay } from '../utils';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';

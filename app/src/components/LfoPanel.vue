@@ -9,7 +9,7 @@
         label="Rate"
         size="md"
         :from="0.01"
-        :to="220"
+        :to="2200"
         :log-base="2"
         :default="2"
         :format="hzDisplay"
@@ -27,7 +27,7 @@
         :from="driveOnly(i) ? 0 : -1"
         :to="1"
         :default="0"
-        :format="depthFormat"
+        :format="fractionDisplay"
       />
     </div>
   </Panel>
@@ -39,7 +39,7 @@ import type { LfoConfig, LfoWaveformType } from '@axiom/audio-engine';
 import Knob from './Knob.vue';
 import Panel from './Panel.vue';
 import Toggle from './Toggle.vue';
-import { hzDisplay } from '../utils/hz-display.ts';
+import { percentageDisplay, hzDisplay, fractionDisplay } from '../utils';
 
 const config = defineModel<LfoConfig>({ required: true });
 const selectedLfo = defineModel<string>('selectedLfo', { required: true });
