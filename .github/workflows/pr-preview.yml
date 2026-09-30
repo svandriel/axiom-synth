@@ -11,23 +11,24 @@ on:
       - closed
 
 permissions:
-  actions: write
-  contents: read
+  contents: write
+  pull-requests: write
 
 concurrency:
   group: pr-preview-${{ github.event.number }}
   cancel-in-progress: true
 
 jobs:
-  build-preview:
-    if: github.event.action != 'closed'
+  deploy-preview:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
+        if: github.event.action != 'closed'
         uses: actions/checkout@v6
 
       - name: Setup pnpm and Node.js
+        if: github.event.action != 'closed'
         uses: pnpm/setup@v2
         with:
           version: 11
@@ -35,48 +36,18 @@ jobs:
           install: false
 
       - name: Install dependencies
+        if: github.event.action != 'closed'
         run: pnpm install --frozen-lockfile
 
       - name: Build for GitHub Pages
+        if: github.event.action != 'closed'
         run: pnpm run build:pages
 
-      - name: Upload preview artifact
-        id: upload
-        uses: actions/upload-artifact@v4
+      - name: Deploy PR preview
+        uses: rossjrw/pr-preview-action@v1
         with:
-          name: pr-preview-${{ github.event.number }}
-          path: app/dist/
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Add preview instructions to workflow summary
-        env:
-          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
-        run: |
-          {
-            echo "## PR preview build"
-            echo
-            echo "The site was built successfully. Download the static site artifact below, then serve the extracted directory locally (for example with `pnpm dlx vite preview` from the app workspace)."
-            echo
-            echo "[Download preview artifact]($ARTIFACT_URL)"
-            echo
-            echo "Artifact expires after 7 days and is deleted automatically when this PR closes."
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  cleanup-preview:
-    if: github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete this PR's preview artifacts
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.number }}
-        run: |
-          artifact_ids=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
-            --jq ".artifacts[] | select(.name == \"pr-preview-$PR_NUMBER\") | .id")
-
-          if [ -n "$artifact_ids" ]; then
-            while IFS= read -r artifact_id; do
-              gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id"
-            done <<< "$artifact_ids"
-          fi
+          source-dir: ./app/dist/
+          preview-branch: gh-pages
+          wait-for-pages-deployment: true
+          comment: true
+          qr-code: false
