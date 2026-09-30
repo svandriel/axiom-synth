@@ -12,12 +12,17 @@ env:
 permissions:
   contents: write
 
+# Use the same lock as the PR preview workflow: both mutate gh-pages.
+concurrency:
+  group: github-pages-publish
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v6
 
       - name: Setup pnpm and Node.js
@@ -30,8 +35,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
+      - name: Build production site
         run: pnpm run build:pages
+
+      # Preserve only the preview tree. A blanket keep_files=true would also
+      # retain obsolete hashed production assets indefinitely.
+      - name: Checkout existing Pages content
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: existing-pages
+
+      - name: Preserve active PR previews
+        run: |
+          if [ -d existing-pages/pr-preview ]; then
+            cp -a existing-pages/pr-preview app/dist/pr-preview
+          fi
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -39,4 +58,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: ./app/dist
-          keep_files: true
