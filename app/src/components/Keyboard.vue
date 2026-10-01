@@ -15,7 +15,9 @@
         @pointercancel="onPointerCancel"
         @lostpointercapture="onLostPointerCapture"
       >
-        <span class="name absolute top-2.5 font-mono text-primary-500">{{ note.n }}</span>
+        <span class="name absolute top-2.5 font-mono text-primary-500">
+          {{ note.n }}
+        </span>
         <span class="key font-mono text-primary-600">{{ note.k }}</span>
       </div>
       <!-- black keys -->
@@ -29,12 +31,17 @@
         @pointerup="onPointerUp"
         @pointercancel="onPointerCancel"
         @lostpointercapture="onLostPointerCapture"
-        :style="{ '--width': '3.1%', '--location': pianoKeyLocations[note.semi] }"
+        :style="{
+          '--width': '3.1%',
+          '--location': pianoKeyLocations[note.semi],
+        }"
       >
         <span class="key hidden font-mono sm:inline">{{ note.k }}</span>
       </div>
     </div>
-    <div class="mt-3 font-mono text-xs text-primary-400 uppercase dark:text-primary-400">
+    <div
+      class="mt-3 font-mono text-xs text-primary-400 uppercase dark:text-primary-400"
+    >
       Control with computer keys, change octave with - and =
     </div>
   </div>
@@ -98,8 +105,12 @@ function onPointerMove(e: PointerEvent) {
   if (!activePointers.has(e.pointerId)) return;
   // With pointer capture, event.target remains the capture element. Hit-test
   // the actual pointer position to detect keys crossed during a glissando.
-  const hit = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-semi]');
-  const keyboard = (e.currentTarget as HTMLElement | null)?.closest('.keyboard');
+  const hit = document
+    .elementFromPoint(e.clientX, e.clientY)
+    ?.closest<HTMLElement>('[data-semi]');
+  const keyboard = (e.currentTarget as HTMLElement | null)?.closest(
+    '.keyboard',
+  );
   if (!hit || !keyboard?.contains(hit)) {
     movePointerTo(e.pointerId, -1);
     return;
@@ -135,9 +146,15 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toLowerCase();
   switch (k) {
-    case '-': octave.value = Math.max(0, octave.value - 1); break;
-    case '=': octave.value = Math.min(8, octave.value + 1); break;
-    case 'escape': synth.value.allNotesOff(); break;
+    case '-':
+      octave.value = Math.max(0, octave.value - 1);
+      break;
+    case '=':
+      octave.value = Math.min(8, octave.value + 1);
+      break;
+    case 'escape':
+      synth.value.allNotesOff();
+      break;
   }
   const semi = noteForKey(k);
   if (semi !== undefined) {
@@ -228,7 +245,9 @@ for (const note of notes) {
 }
 .key.black.on {
   background: linear-gradient(180deg, #ff9a3b, #c76a12);
-  box-shadow: 0 2px 0 #000, 0 0 14px rgba(255, 177, 59, 0.6);
+  box-shadow:
+    0 2px 0 #000,
+    0 0 14px rgba(255, 177, 59, 0.6);
   height: 62%;
   color: #2b1a00;
 }
