@@ -115,7 +115,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
   };
 
   public readonly lfoConfigs: FixedArray<LfoConfig, LfoCount> = [
-    { rateHz: 2, waveform: 'sine', depths: [-0.11, 0.09, 0, 0, -0.1, 0] },
+    { rateHz: 2, waveform: 'sine', depths: [-0.01, 0.01, 0, 0, -0.1, 0] },
     { rateHz: 3.47, waveform: 'sine', depths: [0, 0, 0, 0.2, 0, 0] },
     { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
     { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
