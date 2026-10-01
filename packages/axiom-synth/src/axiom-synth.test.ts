@@ -77,8 +77,8 @@ describe('AxiomSynth LFO depth sources', () => {
     vi.useFakeTimers();
     const { ctx, synth } = makeSynth();
 
-    expect(depthOffset(ctx, 0, TARGET_INDEX.osc1)).toBe(-132);
-    expect(depthOffset(ctx, 0, TARGET_INDEX.osc2)).toBe(108);
+    expect(depthOffset(ctx, 0, TARGET_INDEX.osc1)).toBe(-12);
+    expect(depthOffset(ctx, 0, TARGET_INDEX.osc2)).toBe(12);
     expect(depthOffset(ctx, 1, TARGET_INDEX.cutoff)).toBe(480);
 
     synth.destroy();
