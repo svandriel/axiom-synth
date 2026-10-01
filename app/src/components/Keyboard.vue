@@ -1,6 +1,7 @@
 <template>
   <div
     class="keyboard-container rounded-md p-3 shadow-in-sm select-none dark:shadow-in-sm-dark"
+    @contextmenu.prevent="() => {}"
   >
     <div class="keyboard relative flex gap-0.5">
       <!-- white keys -->
@@ -178,10 +179,6 @@ function onKeyUp(e: KeyboardEvent) {
     synth.value.noteOff(midi);
     pressed.value[semi] = false;
   } else activeCounts.set(midi, count - 1);
-}
-
-function onContextMenu(e: Event) {
-  e.preventDefault();
 }
 
 onMounted(() => {
