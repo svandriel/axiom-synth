@@ -15,6 +15,7 @@
     @pointercancel="release"
     @dblclick="resetToDefault"
     @lostpointercapture="release"
+    @contextmenu.prevent="() => {}"
   >
     <div
       class="knob relative rounded-full shadow-out-sm duration-200 ease-in-out outline-none dark:shadow-out-sm-dark"

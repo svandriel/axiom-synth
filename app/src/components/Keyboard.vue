@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useAxiomSynth } from '../composables/use-axiom-synth';
 import { noteForKey, notes } from '../utils';
 
@@ -58,63 +58,75 @@ const synth = useAxiomSynth();
 const octave = ref(3);
 const whiteNotes = notes.filter(note => !note.black);
 const blackNotes = notes.filter(note => note.black);
-const pressed = ref<{ [semi: number]: boolean }>({});
+
+const midiNotesActive = ref<Set<number>>(new Set());
+const pressed = computed<Readonly<{ [semi: number]: boolean }>>(() => {
+  const result: { [semi: number]: boolean } = {};
+  midiNotesActive.value.forEach(midi => {
+    const semi = midi - octave.value * 12;
+    result[semi] = true;
+  });
+  return result;
+});
 
 // Pointer capture keeps a gesture alive outside its starting key. Track each
 // pointer independently so multiple fingers can play notes simultaneously.
 const activePointers = new Map<number, { semi: number; midi: number }>();
-const activeCounts = new Map<number, number>();
 
-function addNote(semi: number, midi: number) {
-  const count = activeCounts.get(midi) ?? 0;
-  activeCounts.set(midi, count + 1);
-  if (count === 0) synth.value.noteOn(midi, 127);
-  pressed.value[semi] = true;
+function addNote(semi: number) {
+  const midi = semi + octave.value * 12;
+  synth.value.noteOn(midi, 127);
+  midiNotesActive.value.add(midi);
 }
 
-function removeNote(semi: number, midi: number) {
-  const count = activeCounts.get(midi) ?? 0;
-  if (count <= 1) {
-    activeCounts.delete(midi);
-    synth.value.noteOff(midi);
-    pressed.value[semi] = false;
-  } else {
-    activeCounts.set(midi, count - 1);
-  }
+function removeNote(midi: number) {
+  synth.value.noteOff(midi);
+  midiNotesActive.value.delete(midi);
+}
+
+function clearAllNotes() {
+  synth.value.allNotesOff();
+  midiNotesActive.value.clear();
 }
 
 function movePointerTo(pointerId: number, semi: number) {
   const active = activePointers.get(pointerId);
-  if (!active || active.semi === semi) return;
-  removeNote(active.semi, active.midi);
+  if (!active || active.semi === semi) {
+    return;
+  }
+  removeNote(active.midi);
   const midi = semi + octave.value * 12;
   activePointers.set(pointerId, { semi, midi });
-  addNote(semi, midi);
+  addNote(semi);
 }
 
 function onPianoKeyDown(semi: number, e: PointerEvent) {
-  if (e.button !== 0 || activePointers.has(e.pointerId)) return;
+  if (e.button !== 0 || activePointers.has(e.pointerId)) {
+    return;
+  }
   e.preventDefault();
   const target = e.currentTarget;
-  if (!(target instanceof HTMLElement)) return;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
   target.setPointerCapture(e.pointerId);
   const midi = semi + octave.value * 12;
   activePointers.set(e.pointerId, { semi, midi });
-  addNote(semi, midi);
+  addNote(semi);
 }
 
 function onPointerMove(e: PointerEvent) {
-  if (!activePointers.has(e.pointerId)) return;
+  if (!activePointers.has(e.pointerId)) {
+    return;
+  }
   // With pointer capture, event.target remains the capture element. Hit-test
   // the actual pointer position to detect keys crossed during a glissando.
-  const hit = document
-    .elementFromPoint(e.clientX, e.clientY)
-    ?.closest<HTMLElement>('[data-semi]');
+  const pointElem = document.elementFromPoint(e.clientX, e.clientY);
+  const hit = pointElem?.closest<HTMLElement>('[data-semi]');
   const keyboard = (e.currentTarget as HTMLElement | null)?.closest(
     '.keyboard',
   );
   if (!hit || !keyboard?.contains(hit)) {
-    movePointerTo(e.pointerId, -1);
     return;
   }
   const semi = Number(hit.dataset.semi);
@@ -125,7 +137,7 @@ function finishPointer(pointerId: number) {
   const active = activePointers.get(pointerId);
   if (!active) return;
   activePointers.delete(pointerId);
-  removeNote(active.semi, active.midi);
+  removeNote(active.midi);
 }
 
 function onPointerUp(e: PointerEvent) {
@@ -155,16 +167,14 @@ function onKeyDown(e: KeyboardEvent) {
       octave.value = Math.min(8, octave.value + 1);
       break;
     case 'escape':
-      synth.value.allNotesOff();
+      clearAllNotes();
       break;
   }
   const semi = noteForKey(k);
   if (semi !== undefined) {
     e.preventDefault();
-    const midi = semi + octave.value * 12;
-    if (!activeCounts.has(midi)) synth.value.noteOn(midi, 127);
-    activeCounts.set(midi, (activeCounts.get(midi) ?? 0) + 1);
-    pressed.value[semi] = true;
+
+    addNote(semi);
   }
 }
 
@@ -173,12 +183,7 @@ function onKeyUp(e: KeyboardEvent) {
   if (semi === undefined) return;
   e.preventDefault();
   const midi = semi + octave.value * 12;
-  const count = activeCounts.get(midi) ?? 0;
-  if (count <= 1) {
-    activeCounts.delete(midi);
-    synth.value.noteOff(midi);
-    pressed.value[semi] = false;
-  } else activeCounts.set(midi, count - 1);
+  removeNote(midi);
 }
 
 onMounted(() => {
