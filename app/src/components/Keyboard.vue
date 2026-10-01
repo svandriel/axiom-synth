@@ -40,9 +40,10 @@
       </div>
     </div>
     <div
-      class="mt-3 font-mono text-xs text-primary-400 uppercase dark:text-primary-400"
+      class="mt-3 flex flex-row justify-between gap-3 font-mono text-xs text-primary-400 uppercase dark:text-primary-400"
     >
-      Control with computer keys, change octave with - and =
+      <div>Control with computer keys, change octave with - and =</div>
+      <div>Octave: {{ octave }}</div>
     </div>
   </div>
 </template>
