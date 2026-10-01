@@ -19,7 +19,7 @@
         <span class="name absolute top-2.5 font-mono text-primary-500">
           {{ note.n }}
         </span>
-        <span class="key font-mono text-primary-600">{{ note.k }}</span>
+        <span class="key font-mono text-primary-600">{{ note.label }}</span>
       </div>
       <!-- black keys -->
       <div
@@ -37,7 +37,7 @@
           '--location': pianoKeyLocations[note.semi],
         }"
       >
-        <span class="key hidden font-mono sm:inline">{{ note.k }}</span>
+        <span class="key hidden font-mono sm:inline">{{ note.label }}</span>
       </div>
     </div>
     <div
@@ -158,19 +158,19 @@ function onLostPointerCapture(e: PointerEvent) {
 
 function onKeyDown(e: KeyboardEvent) {
   if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
-  const k = e.key.toLowerCase();
-  switch (k) {
-    case '-':
+  switch (e.code) {
+    case 'Minus':
       octave.value = Math.max(0, octave.value - 1);
       break;
-    case '=':
+    case 'Equal':
+    case 'Plus':
       octave.value = Math.min(8, octave.value + 1);
       break;
-    case 'escape':
+    case 'Escape':
       clearAllNotes();
       break;
   }
-  const semi = noteForKey(k);
+  const semi = noteForKey(e.code);
   if (semi !== undefined) {
     e.preventDefault();
 
@@ -179,8 +179,10 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 function onKeyUp(e: KeyboardEvent) {
-  const semi = noteForKey(e.key.toLowerCase());
+  const semi = noteForKey(e.code);
   if (semi === undefined) return;
+
+  if (e.shiftKey) return;
   e.preventDefault();
   const midi = semi + octave.value * 12;
   removeNote(midi);
