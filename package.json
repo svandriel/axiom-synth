@@ -8,7 +8,7 @@
     "build": "pnpm -r --sort build",
     "build:pages": "pnpm --filter @axiom/axiom-native build && pnpm --filter @axiom/app build:pages",
     "preview": "pnpm --filter @axiom/app preview --port 4000",
-    "test": "pnpm --filter @axiom/audio-engine test",
+    "test": "pnpm -r --parallel test",
     "test:native": "pnpm --filter @axiom/axiom-native test",
     "lint": "prettier --check .",
     "lint:native": "pnpm --filter @axiom/axiom-native lint",
