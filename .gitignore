@@ -18,6 +18,10 @@ dist-ssr
 .worktrees
 .superpowers/
 
+# Rust
+pkg
+target
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
