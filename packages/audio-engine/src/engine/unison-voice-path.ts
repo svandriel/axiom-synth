@@ -1,4 +1,5 @@
 import { BlendCurveCache } from './blend-curve-cache';
+import type { Oscillator } from './oscillator';
 
 type PathState = 'free' | 'leased' | 'armed' | 'draining' | 'destroyed';
 
@@ -31,7 +32,7 @@ export class UnisonVoicePath {
   private readonly context: AudioContext;
   private readonly overflow: boolean;
   private stateValue: PathState = 'free';
-  private source: OscillatorNode | null = null;
+  private source: Oscillator | null = null;
 
   /**
    * Build the reusable gain, blend, detune, and pan graph for one path.
@@ -106,7 +107,7 @@ export class UnisonVoicePath {
   /**
    * Attach a note-specific oscillator to the configured path.
    */
-  arm(source: OscillatorNode): void {
+  arm(source: Oscillator): void {
     this.expectState('leased');
     this.source = source;
     source.connect(this.audioGain);
@@ -125,7 +126,7 @@ export class UnisonVoicePath {
   /**
    * Detach an ended oscillator and return the path to the free state.
    */
-  disarm(source: OscillatorNode): void {
+  disarm(source: Oscillator): void {
     if (this.stateValue !== 'draining' || this.source !== source) {
       return;
     }
