@@ -8,9 +8,7 @@ describe('WebAudioOscillator', () => {
     const context = new FakeAudioContext();
 
     try {
-      const oscillator = new WebAudioOscillator(
-        context as unknown as AudioContext,
-      );
+      new WebAudioOscillator(context as unknown as AudioContext);
 
       expect(context.oscillators).toHaveLength(0);
     } finally {
