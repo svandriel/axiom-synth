@@ -290,7 +290,7 @@ describe('UnisonOscillator', () => {
     }
   });
 
-  it('rolls back every path when path arm connection fails', () => {
+  it('cleans up a pooled source when adapter output connection fails', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
@@ -310,6 +310,8 @@ describe('UnisonOscillator', () => {
       expect(() => oscillator.start(440, 1)).toThrow(
         'FakeAudioNode connect failed',
       );
+      expect(ctxt.oscillators[2]!.connections).toHaveLength(0);
+      expect(ctxt.oscillators[2]!.stopCalls).toHaveLength(1);
       ctxt.createOscillator = originalCreate;
       oscillator.start(440, 2);
       expect(ctxt.oscillators).toHaveLength(5);

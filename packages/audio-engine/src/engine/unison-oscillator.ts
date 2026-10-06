@@ -30,7 +30,26 @@ class OscillatorNodeAbstraction implements Oscillator {
   constructor(context: AudioContext, node: OscillatorNode) {
     this.node = node;
     this.outputGain = context.createGain();
-    this.node.connect(this.outputGain);
+    try {
+      this.node.connect(this.outputGain);
+    } catch (error) {
+      try {
+        this.node.disconnect();
+      } catch {
+        // Best effort cleanup when adapter construction fails.
+      }
+      try {
+        this.outputGain.disconnect();
+      } catch {
+        // Best effort cleanup when adapter construction fails.
+      }
+      try {
+        this.node.stop();
+      } catch {
+        // Best effort cleanup when adapter construction fails.
+      }
+      throw error;
+    }
   }
 
   get waveform(): WaveFormType {
