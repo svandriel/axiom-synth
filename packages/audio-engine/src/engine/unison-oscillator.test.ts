@@ -1,13 +1,166 @@
 import { describe, expect, it } from 'vitest';
 import { UnisonOscillator } from './unison-oscillator';
-import { FakeAudioContext, installFakeAudioParam } from '@axiom/audio-testing';
+import type { Oscillator } from './oscillator';
+import {
+  FakeAudioContext,
+  type FakeAudioDestination,
+  type FakeOscillatorNode,
+  installFakeAudioParam,
+} from '@axiom/audio-testing';
+
+class TestOscillator implements Oscillator {
+  private readonly node: FakeOscillatorNode;
+  unsubscribeCalls = 0;
+
+  constructor(context: FakeAudioContext) {
+    this.node = context.createOscillator();
+  }
+
+  get waveform() {
+    return this.node.type as Oscillator['waveform'];
+  }
+
+  set waveform(value: Oscillator['waveform']) {
+    this.node.type = value;
+  }
+
+  get frequency() {
+    return this.node.frequency as unknown as AudioParam;
+  }
+
+  get detune() {
+    return this.node.detune as unknown as AudioParam;
+  }
+
+  get gain() {
+    return this.node.frequency as unknown as AudioParam;
+  }
+
+  connect(destination: AudioNode | AudioParam): void {
+    this.node.connect(destination as unknown as FakeAudioDestination);
+  }
+
+  disconnect(destination?: AudioNode | AudioParam | null): void {
+    this.node.disconnect(
+      destination as unknown as FakeAudioDestination | undefined,
+    );
+  }
+
+  start(_noteHz: number, now: number): void {
+    this.node.start(now);
+  }
+
+  stop(time?: number): void {
+    this.node.stop(time);
+  }
+
+  onEnded(subscriber: () => void) {
+    this.node.onended = subscriber;
+    return {
+      unsubscribe: () => {
+        this.unsubscribeCalls++;
+        if (this.node.onended === subscriber) this.node.onended = null;
+      },
+    };
+  }
+
+  destroy(): void {
+    this.node.disconnect();
+  }
+}
+
+const createUnison = (ctxt: FakeAudioContext) =>
+  new UnisonOscillator(
+    ctxt as unknown as AudioContext,
+    context => new TestOscillator(context as unknown as FakeAudioContext),
+  );
 
 describe('UnisonOscillator', () => {
+  it('creates one oscillator abstraction per unison voice', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    const ctxt = new FakeAudioContext();
+    const created: Oscillator[] = [];
+    const factory = (context: AudioContext) =>
+      new TestOscillator(context as unknown as FakeAudioContext);
+    try {
+      const oneVoice = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          const oscillator = factory(context);
+          created.push(oscillator);
+          return oscillator;
+        },
+      );
+      oneVoice.start(440, 0);
+      expect(created).toHaveLength(1);
+
+      const threeVoices = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          const oscillator = factory(context);
+          created.push(oscillator);
+          return oscillator;
+        },
+      );
+      threeVoices.voices = 3;
+      threeVoices.start(440, 0);
+      expect(created).toHaveLength(4);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('unsubscribes ended handlers during every source cleanup path', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const created: TestOscillator[] = [];
+      const oscillator = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          const source = new TestOscillator(
+            context as unknown as FakeAudioContext,
+          );
+          created.push(source);
+          return source;
+        },
+      );
+
+      oscillator.start(440, 0);
+      oscillator.stop();
+      ctxt.oscillators[0]!.end();
+      expect(created[0]?.unsubscribeCalls).toBe(1);
+
+      oscillator.voices = 2;
+      oscillator.start(440, 1);
+      oscillator.stop();
+      ctxt.oscillators.slice(1).forEach(source => source.end());
+      expect(
+        created.slice(1).every(source => source.unsubscribeCalls === 1),
+      ).toBe(true);
+
+      ctxt.waveShapers[0]!.throwOnCurveSet = true;
+      expect(() => oscillator.start(440, 2)).toThrow();
+      expect(
+        created.slice(3).every(source => source.unsubscribeCalls === 1),
+      ).toBe(true);
+
+      ctxt.waveShapers[0]!.throwOnCurveSet = false;
+      oscillator.start(440, 3);
+      oscillator.destroy();
+      expect(
+        created.slice(5).every(source => source.unsubscribeCalls === 1),
+      ).toBe(true);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
   it('creates one direct oscillator for one voice', () => {
     const restoreAudioParam = installFakeAudioParam();
     const ctxt = new FakeAudioContext();
     try {
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
 
       oscillator.start(440, 0);
 
@@ -44,7 +197,7 @@ describe('UnisonOscillator', () => {
       expect(ctxt.connections).toHaveLength(0);
       expect(
         ctxt.operations.filter(operation => operation.type === 'disconnect'),
-      ).toHaveLength(3);
+      ).toHaveLength(4);
     } finally {
       restoreAudioParam();
     }
@@ -54,7 +207,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
 
       expect(oscillator.unisonBlend.value).toBe(1);
     } finally {
@@ -66,7 +219,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
 
       oscillator.voices = 3;
       oscillator.start(440, 0);
@@ -77,7 +230,7 @@ describe('UnisonOscillator', () => {
       oscillator.start(440, 1);
 
       expect(ctxt.oscillators).toHaveLength(6);
-      expect(ctxt.gains.length).toBe(warmedGainCount + 3);
+      expect(ctxt.gains.length).toBe(warmedGainCount);
     } finally {
       restoreAudioParam();
     }
@@ -87,7 +240,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
 
       oscillator.start(440, 0);
 
@@ -102,7 +255,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
 
       oscillator.start(440, 0);
@@ -120,7 +273,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
 
       oscillator.start(440, 0);
@@ -147,7 +300,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       oscillator.start(440, 0);
       oscillator.stop();
@@ -164,7 +317,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
 
       oscillator.start(440, 0);
@@ -192,7 +345,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
 
       oscillator.start(440, 0);
       const direct = ctxt.oscillators[0]!;
@@ -238,7 +391,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       const originalStart = ctxt.oscillators;
 
@@ -270,7 +423,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       oscillator.start(440, 0);
       const warmedGainCount = ctxt.gains.length;
@@ -284,7 +437,7 @@ describe('UnisonOscillator', () => {
       );
       ctxt.waveShapers[0]!.throwOnCurveSet = false;
       oscillator.start(440, 2);
-      expect(ctxt.gains).toHaveLength(warmedGainCount + 2);
+      expect(ctxt.gains).toHaveLength(warmedGainCount);
     } finally {
       restoreAudioParam();
     }
@@ -294,7 +447,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       oscillator.start(440, 0);
       const firstSources = [...ctxt.oscillators];
@@ -324,7 +477,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       const originalCreate = ctxt.createOscillator.bind(ctxt);
       ctxt.createOscillator = () => {
         const source = originalCreate();
@@ -349,7 +502,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       const originalCreate = ctxt.createOscillator.bind(ctxt);
       ctxt.createOscillator = () => {
@@ -374,7 +527,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.start(440, 0);
       const direct = ctxt.oscillators[0]!;
       oscillator.stop();
@@ -396,7 +549,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       oscillator.start(440, 0);
       const source = ctxt.oscillators[0]!;
@@ -419,7 +572,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       oscillator.start(440, 0);
       ctxt.oscillators[0]!.throwOnStop = true;
@@ -473,7 +626,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.start(440, 0);
       const source = ctxt.oscillators[0]!;
       const [frequencySource, detuneSource] = ctxt.constantSources;
@@ -507,7 +660,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       oscillator.start(440, 0);
       oscillator.stop();

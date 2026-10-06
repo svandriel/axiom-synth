@@ -1,6 +1,10 @@
 import type { WaveFormType } from '../types';
 import type { Destroyable } from './destroyable';
-import type { Oscillator } from './oscillator';
+import {
+  WebAudioOscillator,
+  type Oscillator,
+  type OscillatorEndSubscription,
+} from './oscillator';
 import {
   UnisonVoicePathPool,
   type PathLease,
@@ -11,105 +15,20 @@ import {
  * The single-voice path, which does not need the unison path pool.
  */
 interface DirectSource {
-  readonly oscillator: OscillatorNode;
+  readonly oscillator: Oscillator;
+  readonly endedSubscription: OscillatorEndSubscription;
 }
 
 /**
- * A raw note oscillator attached to one reusable unison path.
+ * A note oscillator attached to one reusable unison path.
  */
 interface PooledSource {
-  readonly oscillator: OscillatorNode;
-  readonly abstraction: Oscillator;
+  readonly oscillator: Oscillator;
   readonly path: UnisonVoicePath;
+  readonly endedSubscription: OscillatorEndSubscription;
 }
 
-class OscillatorNodeAbstraction implements Oscillator {
-  private readonly node: OscillatorNode;
-  private readonly outputGain: GainNode;
-
-  constructor(context: AudioContext, node: OscillatorNode) {
-    this.node = node;
-    this.outputGain = context.createGain();
-    try {
-      this.node.connect(this.outputGain);
-    } catch (error) {
-      try {
-        this.node.disconnect();
-      } catch {
-        // Best effort cleanup when adapter construction fails.
-      }
-      try {
-        this.outputGain.disconnect();
-      } catch {
-        // Best effort cleanup when adapter construction fails.
-      }
-      try {
-        this.node.stop();
-      } catch {
-        // Best effort cleanup when adapter construction fails.
-      }
-      throw error;
-    }
-  }
-
-  get waveform(): WaveFormType {
-    return this.node.type as WaveFormType;
-  }
-
-  set waveform(value: WaveFormType) {
-    this.node.type = value;
-  }
-
-  get frequency(): AudioParam {
-    return this.node.frequency;
-  }
-
-  get detune(): AudioParam {
-    return this.node.detune;
-  }
-
-  get gain(): AudioParam {
-    return this.outputGain.gain;
-  }
-
-  connect(destination: AudioNode | AudioParam): void {
-    if (destination instanceof AudioParam) this.outputGain.connect(destination);
-    else this.outputGain.connect(destination);
-  }
-
-  disconnect(destination?: AudioNode | AudioParam | null): void {
-    if (destination === undefined || destination === null) {
-      this.outputGain.disconnect();
-    } else {
-      if (destination instanceof AudioParam)
-        this.outputGain.disconnect(destination);
-      else this.outputGain.disconnect(destination);
-    }
-  }
-
-  start(_noteHz: number, now: number): void {
-    this.node.start(now);
-  }
-
-  stop(time?: number): void {
-    if (time === undefined) this.node.stop();
-    else this.node.stop(time);
-  }
-
-  onEnded(subscriber: () => void) {
-    this.node.onended = subscriber;
-    return {
-      unsubscribe: () => {
-        if (this.node.onended === subscriber) this.node.onended = null;
-      },
-    };
-  }
-
-  destroy(): void {
-    this.node.disconnect();
-    this.outputGain.disconnect();
-  }
-}
+export type OscillatorFactory = (context: AudioContext) => Oscillator;
 
 /**
  * All sources and pool ownership belonging to one note generation.
@@ -122,8 +41,8 @@ interface VoiceBundle {
 
 /**
  * Runs one oscillator with either a direct path or a pool of blended voices.
- * The control graph persists for the lifetime of the instance, while raw
- * OscillatorNodes are created per note because Web Audio sources are one-shot.
+ * The control graph persists for the lifetime of the instance, while oscillator
+ * sources are created per note because Web Audio sources are one-shot.
  */
 export class UnisonOscillator implements Destroyable {
   private readonly ctxt: AudioContext;
@@ -134,6 +53,7 @@ export class UnisonOscillator implements Destroyable {
   private readonly unisonDepthSource: ConstantSourceNode;
   private readonly unisonBlendSource: ConstantSourceNode;
   private readonly pathPool: UnisonVoicePathPool;
+  private readonly oscillatorFactory: OscillatorFactory;
   private readonly activeBundles = new Set<VoiceBundle>();
   private readonly stoppedBundles = new Set<VoiceBundle>();
   private voicesValue = 1;
@@ -142,9 +62,14 @@ export class UnisonOscillator implements Destroyable {
   private destroyed = false;
 
   /** Build the persistent control graph and its reusable path pool. */
-  constructor(ctxt: AudioContext) {
+  constructor(
+    ctxt: AudioContext,
+    oscillatorFactory: OscillatorFactory = context =>
+      new WebAudioOscillator(context),
+  ) {
     // Shared sources fan out parameter changes to every active note source.
     this.ctxt = ctxt;
+    this.oscillatorFactory = oscillatorFactory;
     this.outputGain = ctxt.createGain();
     this.outputGain.gain.setValueAtTime(0, ctxt.currentTime);
     this.frequencySource = this.createSource(0);
@@ -168,8 +93,8 @@ export class UnisonOscillator implements Destroyable {
     // Stopped bundles still exist until their sources fire onended.
     this.wave = value;
     [...this.activeBundles, ...this.stoppedBundles].forEach(bundle => {
-      bundle.direct?.oscillator && (bundle.direct.oscillator.type = value);
-      bundle.pooled.forEach(({ oscillator }) => (oscillator.type = value));
+      bundle.direct?.oscillator && (bundle.direct.oscillator.waveform = value);
+      bundle.pooled.forEach(({ oscillator }) => (oscillator.waveform = value));
     });
   }
 
@@ -244,23 +169,22 @@ export class UnisonOscillator implements Destroyable {
     try {
       // Raw oscillators are one-shot sources, so allocate them per note.
       lease.paths.forEach(path => {
-        const oscillator = this.ctxt.createOscillator();
-        sources.push({
+        const oscillator = this.oscillatorFactory(this.ctxt);
+        const source = {
           oscillator,
-          abstraction: new OscillatorNodeAbstraction(this.ctxt, oscillator),
           path,
-        });
-        oscillator.type = this.wave;
+          endedSubscription: oscillator.onEnded(() =>
+            this.onPooledEnded(bundle, source),
+          ),
+        } satisfies PooledSource;
+        sources.push(source);
+        oscillator.waveform = this.wave;
         oscillator.frequency.setValueAtTime(noteHz, now);
         this.frequencySource.connect(oscillator.frequency);
         this.detuneSource.connect(oscillator.detune);
-        path.arm(sources[sources.length - 1]!.abstraction);
+        path.arm(oscillator);
       });
-      sources.forEach(source => {
-        source.oscillator.onended = () =>
-          this.onPooledEnded(bundle, source.path, source.oscillator);
-      });
-      sources.forEach(({ oscillator }) => oscillator.start(now));
+      sources.forEach(({ oscillator }) => oscillator.start(noteHz, now));
     } catch (error) {
       this.rollbackPooled(lease, sources);
       throw error;
@@ -282,8 +206,9 @@ export class UnisonOscillator implements Destroyable {
     this.stoppedBundles.add(bundle);
     if (bundle.direct) {
       if (!this.stopSource(bundle.direct.oscillator, time)) {
-        bundle.direct.oscillator.onended = null;
+        bundle.direct.endedSubscription.unsubscribe();
         this.detachDirect(bundle.direct.oscillator);
+        bundle.direct.oscillator.destroy();
         this.finishBundle(bundle);
       }
     } else {
@@ -293,11 +218,11 @@ export class UnisonOscillator implements Destroyable {
         if (!this.stopSource(oscillator, time)) stopFailed = true;
       });
       if (stopFailed) {
-        bundle.pooled.forEach(({ path, oscillator, abstraction }) => {
+        bundle.pooled.forEach(({ path, oscillator, endedSubscription }) => {
           this.detachPooled(oscillator);
           path.abort();
-          oscillator.onended = null;
-          abstraction.destroy();
+          endedSubscription.unsubscribe();
+          oscillator.destroy();
         });
         this.pathPool.abort(bundle.lease!);
         this.finishBundle(bundle);
@@ -313,15 +238,16 @@ export class UnisonOscillator implements Destroyable {
     this.destroyed = true;
     [...this.activeBundles, ...this.stoppedBundles].forEach(bundle => {
       if (bundle.direct) {
-        bundle.direct.oscillator.onended = null;
+        bundle.direct.endedSubscription.unsubscribe();
         this.stopSource(bundle.direct.oscillator);
         this.detachDirect(bundle.direct.oscillator);
+        bundle.direct.oscillator.destroy();
       } else {
-        bundle.pooled.forEach(({ oscillator, abstraction }) => {
+        bundle.pooled.forEach(({ oscillator, endedSubscription }) => {
           this.detachPooled(oscillator);
-          oscillator.onended = null;
+          endedSubscription.unsubscribe();
           this.stopSource(oscillator);
-          abstraction.destroy();
+          oscillator.destroy();
         });
       }
     });
@@ -345,28 +271,30 @@ export class UnisonOscillator implements Destroyable {
    * Start the lightweight single-oscillator path.
    */
   private startDirect(noteHz: number, now: number): void {
-    const oscillator = this.ctxt.createOscillator();
-    const bundle: VoiceBundle = {
-      direct: { oscillator },
-      pooled: [],
-      lease: null,
-    };
-    oscillator.onended = () => {
-      oscillator.onended = null;
-      if (!bundle.direct || !this.stoppedBundles.has(bundle)) return;
-      this.detachDirect(oscillator);
-      this.finishBundle(bundle);
-    };
+    const oscillator = this.oscillatorFactory(this.ctxt);
+    let bundle: VoiceBundle;
+    const direct = {
+      oscillator,
+      endedSubscription: oscillator.onEnded(() => {
+        direct.endedSubscription.unsubscribe();
+        if (!bundle.direct || !this.stoppedBundles.has(bundle)) return;
+        this.detachDirect(oscillator);
+        oscillator.destroy();
+        this.finishBundle(bundle);
+      }),
+    } satisfies DirectSource;
+    bundle = { direct, pooled: [], lease: null };
     try {
-      oscillator.type = this.wave;
+      oscillator.waveform = this.wave;
       oscillator.frequency.setValueAtTime(noteHz, now);
       this.frequencySource.connect(oscillator.frequency);
       this.detuneSource.connect(oscillator.detune);
       oscillator.connect(this.outputGain);
-      oscillator.start(now);
+      oscillator.start(noteHz, now);
     } catch (error) {
-      oscillator.onended = null;
+      direct.endedSubscription.unsubscribe();
       this.detachDirect(oscillator);
+      oscillator.destroy();
       throw error;
     }
     this.activeBundles.add(bundle);
@@ -376,18 +304,14 @@ export class UnisonOscillator implements Destroyable {
   /**
    * Release a pooled lease only after every voice in its bundle has ended.
    */
-  private onPooledEnded(
-    bundle: VoiceBundle,
-    path: PooledSource['path'],
-    oscillator: OscillatorNode,
-  ): void {
+  private onPooledEnded(bundle: VoiceBundle, source: PooledSource): void {
     if (!this.stoppedBundles.has(bundle)) return;
-    oscillator.onended = null;
+    source.endedSubscription.unsubscribe();
+    const { path, oscillator } = source;
     this.safe(() => this.frequencySource.disconnect(oscillator.frequency));
     this.safe(() => this.detuneSource.disconnect(oscillator.detune));
-    const source = bundle.pooled.find(item => item.oscillator === oscillator);
-    path.disarm(source!.abstraction);
-    source!.abstraction.destroy();
+    path.disarm(oscillator);
+    oscillator.destroy();
     if (bundle.pooled.every(source => source.path.state === 'free')) {
       this.pathPool.release(bundle.lease!);
       this.finishBundle(bundle);
@@ -410,31 +334,30 @@ export class UnisonOscillator implements Destroyable {
     lease: VoiceBundle['lease'],
     sources: readonly PooledSource[],
   ): void {
-    sources.forEach(({ path, oscillator, abstraction }) => {
+    sources.forEach(({ path, oscillator, endedSubscription }) => {
       this.detachPooled(oscillator);
       path.abort();
-      oscillator.onended = null;
+      endedSubscription.unsubscribe();
       this.safe(() => oscillator.stop());
-      abstraction.destroy();
+      oscillator.destroy();
     });
     this.pathPool.abort(lease!);
   }
 
-  private detachPooled(oscillator: OscillatorNode): void {
+  private detachPooled(oscillator: Oscillator): void {
     this.safe(() => this.frequencySource.disconnect(oscillator.frequency));
     this.safe(() => this.detuneSource.disconnect(oscillator.detune));
   }
 
-  private detachDirect(oscillator: OscillatorNode): void {
+  private detachDirect(oscillator: Oscillator): void {
     this.safe(() => this.frequencySource.disconnect(oscillator.frequency));
     this.safe(() => this.detuneSource.disconnect(oscillator.detune));
     this.safe(() => oscillator.disconnect());
   }
 
-  private stopSource(oscillator: OscillatorNode, time?: number): boolean {
+  private stopSource(oscillator: Oscillator, time?: number): boolean {
     try {
-      if (time === undefined) oscillator.stop();
-      else oscillator.stop(time);
+      oscillator.stop(time);
       return true;
     } catch {
       return false;
