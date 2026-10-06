@@ -25,9 +25,12 @@ interface PooledSource {
 
 class OscillatorNodeAbstraction implements Oscillator {
   private readonly node: OscillatorNode;
+  private readonly outputGain: GainNode;
 
-  constructor(node: OscillatorNode) {
+  constructor(context: AudioContext, node: OscillatorNode) {
     this.node = node;
+    this.outputGain = context.createGain();
+    this.node.connect(this.outputGain);
   }
 
   get waveform(): WaveFormType {
@@ -47,20 +50,21 @@ class OscillatorNodeAbstraction implements Oscillator {
   }
 
   get gain(): AudioParam {
-    return this.node.detune;
+    return this.outputGain.gain;
   }
 
   connect(destination: AudioNode | AudioParam): void {
-    if (destination instanceof AudioParam) this.node.connect(destination);
-    else this.node.connect(destination);
+    if (destination instanceof AudioParam) this.outputGain.connect(destination);
+    else this.outputGain.connect(destination);
   }
 
   disconnect(destination?: AudioNode | AudioParam | null): void {
     if (destination === undefined || destination === null) {
-      this.node.disconnect();
+      this.outputGain.disconnect();
     } else {
-      if (destination instanceof AudioParam) this.node.disconnect(destination);
-      else this.node.disconnect(destination);
+      if (destination instanceof AudioParam)
+        this.outputGain.disconnect(destination);
+      else this.outputGain.disconnect(destination);
     }
   }
 
@@ -84,6 +88,7 @@ class OscillatorNodeAbstraction implements Oscillator {
 
   destroy(): void {
     this.node.disconnect();
+    this.outputGain.disconnect();
   }
 }
 
@@ -223,7 +228,7 @@ export class UnisonOscillator implements Destroyable {
         const oscillator = this.ctxt.createOscillator();
         sources.push({
           oscillator,
-          abstraction: new OscillatorNodeAbstraction(oscillator),
+          abstraction: new OscillatorNodeAbstraction(this.ctxt, oscillator),
           path,
         });
         oscillator.type = this.wave;
@@ -269,10 +274,11 @@ export class UnisonOscillator implements Destroyable {
         if (!this.stopSource(oscillator, time)) stopFailed = true;
       });
       if (stopFailed) {
-        bundle.pooled.forEach(({ path, oscillator }) => {
+        bundle.pooled.forEach(({ path, oscillator, abstraction }) => {
           this.detachPooled(oscillator);
           path.abort();
           oscillator.onended = null;
+          abstraction.destroy();
         });
         this.pathPool.abort(bundle.lease!);
         this.finishBundle(bundle);
@@ -292,10 +298,11 @@ export class UnisonOscillator implements Destroyable {
         this.stopSource(bundle.direct.oscillator);
         this.detachDirect(bundle.direct.oscillator);
       } else {
-        bundle.pooled.forEach(({ oscillator }) => {
+        bundle.pooled.forEach(({ oscillator, abstraction }) => {
           this.detachPooled(oscillator);
           oscillator.onended = null;
           this.stopSource(oscillator);
+          abstraction.destroy();
         });
       }
     });
@@ -361,6 +368,7 @@ export class UnisonOscillator implements Destroyable {
     this.safe(() => this.detuneSource.disconnect(oscillator.detune));
     const source = bundle.pooled.find(item => item.oscillator === oscillator);
     path.disarm(source!.abstraction);
+    source!.abstraction.destroy();
     if (bundle.pooled.every(source => source.path.state === 'free')) {
       this.pathPool.release(bundle.lease!);
       this.finishBundle(bundle);
@@ -383,11 +391,12 @@ export class UnisonOscillator implements Destroyable {
     lease: VoiceBundle['lease'],
     sources: readonly PooledSource[],
   ): void {
-    sources.forEach(({ path, oscillator }) => {
+    sources.forEach(({ path, oscillator, abstraction }) => {
       this.detachPooled(oscillator);
       path.abort();
       oscillator.onended = null;
       this.safe(() => oscillator.stop());
+      abstraction.destroy();
     });
     this.pathPool.abort(lease!);
   }

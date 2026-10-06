@@ -77,7 +77,7 @@ describe('UnisonOscillator', () => {
       oscillator.start(440, 1);
 
       expect(ctxt.oscillators).toHaveLength(6);
-      expect(ctxt.gains.length).toBe(warmedGainCount);
+      expect(ctxt.gains.length).toBe(warmedGainCount + 3);
     } finally {
       restoreAudioParam();
     }
@@ -111,6 +111,33 @@ describe('UnisonOscillator', () => {
 
       expect(ctxt.stereoPanners).toHaveLength(4);
       expect(ctxt.oscillators).toHaveLength(4);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('routes pooled oscillator output through its gain parameter', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      oscillator.voices = 2;
+
+      oscillator.start(440, 0);
+
+      const pooledSource = ctxt.oscillators[0]!;
+      expect(
+        pooledSource.connections.some(
+          connection => connection.destination !== ctxt.gains[0],
+        ),
+      ).toBe(true);
+      expect(
+        ctxt.connections.some(
+          connection =>
+            connection.source === pooledSource &&
+            connection.destination === pooledSource.detune,
+        ),
+      ).toBe(false);
     } finally {
       restoreAudioParam();
     }
@@ -257,7 +284,7 @@ describe('UnisonOscillator', () => {
       );
       ctxt.waveShapers[0]!.throwOnCurveSet = false;
       oscillator.start(440, 2);
-      expect(ctxt.gains).toHaveLength(warmedGainCount);
+      expect(ctxt.gains).toHaveLength(warmedGainCount + 2);
     } finally {
       restoreAudioParam();
     }
