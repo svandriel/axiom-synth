@@ -1,5 +1,6 @@
 import type { WaveFormType } from '../types';
 import type { Destroyable } from './destroyable';
+import type { Oscillator } from './oscillator';
 import {
   UnisonVoicePathPool,
   type PathLease,
@@ -18,7 +19,72 @@ interface DirectSource {
  */
 interface PooledSource {
   readonly oscillator: OscillatorNode;
+  readonly abstraction: Oscillator;
   readonly path: UnisonVoicePath;
+}
+
+class OscillatorNodeAbstraction implements Oscillator {
+  private readonly node: OscillatorNode;
+
+  constructor(node: OscillatorNode) {
+    this.node = node;
+  }
+
+  get waveform(): WaveFormType {
+    return this.node.type as WaveFormType;
+  }
+
+  set waveform(value: WaveFormType) {
+    this.node.type = value;
+  }
+
+  get frequency(): AudioParam {
+    return this.node.frequency;
+  }
+
+  get detune(): AudioParam {
+    return this.node.detune;
+  }
+
+  get gain(): AudioParam {
+    return this.node.detune;
+  }
+
+  connect(destination: AudioNode | AudioParam): void {
+    if (destination instanceof AudioParam) this.node.connect(destination);
+    else this.node.connect(destination);
+  }
+
+  disconnect(destination?: AudioNode | AudioParam | null): void {
+    if (destination === undefined || destination === null) {
+      this.node.disconnect();
+    } else {
+      if (destination instanceof AudioParam) this.node.disconnect(destination);
+      else this.node.disconnect(destination);
+    }
+  }
+
+  start(_noteHz: number, now: number): void {
+    this.node.start(now);
+  }
+
+  stop(time?: number): void {
+    if (time === undefined) this.node.stop();
+    else this.node.stop(time);
+  }
+
+  onEnded(subscriber: () => void) {
+    this.node.onended = subscriber;
+    return {
+      unsubscribe: () => {
+        if (this.node.onended === subscriber) this.node.onended = null;
+      },
+    };
+  }
+
+  destroy(): void {
+    this.node.disconnect();
+  }
 }
 
 /**
@@ -155,12 +221,16 @@ export class UnisonOscillator implements Destroyable {
       // Raw oscillators are one-shot sources, so allocate them per note.
       lease.paths.forEach(path => {
         const oscillator = this.ctxt.createOscillator();
-        sources.push({ oscillator, path });
+        sources.push({
+          oscillator,
+          abstraction: new OscillatorNodeAbstraction(oscillator),
+          path,
+        });
         oscillator.type = this.wave;
         oscillator.frequency.setValueAtTime(noteHz, now);
         this.frequencySource.connect(oscillator.frequency);
         this.detuneSource.connect(oscillator.detune);
-        path.arm(oscillator);
+        path.arm(sources[sources.length - 1]!.abstraction);
       });
       sources.forEach(source => {
         source.oscillator.onended = () =>
@@ -289,7 +359,8 @@ export class UnisonOscillator implements Destroyable {
     oscillator.onended = null;
     this.safe(() => this.frequencySource.disconnect(oscillator.frequency));
     this.safe(() => this.detuneSource.disconnect(oscillator.detune));
-    path.disarm(oscillator);
+    const source = bundle.pooled.find(item => item.oscillator === oscillator);
+    path.disarm(source!.abstraction);
     if (bundle.pooled.every(source => source.path.state === 'free')) {
       this.pathPool.release(bundle.lease!);
       this.finishBundle(bundle);

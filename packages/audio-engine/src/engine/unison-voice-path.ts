@@ -13,9 +13,9 @@ export interface PathLease {
 }
 
 /**
- * One reusable signal path for one unison voice. The raw OscillatorNode is
- * supplied by UnisonOscillator for each note because Web Audio sources are
- * one-shot, but this gain/pan/blend graph can stay connected between notes.
+ * One reusable signal path for one unison voice. An Oscillator is supplied by
+ * UnisonOscillator for each note because Web Audio sources are one-shot, but
+ * this gain/pan/blend graph can stay connected between notes.
  */
 export class UnisonVoicePath {
   readonly audioGain: GainNode;

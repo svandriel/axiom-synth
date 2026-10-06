@@ -26,11 +26,12 @@ function createPool() {
 }
 
 function createOscillator(context: FakeAudioContext): Oscillator & {
-  readonly detune: ReturnType<FakeAudioContext['createOscillator']>['detune'];
-  readonly connections: Array<AudioNode | AudioParam>;
+  readonly connections: Array<{ readonly destination: unknown }>;
 } {
   const oscillator = context.createOscillator();
-  const connections: Array<AudioNode | AudioParam> = [];
+  const connections: Array<{
+    readonly destination: unknown;
+  }> = [];
   return {
     waveform: 'sawtooth',
     frequency: oscillator.frequency as unknown as AudioParam,
@@ -38,14 +39,16 @@ function createOscillator(context: FakeAudioContext): Oscillator & {
     gain: oscillator.detune as unknown as AudioParam,
     connections,
     connect(destination) {
-      connections.push(destination);
+      connections.push({ destination });
     },
     disconnect(destination) {
       if (destination === undefined || destination === null) {
         connections.length = 0;
         return;
       }
-      const index = connections.indexOf(destination);
+      const index = connections.findIndex(
+        connection => connection.destination === destination,
+      );
       if (index >= 0) connections.splice(index, 1);
     },
     start() {},
@@ -181,7 +184,7 @@ describe('UnisonVoicePathPool', () => {
             operation.type === 'disconnect' &&
             (operation.source as unknown) ===
               (lease.paths[0]!.detuneScale as unknown) &&
-            operation.destination === oscillator.detune,
+            (operation.destination as unknown) === oscillator.detune,
         ),
       ).toBe(true);
       expect(
@@ -206,7 +209,7 @@ describe('UnisonVoicePathPool', () => {
 
       expect(
         oscillator.connections.some(
-          connection => connection.destination === outputGain,
+          connection => (connection.destination as unknown) === outputGain,
         ),
       ).toBe(false);
     } finally {
