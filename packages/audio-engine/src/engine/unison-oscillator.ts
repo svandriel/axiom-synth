@@ -305,8 +305,8 @@ export class UnisonOscillator implements Destroyable {
    * Release a pooled lease only after every voice in its bundle has ended.
    */
   private onPooledEnded(bundle: VoiceBundle, source: PooledSource): void {
-    if (!this.stoppedBundles.has(bundle)) return;
     source.endedSubscription.unsubscribe();
+    if (!this.stoppedBundles.has(bundle)) return;
     const { path, oscillator } = source;
     this.safe(() => this.frequencySource.disconnect(oscillator.frequency));
     this.safe(() => this.detuneSource.disconnect(oscillator.detune));
