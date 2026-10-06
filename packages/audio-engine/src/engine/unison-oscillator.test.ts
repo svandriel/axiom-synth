@@ -191,6 +191,49 @@ describe('UnisonOscillator', () => {
     }
   });
 
+  it('cleans up a direct source that ends before stop', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = createUnison(ctxt);
+
+      oscillator.start(440, 0);
+      ctxt.oscillators[0]!.end();
+
+      expect(ctxt.connections).toHaveLength(0);
+
+      oscillator.start(440, 1);
+
+      expect(ctxt.oscillators).toHaveLength(2);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('releases pooled paths when every source ends before stop', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = createUnison(ctxt);
+      oscillator.voices = 2;
+
+      oscillator.start(440, 0);
+      const firstSources = [...ctxt.oscillators];
+      firstSources.forEach(source => source.end());
+
+      expect(
+        firstSources.every(source => source.connections.length === 0),
+      ).toBe(true);
+
+      oscillator.start(440, 1);
+
+      expect(ctxt.oscillators).toHaveLength(4);
+      expect(ctxt.stereoPanners).toHaveLength(2);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
   it('unsubscribes a direct source when stop fails', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {

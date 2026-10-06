@@ -17,6 +17,7 @@ import {
 interface DirectSource {
   readonly oscillator: Oscillator;
   readonly endedSubscription: OscillatorEndSubscription;
+  ended: boolean;
 }
 
 /**
@@ -26,6 +27,7 @@ interface PooledSource {
   readonly oscillator: Oscillator;
   readonly path: UnisonVoicePath;
   readonly endedSubscription: OscillatorEndSubscription;
+  ended: boolean;
 }
 
 export type OscillatorFactory = (context: AudioContext) => Oscillator;
@@ -173,6 +175,7 @@ export class UnisonOscillator implements Destroyable {
         const source = {
           oscillator,
           path,
+          ended: false as boolean,
           endedSubscription: oscillator.onEnded(() =>
             this.onPooledEnded(bundle, source),
           ),
@@ -214,6 +217,10 @@ export class UnisonOscillator implements Destroyable {
     } else {
       let stopFailed = false;
       bundle.pooled.forEach(({ path, oscillator }) => {
+        if (
+          bundle.pooled.find(source => source.oscillator === oscillator)?.ended
+        )
+          return;
         path.beginDrain();
         if (!this.stopSource(oscillator, time)) stopFailed = true;
       });
@@ -275,9 +282,15 @@ export class UnisonOscillator implements Destroyable {
     let bundle: VoiceBundle;
     const direct = {
       oscillator,
+      ended: false as boolean,
       endedSubscription: oscillator.onEnded(() => {
         direct.endedSubscription.unsubscribe();
-        if (!bundle.direct || !this.stoppedBundles.has(bundle)) return;
+        direct.ended = true;
+        if (
+          !bundle.direct ||
+          (!this.activeBundles.has(bundle) && !this.stoppedBundles.has(bundle))
+        )
+          return;
         this.detachDirect(oscillator);
         oscillator.destroy();
         this.finishBundle(bundle);
@@ -306,10 +319,14 @@ export class UnisonOscillator implements Destroyable {
    */
   private onPooledEnded(bundle: VoiceBundle, source: PooledSource): void {
     source.endedSubscription.unsubscribe();
-    if (!this.stoppedBundles.has(bundle)) return;
+    if (source.ended) return;
+    source.ended = true;
+    if (!this.activeBundles.has(bundle) && !this.stoppedBundles.has(bundle))
+      return;
     const { path, oscillator } = source;
     this.safe(() => this.frequencySource.disconnect(oscillator.frequency));
     this.safe(() => this.detuneSource.disconnect(oscillator.detune));
+    if (path.state === 'armed') path.beginDrain();
     path.disarm(oscillator);
     oscillator.destroy();
     if (bundle.pooled.every(source => source.path.state === 'free')) {
