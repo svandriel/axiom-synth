@@ -168,6 +168,8 @@ export class UnisonOscillator implements Destroyable {
     const lease = this.pathPool.acquire(voices);
     const sources: PooledSource[] = [];
     const bundle: VoiceBundle = { direct: null, pooled: sources, lease };
+    this.activeBundles.add(bundle);
+    this.current = bundle;
     try {
       // Raw oscillators are one-shot sources, so allocate them per note.
       lease.paths.forEach(path => {
@@ -189,12 +191,10 @@ export class UnisonOscillator implements Destroyable {
       });
       sources.forEach(({ oscillator }) => oscillator.start(noteHz, now));
     } catch (error) {
+      this.finishBundle(bundle);
       this.rollbackPooled(lease, sources);
       throw error;
     }
-
-    this.activeBundles.add(bundle);
-    this.current = bundle;
   }
 
   stop(): void;
@@ -297,6 +297,8 @@ export class UnisonOscillator implements Destroyable {
       }),
     } satisfies DirectSource;
     bundle = { direct, pooled: [], lease: null };
+    this.activeBundles.add(bundle);
+    this.current = bundle;
     try {
       oscillator.waveform = this.wave;
       oscillator.frequency.setValueAtTime(noteHz, now);
@@ -305,13 +307,12 @@ export class UnisonOscillator implements Destroyable {
       oscillator.connect(this.outputGain);
       oscillator.start(noteHz, now);
     } catch (error) {
+      this.finishBundle(bundle);
       direct.endedSubscription.unsubscribe();
       this.detachDirect(oscillator);
       oscillator.destroy();
       throw error;
     }
-    this.activeBundles.add(bundle);
-    this.current = bundle;
   }
 
   /**
