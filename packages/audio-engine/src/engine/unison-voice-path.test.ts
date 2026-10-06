@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FakeAudioContext, installFakeAudioParam } from '@axiom/audio-testing';
+import type { Oscillator } from './oscillator';
 import { UnisonVoicePathPool } from './unison-voice-path';
 
 function createPool() {
@@ -24,10 +25,39 @@ function createPool() {
   };
 }
 
-function asOscillator(
-  oscillator: ReturnType<FakeAudioContext['createOscillator']>,
-) {
-  return oscillator as unknown as OscillatorNode;
+function createOscillator(context: FakeAudioContext): Oscillator & {
+  readonly connections: Array<{ readonly destination: unknown }>;
+} {
+  const oscillator = context.createOscillator();
+  const connections: Array<{
+    readonly destination: unknown;
+  }> = [];
+  return {
+    waveform: 'sawtooth',
+    frequency: oscillator.frequency as unknown as AudioParam,
+    detune: oscillator.detune as unknown as AudioParam,
+    gain: oscillator.detune as unknown as AudioParam,
+    connections,
+    connect(destination) {
+      connections.push({ destination });
+    },
+    disconnect(destination) {
+      if (destination === undefined || destination === null) {
+        connections.length = 0;
+        return;
+      }
+      const index = connections.findIndex(
+        connection => connection.destination === destination,
+      );
+      if (index >= 0) connections.splice(index, 1);
+    },
+    start() {},
+    stop() {},
+    onEnded() {
+      return { unsubscribe() {} };
+    },
+    destroy() {},
+  };
 }
 
 describe('UnisonVoicePathPool', () => {
@@ -37,12 +67,10 @@ describe('UnisonVoicePathPool', () => {
       const { context, pool } = createPool();
       const lease = pool.acquire(4);
       const oscillators = Array.from({ length: 4 }, () =>
-        context.createOscillator(),
+        createOscillator(context),
       );
 
-      lease.paths.forEach((path, index) =>
-        path.arm(asOscillator(oscillators[index]!)),
-      );
+      lease.paths.forEach((path, index) => path.arm(oscillators[index]!));
       lease.paths.forEach(path => path.beginDrain());
 
       expect(pool.acquire(4).usesOverflow).toBe(true);
@@ -73,10 +101,10 @@ describe('UnisonVoicePathPool', () => {
     try {
       const { context, pool } = createPool();
       const first = pool.acquire(2);
-      const oscillator = context.createOscillator();
-      first.paths[0]!.arm(asOscillator(oscillator));
+      const oscillator = createOscillator(context);
+      first.paths[0]!.arm(oscillator);
       first.paths[0]!.beginDrain();
-      first.paths[0]!.disarm(asOscillator(oscillator));
+      first.paths[0]!.disarm(oscillator);
       pool.release(first);
 
       const second = pool.acquire(2);
@@ -101,16 +129,12 @@ describe('UnisonVoicePathPool', () => {
       const { context, pool } = createPool();
       const lease = pool.acquire(4);
       const oscillators = Array.from({ length: 4 }, () =>
-        context.createOscillator(),
+        createOscillator(context),
       );
-      lease.paths.forEach((path, index) =>
-        path.arm(asOscillator(oscillators[index]!)),
-      );
+      lease.paths.forEach((path, index) => path.arm(oscillators[index]!));
 
       lease.paths.forEach(path => path.beginDrain());
-      lease.paths.forEach((path, index) =>
-        path.disarm(asOscillator(oscillators[index]!)),
-      );
+      lease.paths.forEach((path, index) => path.disarm(oscillators[index]!));
       pool.release(lease);
 
       const next = pool.acquire(4);
@@ -126,17 +150,17 @@ describe('UnisonVoicePathPool', () => {
     try {
       const { context, pool } = createPool();
       const first = pool.acquire(2);
-      const firstSource = context.createOscillator();
-      first.paths[0]!.arm(asOscillator(firstSource));
+      const firstSource = createOscillator(context);
+      first.paths[0]!.arm(firstSource);
       first.paths[0]!.beginDrain();
-      first.paths[0]!.disarm(asOscillator(firstSource));
+      first.paths[0]!.disarm(firstSource);
       pool.release(first);
 
       const second = pool.acquire(2);
-      const secondSource = context.createOscillator();
-      second.paths[0]!.arm(asOscillator(secondSource));
+      const secondSource = createOscillator(context);
+      second.paths[0]!.arm(secondSource);
       second.paths[0]!.beginDrain();
-      second.paths[0]!.disarm(asOscillator(firstSource));
+      second.paths[0]!.disarm(firstSource);
 
       expect(pool.acquire(2).usesOverflow).toBe(true);
     } finally {
@@ -149,10 +173,10 @@ describe('UnisonVoicePathPool', () => {
     try {
       const { context, pool, detuneSource } = createPool();
       const lease = pool.acquire(2);
-      const oscillator = context.createOscillator();
-      lease.paths[0]!.arm(asOscillator(oscillator));
+      const oscillator = createOscillator(context);
+      lease.paths[0]!.arm(oscillator);
       lease.paths[0]!.beginDrain();
-      lease.paths[0]!.disarm(asOscillator(oscillator));
+      lease.paths[0]!.disarm(oscillator);
 
       expect(
         context.operations.some(
@@ -160,7 +184,7 @@ describe('UnisonVoicePathPool', () => {
             operation.type === 'disconnect' &&
             (operation.source as unknown) ===
               (lease.paths[0]!.detuneScale as unknown) &&
-            operation.destination === oscillator.detune,
+            (operation.destination as unknown) === oscillator.detune,
         ),
       ).toBe(true);
       expect(
@@ -180,12 +204,12 @@ describe('UnisonVoicePathPool', () => {
     try {
       const { context, pool, outputGain } = createPool();
       const lease = pool.acquire(2);
-      const oscillator = context.createOscillator();
-      lease.paths[0]!.arm(asOscillator(oscillator));
+      const oscillator = createOscillator(context);
+      lease.paths[0]!.arm(oscillator);
 
       expect(
         oscillator.connections.some(
-          connection => connection.destination === outputGain,
+          connection => (connection.destination as unknown) === outputGain,
         ),
       ).toBe(false);
     } finally {
@@ -198,17 +222,17 @@ describe('UnisonVoicePathPool', () => {
     try {
       const { context, pool } = createPool();
       const stable = pool.acquire(2);
-      const stableSources = stable.paths.map(() => context.createOscillator());
+      const stableSources = stable.paths.map(() => createOscillator(context));
       stable.paths.forEach((path, index) => {
-        path.arm(asOscillator(stableSources[index]!));
+        path.arm(stableSources[index]!);
         path.beginDrain();
       });
       const overflow = pool.acquire(2);
-      const sources = overflow.paths.map(() => context.createOscillator());
+      const sources = overflow.paths.map(() => createOscillator(context));
       overflow.paths.forEach((path, index) => {
-        path.arm(asOscillator(sources[index]!));
+        path.arm(sources[index]!);
         path.beginDrain();
-        path.disarm(asOscillator(sources[index]!));
+        path.disarm(sources[index]!);
       });
       pool.release(overflow);
 
@@ -224,8 +248,8 @@ describe('UnisonVoicePathPool', () => {
       const { context, pool, detuneSource, depthSource, blendSource } =
         createPool();
       const lease = pool.acquire(2);
-      const oscillator = context.createOscillator();
-      lease.paths[0]!.arm(asOscillator(oscillator));
+      const oscillator = createOscillator(context);
+      lease.paths[0]!.arm(oscillator);
       pool.destroy();
 
       expect(oscillator.connections).toHaveLength(0);

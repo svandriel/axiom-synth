@@ -1,13 +1,452 @@
 import { describe, expect, it } from 'vitest';
 import { UnisonOscillator } from './unison-oscillator';
-import { FakeAudioContext, installFakeAudioParam } from '@axiom/audio-testing';
+import type { Oscillator } from './oscillator';
+import {
+  FakeAudioContext,
+  FakeAudioParam,
+  type FakeAudioDestination,
+  type FakeOscillatorNode,
+  installFakeAudioParam,
+} from '@axiom/audio-testing';
+
+class TestOscillator implements Oscillator {
+  private readonly node: FakeOscillatorNode;
+  private readonly gainParam = new FakeAudioParam();
+  throwOnStart = false;
+  endSynchronouslyOnStart = false;
+  unsubscribeCalls = 0;
+
+  set throwOnStop(value: boolean) {
+    this.node.throwOnStop = value;
+  }
+
+  constructor(context: FakeAudioContext) {
+    this.node = context.createOscillator();
+  }
+
+  get waveform() {
+    return this.node.type as Oscillator['waveform'];
+  }
+
+  set waveform(value: Oscillator['waveform']) {
+    this.node.type = value;
+  }
+
+  get frequency() {
+    return this.node.frequency as unknown as AudioParam;
+  }
+
+  get detune() {
+    return this.node.detune as unknown as AudioParam;
+  }
+
+  get gain() {
+    return this.gainParam as unknown as AudioParam;
+  }
+
+  connect(destination: AudioNode | AudioParam): void {
+    this.node.connect(destination as unknown as FakeAudioDestination);
+  }
+
+  disconnect(destination?: AudioNode | AudioParam | null): void {
+    this.node.disconnect(
+      destination as unknown as FakeAudioDestination | undefined,
+    );
+  }
+
+  start(_noteHz: number, now: number): void {
+    if (this.throwOnStart) throw new Error('TestOscillator start failed');
+    this.node.start(now);
+    if (this.endSynchronouslyOnStart) this.node.end();
+  }
+
+  stop(time?: number): void {
+    this.node.stop(time);
+  }
+
+  onEnded(subscriber: () => void) {
+    this.node.onended = subscriber;
+    return {
+      unsubscribe: () => {
+        this.unsubscribeCalls++;
+        if (this.node.onended === subscriber) this.node.onended = null;
+      },
+    };
+  }
+
+  destroy(): void {
+    this.node.disconnect();
+  }
+}
+
+const createUnison = (ctxt: FakeAudioContext) =>
+  new UnisonOscillator(
+    ctxt as unknown as AudioContext,
+    context => new TestOscillator(context as unknown as FakeAudioContext),
+  );
 
 describe('UnisonOscillator', () => {
+  it('cleans up a direct source that ends synchronously during start', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const created: TestOscillator[] = [];
+      const oscillator = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          const source = new TestOscillator(
+            context as unknown as FakeAudioContext,
+          );
+          source.endSynchronouslyOnStart = true;
+          created.push(source);
+          return source;
+        },
+      );
+
+      oscillator.start(440, 0);
+
+      const state = oscillator as unknown as {
+        current: unknown;
+        activeBundles: Set<unknown>;
+        stoppedBundles: Set<unknown>;
+      };
+      expect(state.current).toBeNull();
+      expect(state.activeBundles).toHaveLength(0);
+      expect(state.stoppedBundles).toHaveLength(0);
+      expect(created[0]?.unsubscribeCalls).toBe(1);
+      expect(ctxt.connections).toHaveLength(0);
+
+      oscillator.start(440, 1);
+      expect(ctxt.oscillators).toHaveLength(2);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('cleans up pooled sources that end synchronously during start', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const created: TestOscillator[] = [];
+      const oscillator = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          const source = new TestOscillator(
+            context as unknown as FakeAudioContext,
+          );
+          source.endSynchronouslyOnStart = true;
+          created.push(source);
+          return source;
+        },
+      );
+      oscillator.voices = 2;
+
+      oscillator.start(440, 0);
+
+      const state = oscillator as unknown as {
+        current: unknown;
+        activeBundles: Set<unknown>;
+        stoppedBundles: Set<unknown>;
+        pathPool: {
+          counters: {
+            acquired: number;
+            released: number;
+            overflowCreated: number;
+          };
+        };
+      };
+      expect(state.current).toBeNull();
+      expect(state.activeBundles).toHaveLength(0);
+      expect(state.stoppedBundles).toHaveLength(0);
+      expect(state.pathPool.counters).toMatchObject({
+        acquired: 1,
+        released: 1,
+        overflowCreated: 0,
+      });
+      expect(created.map(source => source.unsubscribeCalls)).toEqual([1, 1]);
+
+      oscillator.start(440, 1);
+
+      expect(ctxt.stereoPanners).toHaveLength(2);
+      expect(state.pathPool.counters).toMatchObject({
+        acquired: 2,
+        released: 2,
+        overflowCreated: 0,
+      });
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('creates one oscillator abstraction per unison voice', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    const ctxt = new FakeAudioContext();
+    const created: Oscillator[] = [];
+    const factory = (context: AudioContext) =>
+      new TestOscillator(context as unknown as FakeAudioContext);
+    try {
+      const oneVoice = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          const oscillator = factory(context);
+          created.push(oscillator);
+          return oscillator;
+        },
+      );
+      oneVoice.start(440, 0);
+      expect(created).toHaveLength(1);
+
+      const threeVoices = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          const oscillator = factory(context);
+          created.push(oscillator);
+          return oscillator;
+        },
+      );
+      threeVoices.voices = 3;
+      threeVoices.start(440, 0);
+      expect(created).toHaveLength(4);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('unsubscribes ended handlers during every source cleanup path', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const created: TestOscillator[] = [];
+      const oscillator = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          const source = new TestOscillator(
+            context as unknown as FakeAudioContext,
+          );
+          created.push(source);
+          return source;
+        },
+      );
+
+      oscillator.start(440, 0);
+      oscillator.stop();
+      ctxt.oscillators[0]!.end();
+      expect(created[0]?.unsubscribeCalls).toBe(1);
+
+      oscillator.voices = 2;
+      oscillator.start(440, 1);
+      oscillator.stop();
+      ctxt.oscillators.slice(1).forEach(source => source.end());
+      expect(
+        created.slice(1).every(source => source.unsubscribeCalls === 1),
+      ).toBe(true);
+
+      ctxt.waveShapers[0]!.throwOnCurveSet = true;
+      expect(() => oscillator.start(440, 2)).toThrow();
+      expect(
+        created.slice(3).every(source => source.unsubscribeCalls === 1),
+      ).toBe(true);
+
+      ctxt.waveShapers[0]!.throwOnCurveSet = false;
+      oscillator.start(440, 3);
+      oscillator.destroy();
+      expect(
+        created.slice(5).every(source => source.unsubscribeCalls === 1),
+      ).toBe(true);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('unsubscribes a pooled handler when an active source ends', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const created: TestOscillator[] = [];
+      const oscillator = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          const source = new TestOscillator(
+            context as unknown as FakeAudioContext,
+          );
+          created.push(source);
+          return source;
+        },
+      );
+      oscillator.voices = 2;
+
+      oscillator.start(440, 0);
+      ctxt.oscillators[0]!.end();
+
+      expect(created).toHaveLength(2);
+      expect(created[0]!.unsubscribeCalls).toBe(1);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('cleans up a direct source that ends before stop', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = createUnison(ctxt);
+
+      oscillator.start(440, 0);
+      ctxt.oscillators[0]!.end();
+
+      expect(ctxt.connections).toHaveLength(0);
+
+      oscillator.start(440, 1);
+
+      expect(ctxt.oscillators).toHaveLength(2);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('releases pooled paths when every source ends before stop', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = createUnison(ctxt);
+      oscillator.voices = 2;
+
+      oscillator.start(440, 0);
+      const firstSources = [...ctxt.oscillators];
+      firstSources.forEach(source => source.end());
+
+      expect(
+        firstSources.every(source => source.connections.length === 0),
+      ).toBe(true);
+
+      oscillator.start(440, 1);
+
+      expect(ctxt.oscillators).toHaveLength(4);
+      expect(ctxt.stereoPanners).toHaveLength(2);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('unsubscribes a direct source when stop fails', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const created: TestOscillator[] = [];
+      const oscillator = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          const source = new TestOscillator(
+            context as unknown as FakeAudioContext,
+          );
+          created.push(source);
+          return source;
+        },
+      );
+
+      oscillator.start(440, 0);
+      created[0]!.throwOnStop = true;
+      oscillator.stop();
+
+      expect(created).toHaveLength(1);
+      expect(created[0]!.unsubscribeCalls).toBe(1);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('unsubscribes every pooled source when one stop fails', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const created: TestOscillator[] = [];
+      const oscillator = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          const source = new TestOscillator(
+            context as unknown as FakeAudioContext,
+          );
+          created.push(source);
+          return source;
+        },
+      );
+      oscillator.voices = 2;
+
+      oscillator.start(440, 0);
+      created[0]!.throwOnStop = true;
+      oscillator.stop();
+
+      expect(created).toHaveLength(2);
+      expect(created.map(source => source.unsubscribeCalls)).toEqual([1, 1]);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('unsubscribes created sources when pooled setup rolls back', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const created: TestOscillator[] = [];
+      const oscillator = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          if (created.length === 1) {
+            throw new Error('TestOscillator creation failed');
+          }
+          const source = new TestOscillator(
+            context as unknown as FakeAudioContext,
+          );
+          created.push(source);
+          return source;
+        },
+      );
+      oscillator.voices = 2;
+
+      expect(() => oscillator.start(440, 0)).toThrow(
+        'TestOscillator creation failed',
+      );
+
+      expect(created).toHaveLength(1);
+      expect(created[0]!.unsubscribeCalls).toBe(1);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('unsubscribes every pooled source when destroyed while draining', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const created: TestOscillator[] = [];
+      const oscillator = new UnisonOscillator(
+        ctxt as unknown as AudioContext,
+        context => {
+          const source = new TestOscillator(
+            context as unknown as FakeAudioContext,
+          );
+          created.push(source);
+          return source;
+        },
+      );
+      oscillator.voices = 2;
+
+      oscillator.start(440, 0);
+      oscillator.stop();
+      oscillator.destroy();
+
+      expect(created).toHaveLength(2);
+      expect(created.map(source => source.unsubscribeCalls)).toEqual([1, 1]);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
   it('creates one direct oscillator for one voice', () => {
     const restoreAudioParam = installFakeAudioParam();
     const ctxt = new FakeAudioContext();
     try {
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
 
       oscillator.start(440, 0);
 
@@ -44,7 +483,7 @@ describe('UnisonOscillator', () => {
       expect(ctxt.connections).toHaveLength(0);
       expect(
         ctxt.operations.filter(operation => operation.type === 'disconnect'),
-      ).toHaveLength(3);
+      ).toHaveLength(4);
     } finally {
       restoreAudioParam();
     }
@@ -54,7 +493,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
 
       expect(oscillator.unisonBlend.value).toBe(1);
     } finally {
@@ -66,7 +505,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
 
       oscillator.voices = 3;
       oscillator.start(440, 0);
@@ -87,7 +526,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
 
       oscillator.start(440, 0);
 
@@ -102,7 +541,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
 
       oscillator.start(440, 0);
@@ -116,11 +555,38 @@ describe('UnisonOscillator', () => {
     }
   });
 
+  it('routes pooled oscillator output through its gain parameter', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    try {
+      const ctxt = new FakeAudioContext();
+      const oscillator = createUnison(ctxt);
+      oscillator.voices = 2;
+
+      oscillator.start(440, 0);
+
+      const pooledSource = ctxt.oscillators[0]!;
+      expect(
+        pooledSource.connections.some(
+          connection => connection.destination !== ctxt.gains[0],
+        ),
+      ).toBe(true);
+      expect(
+        ctxt.connections.some(
+          connection =>
+            connection.source === pooledSource &&
+            connection.destination === pooledSource.detune,
+        ),
+      ).toBe(false);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
   it('keeps every bundle path reserved until the final sibling ends', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       oscillator.start(440, 0);
       oscillator.stop();
@@ -137,7 +603,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
 
       oscillator.start(440, 0);
@@ -165,7 +631,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
 
       oscillator.start(440, 0);
       const direct = ctxt.oscillators[0]!;
@@ -211,7 +677,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       const originalStart = ctxt.oscillators;
 
@@ -243,7 +709,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       oscillator.start(440, 0);
       const warmedGainCount = ctxt.gains.length;
@@ -263,11 +729,11 @@ describe('UnisonOscillator', () => {
     }
   });
 
-  it('rolls back every path when path arm connection fails', () => {
+  it('cleans up a pooled source when adapter output connection fails', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       oscillator.start(440, 0);
       const firstSources = [...ctxt.oscillators];
@@ -283,6 +749,8 @@ describe('UnisonOscillator', () => {
       expect(() => oscillator.start(440, 1)).toThrow(
         'FakeAudioNode connect failed',
       );
+      expect(ctxt.oscillators[2]!.connections).toHaveLength(0);
+      expect(ctxt.oscillators[2]!.stopCalls).toHaveLength(1);
       ctxt.createOscillator = originalCreate;
       oscillator.start(440, 2);
       expect(ctxt.oscillators).toHaveLength(5);
@@ -295,7 +763,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       const originalCreate = ctxt.createOscillator.bind(ctxt);
       ctxt.createOscillator = () => {
         const source = originalCreate();
@@ -320,7 +788,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       const originalCreate = ctxt.createOscillator.bind(ctxt);
       ctxt.createOscillator = () => {
@@ -345,7 +813,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.start(440, 0);
       const direct = ctxt.oscillators[0]!;
       oscillator.stop();
@@ -367,7 +835,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       oscillator.start(440, 0);
       const source = ctxt.oscillators[0]!;
@@ -390,7 +858,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       oscillator.start(440, 0);
       ctxt.oscillators[0]!.throwOnStop = true;
@@ -444,7 +912,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.start(440, 0);
       const source = ctxt.oscillators[0]!;
       const [frequencySource, detuneSource] = ctxt.constantSources;
@@ -478,7 +946,7 @@ describe('UnisonOscillator', () => {
     const restoreAudioParam = installFakeAudioParam();
     try {
       const ctxt = new FakeAudioContext();
-      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+      const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
       oscillator.start(440, 0);
       oscillator.stop();

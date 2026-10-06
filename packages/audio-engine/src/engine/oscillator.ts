@@ -1,13 +1,32 @@
 import type { WaveFormType } from '../types';
 import type { Destroyable } from './destroyable';
 
-export class Oscillator implements Destroyable {
+const DEFAULT_OUTPUT_GAIN = 1;
+
+export interface Oscillator extends Destroyable {
+  waveform: WaveFormType;
+  readonly frequency: AudioParam;
+  readonly detune: AudioParam;
+  readonly gain: AudioParam;
+  connect(destination: AudioNode | AudioParam): void;
+  disconnect(destination?: AudioNode | AudioParam | null): void;
+  start(noteHz: number, now: number): void;
+  stop(time?: number): void;
+  onEnded(subscriber: () => void): OscillatorEndSubscription;
+}
+
+export interface OscillatorEndSubscription {
+  unsubscribe(): void;
+}
+
+export class WebAudioOscillator implements Oscillator {
   private readonly ctxt: AudioContext;
   private readonly outputGain: GainNode;
   private readonly frequencySource: ConstantSourceNode;
   private readonly detuneSource: ConstantSourceNode;
   private readonly activeNodes: Set<OscillatorNode> = new Set();
   private readonly stoppedNodes: Set<OscillatorNode> = new Set();
+  private readonly endedSubscribers = new Set<() => void>();
   private current: OscillatorNode | null = null;
   private wave: WaveFormType = 'sawtooth';
   private destroyed = false;
@@ -16,7 +35,7 @@ export class Oscillator implements Destroyable {
     this.ctxt = ctxt;
 
     this.outputGain = ctxt.createGain();
-    this.outputGain.gain.setValueAtTime(0, ctxt.currentTime);
+    this.outputGain.gain.setValueAtTime(DEFAULT_OUTPUT_GAIN, ctxt.currentTime);
 
     this.frequencySource = ctxt.createConstantSource();
     this.frequencySource.offset.setValueAtTime(0, ctxt.currentTime);
@@ -53,7 +72,7 @@ export class Oscillator implements Destroyable {
     return this.outputGain.gain;
   }
 
-  connect(destination: AudioNode | AudioParam) {
+  connect(destination: AudioNode | AudioParam): void {
     if (destination instanceof AudioParam) {
       this.outputGain.connect(destination);
     } else {
@@ -61,7 +80,7 @@ export class Oscillator implements Destroyable {
     }
   }
 
-  disconnect(destination: null | AudioNode | AudioParam = null) {
+  disconnect(destination: null | AudioNode | AudioParam = null): void {
     if (destination === null) {
       this.outputGain.disconnect();
     } else if (destination instanceof AudioParam) {
@@ -71,7 +90,7 @@ export class Oscillator implements Destroyable {
     }
   }
 
-  start(noteHz: number, now: number) {
+  start(noteHz: number, now: number): void {
     if (this.current) {
       this.stop();
     }
@@ -103,11 +122,24 @@ export class Oscillator implements Destroyable {
     }
   }
 
+  onEnded(subscriber: () => void): OscillatorEndSubscription {
+    this.endedSubscribers.add(subscriber);
+    let subscribed = true;
+    return {
+      unsubscribe: () => {
+        if (!subscribed) return;
+        subscribed = false;
+        this.endedSubscribers.delete(subscriber);
+      },
+    };
+  }
+
   destroy(): void {
     if (this.destroyed) {
       return;
     }
     this.destroyed = true;
+    this.endedSubscribers.clear();
     this.activeNodes.forEach(osc => {
       osc.onended = null;
       if (!this.stoppedNodes.has(osc)) {
@@ -141,6 +173,8 @@ export class Oscillator implements Destroyable {
       this.activeNodes.delete(osc);
       this.stoppedNodes.delete(osc);
       osc.disconnect();
+      this.current = this.current === osc ? null : this.current;
+      [...this.endedSubscribers].forEach(subscriber => subscriber());
     };
     osc.connect(this.outputGain);
     osc.start(now);
