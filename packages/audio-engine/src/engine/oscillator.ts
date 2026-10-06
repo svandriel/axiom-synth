@@ -1,6 +1,8 @@
 import type { WaveFormType } from '../types';
 import type { Destroyable } from './destroyable';
 
+const DEFAULT_OUTPUT_GAIN = 1;
+
 export interface Oscillator extends Destroyable {
   waveform: WaveFormType;
   readonly frequency: AudioParam;
@@ -33,7 +35,7 @@ export class WebAudioOscillator implements Oscillator {
     this.ctxt = ctxt;
 
     this.outputGain = ctxt.createGain();
-    this.outputGain.gain.setValueAtTime(0, ctxt.currentTime);
+    this.outputGain.gain.setValueAtTime(DEFAULT_OUTPUT_GAIN, ctxt.currentTime);
 
     this.frequencySource = ctxt.createConstantSource();
     this.frequencySource.offset.setValueAtTime(0, ctxt.currentTime);

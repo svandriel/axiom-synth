@@ -16,6 +16,19 @@ describe('WebAudioOscillator', () => {
     }
   });
 
+  it('starts with unity output gain', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    const context = new FakeAudioContext();
+
+    try {
+      new WebAudioOscillator(context as unknown as AudioContext);
+
+      expect(context.gains[0]?.gain.value).toBe(1);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
   it('notifies each active end subscriber once and supports idempotent unsubscribe', () => {
     const restoreAudioParam = installFakeAudioParam();
     const context = new FakeAudioContext();
