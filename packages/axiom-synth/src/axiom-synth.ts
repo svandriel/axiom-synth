@@ -26,6 +26,7 @@ import {
 } from '@axiom/audio-engine';
 import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
+import { initNativeModule, NativeModule } from '@axiom/native';
 
 const MAX_VOICES = 16;
 const UNISON_RAMP_SECONDS = 0.01;
@@ -307,6 +308,17 @@ export class AxiomSynth extends Synth<AxiomVoice> {
       lfoRateSources: this.lfoRateSources,
       lfoDepthSources: this.lfoDepthSources,
     };
+
+    this.initNative().catch(console.error);
+  }
+
+  private async initNative() {
+    const nativeModule = await initNativeModule(this.ctxt);
+    const osc = nativeModule.createSawOscillator();
+
+    const constSource = this.createConstantSource(140);
+    constSource.connect(osc.frequency);
+    osc.connect(this.output);
   }
 
   protected override createVoice(): AxiomVoice {

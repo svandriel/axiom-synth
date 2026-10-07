@@ -1,5 +1,5 @@
 {
-  "name": "@axiom/axiom-synth",
+  "name": "@axiom/native",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -15,12 +15,12 @@
   },
   "devDependencies": {
     "@axiom/audio-testing": "workspace:*",
-    "@vue/tsconfig": "^0.9.1",
+    "@types/audioworklet": "^0.0.100",
     "typescript": "^6.0.3",
+    "vite": "^8.2.2",
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@axiom/audio-engine": "workspace:*",
-    "@axiom/native": "workspace:*"
+    "@axiom/audio-engine": "workspace:*"
   }
 }
