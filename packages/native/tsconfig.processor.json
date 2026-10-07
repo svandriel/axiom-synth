@@ -2,12 +2,13 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.axiom-native-processor.tsbuildinfo",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "types": ["audioworklet"]
   },
+
   "include": [
     "src/processors/**/*.ts",
-    "src/shared/worklet-message.ts",
+    "src/shared/**/*.ts",
     "worklet.d.ts.x",
     "src/@types/worklet.d.ts"
   ]
