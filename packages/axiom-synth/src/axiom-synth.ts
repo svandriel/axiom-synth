@@ -26,7 +26,7 @@ import {
 } from '@axiom/audio-engine';
 import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
-import { initNativeModule, NativeModule } from '@axiom/native';
+import { initNativeModule, type SawOscillatorNode } from '@axiom/native';
 
 const MAX_VOICES = 16;
 const UNISON_RAMP_SECONDS = 0.01;
@@ -177,6 +177,8 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     FixedArray<ConstantSourceNode, LfoTargetCount>,
     LfoCount
   >;
+  private nativeOscillator: SawOscillatorNode | undefined;
+  private nativeFrequencySource: ConstantSourceNode | undefined;
 
   private readonly voiceConfig: AxiomVoiceConfig;
 
@@ -316,8 +318,23 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     const nativeModule = await initNativeModule(this.ctxt);
     const osc = nativeModule.createSawOscillator();
 
-    const constSource = this.createConstantSource(140);
+    const constSource = this.createConstantSource(100);
+    const lfo = this.ctxt.createOscillator();
+    lfo.frequency.value = 1;
+    lfo.start();
+
+    if (this.destroyed) {
+      constSource.disconnect();
+      constSource.stop();
+      osc.destroy();
+      return;
+    }
+
+    this.nativeOscillator = osc;
+    this.nativeFrequencySource = constSource;
+    lfo.connect(osc.frequency);
     constSource.connect(osc.frequency);
+    osc.frequency.value = 220;
     osc.connect(this.output);
   }
 
@@ -544,6 +561,11 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     this.waveShaperDriveSource.disconnect();
     this.waveShaperDriveSource.stop();
     this.waveshaperCurve.destroy();
+    this.nativeFrequencySource?.disconnect();
+    this.nativeFrequencySource?.stop();
+    this.nativeOscillator?.destroy();
+    this.nativeFrequencySource = undefined;
+    this.nativeOscillator = undefined;
     this.lfoRateSources.forEach(source => {
       source.disconnect();
       source.stop();

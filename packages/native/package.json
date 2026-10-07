@@ -10,8 +10,13 @@
     }
   },
   "scripts": {
-    "build": "tsc --noEmit",
-    "test": "vitest run"
+    "build": "pnpm build:js && pnpm build:wasm",
+    "build:wasm": "make wasm -C ./c",
+    "build:js": "tsc --noEmit",
+    "test": "pnpm run \"/^test:/\"",
+    "test:native": "make test -C ./c",
+    "test:js": "vitest run",
+    "dev": "pnpm run build:wasm"
   },
   "devDependencies": {
     "@axiom/audio-testing": "workspace:*",

@@ -13,6 +13,7 @@ TEST_SRC := tests/test_moog_saw.c
 BUILD   := dist
 NATIVE  := $(BUILD)/native
 WASM    := $(BUILD)/wasm
+WASM_TSD := moog_saw.d.ts
 
 .PHONY: all native test wasm clean
 
@@ -36,8 +37,11 @@ $(WASM)/moog_saw.js: $(WASM_SRC) include/moog_saw.h
 		-std=c11 \
 		$(INCLUDE) \
 		$(WASM_SRC) \
+		--minify 0 \
 		-sMODULARIZE=1 \
 		-sEXPORT_ES6=1 \
+		-sSHARED_MEMORY=1 \
+		--emit-tsd $(WASM_TSD) \
 		-sEXPORTED_FUNCTIONS='["_moog_saw_wasm_create","_moog_saw_wasm_destroy","_moog_saw_wasm_reset","_moog_saw_wasm_set_frequency","_moog_saw_wasm_process","_malloc","_free"]' \
 		-sEXPORTED_RUNTIME_METHODS='["HEAPF32"]' \
 		-o $@
