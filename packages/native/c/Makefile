@@ -40,6 +40,7 @@ $(WASM)/moog_saw.js: $(WASM_SRC) include/moog_saw.h
 		--minify 0 \
 		-sMODULARIZE=1 \
 		-sEXPORT_ES6=1 \
+		-sENVIRONMENT=web \
 		-sSHARED_MEMORY=1 \
 		--emit-tsd $(WASM_TSD) \
 		-sEXPORTED_FUNCTIONS='["_moog_saw_wasm_create","_moog_saw_wasm_destroy","_moog_saw_wasm_reset","_moog_saw_wasm_set_frequency","_moog_saw_wasm_process","_malloc","_free"]' \
