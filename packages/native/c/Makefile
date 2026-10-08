@@ -37,7 +37,6 @@ $(WASM)/moog_saw.js: $(WASM_SRC) include/moog_saw.h
 		-std=c11 \
 		$(INCLUDE) \
 		$(WASM_SRC) \
-		--minify 0 \
 		-sMODULARIZE=1 \
 		-sEXPORT_ES6=1 \
 		-sENVIRONMENT=web \
