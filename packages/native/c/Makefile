@@ -6,7 +6,7 @@ LDFLAGS := -lm
 
 INCLUDE := -Iinclude
 
-SRC     := src/moog_saw.c
+SRC     := src/math_utils.c src/moog_saw.c
 WASM_SRC := $(SRC) src/moog_saw_wasm.c
 TEST_SRC := tests/test_moog_saw.c
 
@@ -21,7 +21,7 @@ all: native wasm
 
 native: $(NATIVE)/test_moog_saw
 
-$(NATIVE)/test_moog_saw: Makefile $(SRC) $(TEST_SRC) include/moog_saw.h
+$(NATIVE)/test_moog_saw: Makefile $(SRC) $(TEST_SRC) include/math_utils.h include/moog_saw.h
 	@mkdir -p $(NATIVE)
 	$(CC) $(CFLAGS) $(INCLUDE) $(SRC) $(TEST_SRC) $(LDFLAGS) -o $@
 
@@ -30,7 +30,7 @@ test: $(NATIVE)/test_moog_saw
 
 wasm: $(WASM)/moog_saw.js
 
-$(WASM)/moog_saw.js: Makefile $(WASM_SRC) include/moog_saw.h
+$(WASM)/moog_saw.js: Makefile $(WASM_SRC) include/math_utils.h include/moog_saw.h
 	@mkdir -p $(WASM)
 	$(EMCC) \
 		-O3 \
