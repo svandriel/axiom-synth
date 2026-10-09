@@ -5,3 +5,7 @@ interface AudioParamDescriptor {
   maxValue?: number;
   minValue?: number;
 }
+
+namespace globalThis {
+  var renderQuantumSize: number | undefined;
+}
