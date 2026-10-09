@@ -12,31 +12,34 @@ export class AudioEngine implements Destroyable {
   private readonly comp: DynamicsCompressorNode;
   private readonly feedbackDelay: FeedbackDelay;
   private destroyed = false;
+  public readonly id: number;
 
-  constructor(ctxt: AudioContext) {
-    this.ctxt = ctxt;
+  constructor(opts: Partial<AudioContextOptions> = {}) {
+    this.ctxt = new AudioContext(opts);
+    this.id = Math.round(new Date().getTime() / 1000);
+    console.log(`Creating AudioEngine #${this.id}`);
 
-    this.masterInput = ctxt.createGain();
+    this.masterInput = this.ctxt.createGain();
     this.masterInput.gain.value = 1.0;
-    this.master = ctxt.createGain();
+    this.master = this.ctxt.createGain();
     this.master.gain.value = 0.5;
-    this.meter = new Meter(ctxt);
-    this.analyser = ctxt.createAnalyser();
+    this.meter = new Meter(this.ctxt);
+    this.analyser = this.ctxt.createAnalyser();
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.82;
-    this.comp = ctxt.createDynamicsCompressor();
+    this.comp = this.ctxt.createDynamicsCompressor();
 
-    this.feedbackDelay = new FeedbackDelay(ctxt);
-    this.feedbackDelay.wet.setValueAtTime(0.2, ctxt.currentTime);
-    this.feedbackDelay.cutoff.setValueAtTime(400, ctxt.currentTime);
-    this.feedbackDelay.delayTime.setValueAtTime(0.55, ctxt.currentTime);
+    this.feedbackDelay = new FeedbackDelay(this.ctxt);
+    this.feedbackDelay.wet.setValueAtTime(0.2, this.ctxt.currentTime);
+    this.feedbackDelay.cutoff.setValueAtTime(400, this.ctxt.currentTime);
+    this.feedbackDelay.delayTime.setValueAtTime(0.55, this.ctxt.currentTime);
 
     this.masterInput.connect(this.feedbackDelay.input);
     this.feedbackDelay.connect(this.master);
     this.master.connect(this.comp);
     this.comp.connect(this.analyser);
     this.comp.connect(this.meter.input);
-    this.analyser.connect(ctxt.destination);
+    this.analyser.connect(this.ctxt.destination);
   }
 
   getScopeData(buffer: Float32Array<ArrayBuffer>) {
@@ -55,6 +58,7 @@ export class AudioEngine implements Destroyable {
     if (this.destroyed) {
       return;
     }
+    console.log(`Destroying AudioEngine ${this.id}`);
     this.destroyed = true;
     this.meter.destroy();
     this.comp.disconnect();

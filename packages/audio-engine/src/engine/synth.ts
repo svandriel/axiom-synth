@@ -15,6 +15,9 @@ export abstract class Synth<V extends Voice> implements Destroyable {
     audioSink: AudioNode,
     options: { maxVoices: number },
   ) {
+    if (ctxt.state === 'closed') {
+      throw new Error('Cannot create Synth with a closed AudioContext');
+    }
     this.ctxt = ctxt;
     this.audioSink = audioSink;
     this.voiceManager = new VoiceManager(() => this.createVoice(), options);

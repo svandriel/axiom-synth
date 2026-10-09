@@ -1,7 +1,7 @@
 <template>
   <Panel label="Scope">
     <div class="flex flex-row gap-4">
-      <VUMeter :get-value="() => engine.meterLevel" />
+      <VUMeter :get-value="() => audioEngine.meterLevel" />
       <div class="relative h-full w-full overflow-hidden rounded-2xl">
         <canvas
           ref="scope"
@@ -13,14 +13,14 @@
 </template>
 
 <script setup lang="ts">
+import type { AudioEngine } from '@axiom/audio-engine';
 import { onMounted, onUnmounted, useTemplateRef } from 'vue';
-import { useAudioEngine } from '../composables/use-audio-context';
 import Panel from './Panel.vue';
 import VUMeter from './VUMeter.vue';
 
-const scope = useTemplateRef<HTMLCanvasElement>('scope');
+const { audioEngine } = defineProps<{ audioEngine: AudioEngine }>();
 
-const engine = useAudioEngine();
+const scope = useTemplateRef<HTMLCanvasElement>('scope');
 
 const styles = getComputedStyle(document.documentElement);
 
@@ -95,7 +95,7 @@ function render(scope: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
 
   sctx.globalAlpha = 1;
 
-  engine.value.getScopeData(timeData);
+  audioEngine.getScopeData(timeData);
   const grad = sctx.createLinearGradient(0, 0, w, 0);
   grad.addColorStop(0, scopeColor1);
   grad.addColorStop(0.5, scopeColor2);
