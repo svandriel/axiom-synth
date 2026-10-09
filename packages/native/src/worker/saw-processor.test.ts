@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 const wasmModule = vi.hoisted(() => {
+  const DEFAULT_RENDER_QUANTUM_SIZE = 128;
+  const WASM_HEAP_FLOAT_COUNT = DEFAULT_RENDER_QUANTUM_SIZE * 2 + 1;
   const heap = new Float32Array(
-    new SharedArrayBuffer(32 * Float32Array.BYTES_PER_ELEMENT),
+    new SharedArrayBuffer(
+      WASM_HEAP_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT,
+    ),
   );
   let nextPointer = 4;
 
@@ -53,6 +57,7 @@ Object.assign(globalThis, {
 });
 
 const { SawProcessor } = await import('./saw-processor');
+await import('./worker');
 
 describe('SawProcessor', () => {
   it('registers the processor', () => {
@@ -75,11 +80,12 @@ describe('SawProcessor', () => {
   it('processes per-sample frequency through the native WASM saw', async () => {
     const processor = new SawProcessor({
       processorOptions: {
-        sampleRate: 4,
         wasmModule: {} as WebAssembly.Module,
       },
     });
-    await Promise.resolve();
+    await vi.waitFor(() => {
+      expect(wasmModule._moog_saw_wasm_create).toHaveBeenCalled();
+    });
     const output = new Float32Array(4);
     const process = processor.process.bind(processor) as (
       inputs: Float32Array[][],
@@ -110,20 +116,23 @@ describe('SawProcessor', () => {
     );
   });
 
-  it('frees resources when destroyed before WASM initialization', async () => {
+  it('does not initialize WASM when destroyed before initialization', async () => {
+    const createCalls = wasmModule._moog_saw_wasm_create.mock.calls.length;
     const destroyCalls = wasmModule._moog_saw_wasm_destroy.mock.calls.length;
+    const mallocCalls = wasmModule._malloc.mock.calls.length;
     const processor = new SawProcessor({
       processorOptions: {
-        sampleRate: 4,
         wasmModule: {} as WebAssembly.Module,
       },
     });
 
     processor.port.onmessage?.({ data: { type: 'DESTROY' } } as MessageEvent);
-    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 0));
 
+    expect(wasmModule._moog_saw_wasm_create).toHaveBeenCalledTimes(createCalls);
+    expect(wasmModule._malloc).toHaveBeenCalledTimes(mallocCalls);
     expect(wasmModule._moog_saw_wasm_destroy).toHaveBeenCalledTimes(
-      destroyCalls + 1,
+      destroyCalls,
     );
   });
 });
