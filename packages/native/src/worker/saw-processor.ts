@@ -5,11 +5,12 @@ import type {
   WorkletMessage,
 } from '../shared/worklet-messages';
 import { initializeMainModule } from './initiate-module';
-import { Statistics } from '../shared/stats';
+import { Statistics } from './stats';
 
 const WASM_POINTER_SHIFT = 2;
 const SYNC_POINTER = 0;
 const WEBAUDIO_BLOCK_SIZE = 128;
+const STATS_SAMPLE_INTERVAL = 5_000;
 
 export class SawProcessor extends AudioWorkletProcessor {
   private destroyed = false;
@@ -127,10 +128,10 @@ export class SawProcessor extends AudioWorkletProcessor {
     const endTime = Date.now();
     this.renderTimes.addSample(endTime - startTime);
 
-    if (this.renderTimes.count > 1000) {
+    if (this.renderTimes.count > STATS_SAMPLE_INTERVAL) {
       this.port.postMessage({
         type: 'REPORT_RENDER_TIME',
-        renderTime: this.renderTimes.average,
+        renderTimeMs: this.renderTimes.average,
       } as ReportRenderTimeMessage);
       this.renderTimes.clear();
     }
@@ -167,5 +168,3 @@ export class SawProcessor extends AudioWorkletProcessor {
     this.mainModule = undefined;
   }
 }
-
-registerProcessor('saw-processor', SawProcessor);

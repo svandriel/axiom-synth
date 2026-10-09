@@ -7,7 +7,7 @@
   },
 
   "include": [
-    "src/processors/**/*.ts",
+    "src/worker/**/*.ts",
     "src/shared/**/*.ts",
     "worklet.d.ts.x",
     "src/@types/worklet.d.ts"

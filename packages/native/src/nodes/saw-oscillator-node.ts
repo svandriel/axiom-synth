@@ -1,5 +1,8 @@
 import type { SawProcessorOptions } from '../shared/processor-options';
-import type { WorkletDestroyMessage } from '../shared/worklet-messages';
+import type {
+  WorkletDestroyMessage,
+  WorkletMessage,
+} from '../shared/worklet-messages';
 
 export interface SawOscillatorOptions {
   // empty for now
@@ -24,10 +27,16 @@ export class SawOscillatorNode {
       },
     } satisfies SawProcessorOptions);
 
-    this.node.port.onmessage = (event: MessageEvent) => {
+    this.node.port.onmessage = (event: MessageEvent<WorkletMessage>) => {
       switch (event.data.type) {
         case 'REPORT_RENDER_TIME':
-          console.log(`Average render time: ${event.data.renderTime} ms`);
+          const sampleRate = ctxt.sampleRate;
+          const blockSize = 128; // typical block size for AudioWorklet
+          const blockSizeMs = (blockSize / sampleRate) * 1_000;
+          const speed = blockSizeMs / event.data.renderTimeMs;
+          console.log(
+            `Average render time: ${Math.round(event.data.renderTimeMs * 1000)} μs (${Math.round(speed)}x real-time)`,
+          );
           break;
         default:
           console.warn(`Unrecognized message: ${event.data.type}`);

@@ -1,4 +1,4 @@
-export type WorkletMessage = WorkletDestroyMessage;
+export type WorkletMessage = WorkletDestroyMessage | ReportRenderTimeMessage;
 
 export interface BaseWorkletMessage {
   type: string;
@@ -10,5 +10,5 @@ export interface WorkletDestroyMessage extends BaseWorkletMessage {
 
 export interface ReportRenderTimeMessage extends BaseWorkletMessage {
   type: 'REPORT_RENDER_TIME';
-  renderTime: number;
+  renderTimeMs: number;
 }
