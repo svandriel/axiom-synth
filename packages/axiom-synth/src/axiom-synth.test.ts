@@ -14,6 +14,11 @@ import {
 } from '@axiom/audio-testing';
 import { AxiomSynth } from './axiom-synth';
 
+vi.mock('@axiom/native', () => ({
+  // Audio graph tests use a fake context without browser AudioWorklet support.
+  initNativeModule: () => new Promise(() => {}),
+}));
+
 const TARGET_INDEX = {
   osc1: LFO_TARGETS.indexOf('osc1'),
   osc2: LFO_TARGETS.indexOf('osc2'),
