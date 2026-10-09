@@ -5,6 +5,9 @@ import tailwindcss from '@tailwindcss/vite';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
+  define: {
+    self: 'globalThis',
+  },
   server: {
     port: 4000,
   },

@@ -9,7 +9,7 @@ import { Statistics } from './stats';
 
 const WASM_POINTER_SHIFT = 2;
 const SYNC_POINTER = 0;
-const WEBAUDIO_BLOCK_SIZE = 128;
+const WEBAUDIO_BLOCK_SIZE = renderQuantumSize ?? 128;
 const STATS_SAMPLE_INTERVAL = 5_000;
 
 export class SawProcessor extends AudioWorkletProcessor {
@@ -50,9 +50,7 @@ export class SawProcessor extends AudioWorkletProcessor {
 
     initializeMainModule(wasmModule).then(mainModule => {
       this.mainModule = mainModule;
-      this.sawHandle = this.mainModule._moog_saw_wasm_create(
-        options.processorOptions.sampleRate,
-      );
+      this.sawHandle = this.mainModule._moog_saw_wasm_create(sampleRate);
       const blockSizeBytes =
         WEBAUDIO_BLOCK_SIZE * Float32Array.BYTES_PER_ELEMENT;
       this.frequencyPointer = mainModule._malloc(blockSizeBytes);

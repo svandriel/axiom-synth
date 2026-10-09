@@ -23,7 +23,6 @@ export class SawOscillatorNode {
       parameterData: {},
       processorOptions: {
         wasmModule,
-        sampleRate: ctxt.sampleRate,
       },
     } satisfies SawProcessorOptions);
 
@@ -31,7 +30,7 @@ export class SawOscillatorNode {
       switch (event.data.type) {
         case 'REPORT_RENDER_TIME':
           const sampleRate = ctxt.sampleRate;
-          const blockSize = 128; // typical block size for AudioWorklet
+          const blockSize = 128;
           const blockSizeMs = (blockSize / sampleRate) * 1_000;
           const speed = blockSizeMs / event.data.renderTimeMs;
           console.log(
