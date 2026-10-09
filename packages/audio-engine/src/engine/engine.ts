@@ -30,7 +30,7 @@ export class AudioEngine implements Destroyable {
     this.comp = this.ctxt.createDynamicsCompressor();
 
     this.feedbackDelay = new FeedbackDelay(this.ctxt);
-    this.feedbackDelay.wet.setValueAtTime(0.2, this.ctxt.currentTime);
+    this.feedbackDelay.wet.setValueAtTime(0, this.ctxt.currentTime);
     this.feedbackDelay.cutoff.setValueAtTime(400, this.ctxt.currentTime);
     this.feedbackDelay.delayTime.setValueAtTime(0.55, this.ctxt.currentTime);
 

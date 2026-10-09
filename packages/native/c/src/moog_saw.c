@@ -1,4 +1,5 @@
 #include "moog_saw.h"
+#include "math_utils.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -127,13 +128,6 @@ void moog_saw_set_frequency(MoogSaw *osc, float frequency_hz)
 double moog_saw_phase(const MoogSaw *osc)
 {
     return osc ? osc->phase : 0.0;
-}
-
-inline float pow2f(float x)
-{
-    // Truncate or offset the float into the exponent bits of an IEEE 754 float
-    int i = (int)(x * 8388608.0f) + 1065353216;
-    return *(float *)&i;
 }
 
 void moog_saw_process(
