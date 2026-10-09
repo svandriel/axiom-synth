@@ -51,10 +51,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useAxiomSynth } from '../composables/use-axiom-synth';
 import { noteForKey, notes } from '../utils';
+import { AxiomSynth } from '@axiom/axiom-synth';
 
-const synth = useAxiomSynth();
+const { synth } = defineProps<{
+  synth: AxiomSynth;
+}>();
 const octave = ref(3);
 const whiteNotes = notes.filter(note => !note.black);
 const blackNotes = notes.filter(note => note.black);
@@ -75,17 +77,17 @@ const activePointers = new Map<number, { semi: number; midi: number }>();
 
 function addNote(semi: number) {
   const midi = semi + octave.value * 12;
-  synth.value.noteOn(midi, 127);
+  synth.noteOn(midi, 127);
   midiNotesActive.value.add(midi);
 }
 
 function removeNote(midi: number) {
-  synth.value.noteOff(midi);
+  synth.noteOff(midi);
   midiNotesActive.value.delete(midi);
 }
 
 function clearAllNotes() {
-  synth.value.allNotesOff();
+  synth.allNotesOff();
   midiNotesActive.value.clear();
 }
 

@@ -55,6 +55,7 @@ function lfoDepthSignal(target: LfoTarget, depth: number): number {
 
 export class AxiomSynth extends Synth<AxiomVoice> {
   public readonly output: GainNode;
+  private readonly id: number;
 
   private readonly _oscillatorConfigs: FixedArray<
     OscillatorConfig,
@@ -180,6 +181,10 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
   constructor(ctxt: AudioContext, audioSink: AudioNode) {
     super(ctxt, audioSink, { maxVoices: MAX_VOICES });
+
+    this.id = Math.round(Date.now() / 1000);
+
+    console.log(`Creating AxiomSynth #${this.id}`);
 
     this.output = ctxt.createGain();
     this.output.gain.value = 0.6;
@@ -495,6 +500,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     if (this.destroyed) {
       return;
     }
+    console.log(`Destroying AxiomSynth #${this.id}`);
     super.destroy();
     this.filterCutOffSource.disconnect();
     this.filterCutOffSource.stop();
