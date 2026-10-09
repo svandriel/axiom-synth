@@ -1,6 +1,6 @@
 export * from './nodes/saw-oscillator-node';
 import { SawOscillatorNode } from './nodes/saw-oscillator-node';
-import workerUrl from './processors/saw-processor?worker&url';
+import workerUrl from './worker/worker?worker&url';
 import { getWasmModule } from './wasm-holder';
 
 export async function initNativeModule(ctxt: AudioContext) {

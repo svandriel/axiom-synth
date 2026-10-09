@@ -21,7 +21,7 @@ all: native wasm
 
 native: $(NATIVE)/test_moog_saw
 
-$(NATIVE)/test_moog_saw: $(SRC) $(TEST_SRC) include/moog_saw.h
+$(NATIVE)/test_moog_saw: Makefile $(SRC) $(TEST_SRC) include/moog_saw.h
 	@mkdir -p $(NATIVE)
 	$(CC) $(CFLAGS) $(INCLUDE) $(SRC) $(TEST_SRC) $(LDFLAGS) -o $@
 
@@ -30,7 +30,7 @@ test: $(NATIVE)/test_moog_saw
 
 wasm: $(WASM)/moog_saw.js
 
-$(WASM)/moog_saw.js: $(WASM_SRC) include/moog_saw.h
+$(WASM)/moog_saw.js: Makefile $(WASM_SRC) include/moog_saw.h
 	@mkdir -p $(WASM)
 	$(EMCC) \
 		-O3 \
@@ -39,7 +39,7 @@ $(WASM)/moog_saw.js: $(WASM_SRC) include/moog_saw.h
 		$(WASM_SRC) \
 		-sMODULARIZE=1 \
 		-sEXPORT_ES6=1 \
-		-sENVIRONMENT=web \
+		-sENVIRONMENT=web,worker \
 		-sSHARED_MEMORY=1 \
 		--emit-tsd $(WASM_TSD) \
 		-sEXPORTED_FUNCTIONS='["_moog_saw_wasm_create","_moog_saw_wasm_destroy","_moog_saw_wasm_reset","_moog_saw_wasm_set_frequency","_moog_saw_wasm_process","_malloc","_free"]' \
