@@ -59,16 +59,22 @@ already-playing voice live. The waveshaper curve is a single shared 1024-sample
 
 ```bash
 pnpm install
-pnpm dev        # dev server on http://localhost:4000
-pnpm test       # Vitest engine tests
-pnpm build      # workspaces build (pnpm -r --sort build)
-pnpm build:pages # build with the /axiom-synth/ base path (GitHub Pages)
-pnpm format     # prettier --write
+pnpm dev                          # dev server on http://localhost:4000
+pnpm test                         # tests across workspace packages
+pnpm build                        # all workspace builds; requires emcc on PATH
+pnpm --filter @axiom/native build # type-check native JS and compile WASM
+pnpm --filter @axiom/native test  # native C and JS tests
+pnpm build:pages                  # build with the /axiom-synth/ base path
+pnpm format                       # prettier --write
 ```
 
 Stack: Vue 3 + TypeScript (strict) + Vite + Tailwind CSS v4, as a pnpm
 workspaces monorepo: the Vue app lives in `app/` and the Web Audio engine in
-`packages/audio-engine/`. See `docs/codebase/` for a full map of the codebase.
+`packages/audio-engine/`. `packages/native/` builds a C-based WebAssembly audio
+processor with Emscripten. Install and activate the Emscripten SDK locally so
+`emcc` is on `PATH` before running the native package build or `pnpm build`.
+GitHub Actions uses `emscripten-core/setup-emsdk@v15` with SDK `6.0.12`. See
+`docs/codebase/` for a full map of the codebase.
 
 ## Deployment
 

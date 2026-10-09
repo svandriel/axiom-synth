@@ -31,6 +31,12 @@ jobs:
         with:
           ref: ${{ github.event.action == 'closed' && github.event.pull_request.base.ref || github.sha }}
 
+      - name: Setup Emscripten
+        if: github.event.action != 'closed'
+        uses: emscripten-core/setup-emsdk@v15
+        with:
+          version: 6.0.12
+
       - name: Setup pnpm and Node.js
         if: github.event.action != 'closed'
         uses: pnpm/setup@v2

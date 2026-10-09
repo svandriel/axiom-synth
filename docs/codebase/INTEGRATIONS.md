@@ -6,12 +6,12 @@
 
 The application itself has **no external service integrations** — it is a fully client-side browser app. The only external interactions are build/deploy-time and runtime Web Audio (browser-native, no network).
 
-| System                         | Type (API/DB/Queue/etc)                   | Purpose                                                                                     | Auth model                                      | Criticality         | Evidence                                                                      |
-| ------------------------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------- | ----------------------------------------------------------------------------- |
-| GitHub Actions (build + Pages) | CI/CD                                     | `pnpm install --frozen-lockfile` + lint + build on PR; Pages deploy on `main` push          | GitHub token (Pages `id-token` for OIDC deploy) | high (release path) | `.github/workflows/build.yml`, `.github/workflows/deploy-pages.yml`           |
-| GitHub Pages                   | Static hosting                            | Serves built `app/dist` at `https://svandriel.github.io/axiom-synth/`                       | OIDC via `actions/deploy-pages@v5`              | high (live demo)    | `deploy-pages.yml`, `app/vite.config.ts` (`build:pages --base=/axiom-synth/`) |
-| Web Audio API                  | Browser-native API (not a remote service) | Oscillators, `WaveShaperNode`, `BiquadFilterNode`, `DynamicsCompressorNode`, `AnalyserNode` | n/a                                             | high (core)         | `packages/audio-engine/src/engine/*`                                          |
-| Local storage                  | Browser storage                           | Persist dark/light theme preference                                                         | n/a                                             | low                 | `app/src/composables/use-theme-mode.ts`                                       |
+| System                         | Type (API/DB/Queue/etc)                   | Purpose                                                                                                                               | Auth model                         | Criticality         | Evidence                                                                        |
+| ------------------------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------- | ------------------------------------------------------------------------------- |
+| GitHub Actions (build + Pages) | CI/CD                                     | Build/test and Pages workflows set up Emscripten SDK `6.0.12` for `emcc`; PR checks run lint, tests, and build; deploy on `main` push | GitHub token for Pages deploy      | high (release path) | `.github/workflows/build.yml`, `test.yml`, `deploy-pages.yml`, `pr-preview.yml` |
+| GitHub Pages                   | Static hosting                            | Serves built `app/dist` at `https://svandriel.github.io/axiom-synth/`                                                                 | OIDC via `actions/deploy-pages@v5` | high (live demo)    | `deploy-pages.yml`, `app/vite.config.ts` (`build:pages --base=/axiom-synth/`)   |
+| Web Audio API                  | Browser-native API (not a remote service) | Oscillators, `WaveShaperNode`, `BiquadFilterNode`, `DynamicsCompressorNode`, `AnalyserNode`                                           | n/a                                | high (core)         | `packages/audio-engine/src/engine/*`                                            |
+| Local storage                  | Browser storage                           | Persist dark/light theme preference                                                                                                   | n/a                                | low                 | `app/src/composables/use-theme-mode.ts`                                         |
 
 ### 2) Data Stores
 
@@ -40,6 +40,6 @@ The application itself has **no external service integrations** — it is a full
 
 ### 6) Evidence
 
-- `.github/workflows/build.yml`, `.github/workflows/deploy-pages.yml`
+- `.github/workflows/build.yml`, `.github/workflows/test.yml`, `.github/workflows/deploy-pages.yml`, `.github/workflows/pr-preview.yml` (Emscripten SDK setup for build-capable workflows)
 - `app/src/composables/use-theme-mode.ts` (theme persistence)
 - `app/src/composables/use-audio-context.ts` (engine lifecycle)
