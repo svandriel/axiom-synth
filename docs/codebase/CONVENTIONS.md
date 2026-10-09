@@ -36,18 +36,20 @@ TypeScript flags (in `app/tsconfig.app.json`): `strict: true`, `noUncheckedIndex
 
 ### 5) Testing Conventions
 
-- Test framework: Vitest, used by `@axiom/audio-engine`.
+- Test frameworks: Vitest for workspace JavaScript packages, plus native C unit
+  tests in `@axiom/native`.
 - Test file naming/location rule: tests sit beside the module under test in
   `packages/audio-engine/src/engine/` and use the `<module>.test.ts` naming
   pattern.
-- Test command: `pnpm test` runs the audio-engine Vitest suite through the root
-  workspace script.
+- Test command: `pnpm test` runs JavaScript package tests and native C tests
+  through the root workspace script.
 - Mocking strategy norm: deterministic engine graph tests use focused fake Web
   Audio nodes and contexts; tests do not require a real browser.
 - Coverage expectation: no coverage threshold is configured. New features and
   behavior changes require automated tests.
 - CI gates: `.github/workflows/test.yml` runs `pnpm test`, `pnpm build`, and
-  `pnpm lint` after frozen dependency installation.
+  `pnpm lint` after frozen dependency installation. Build-capable workflows set
+  up Emscripten SDK `6.0.12` for `emcc`.
 
 ### 6) Evidence
 
