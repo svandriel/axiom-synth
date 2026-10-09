@@ -3,10 +3,11 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define MOOG_SAW_PI      3.141592653589793238462643383279502884
-#define MOOG_SAW_TWO_PI  (2.0 * MOOG_SAW_PI)
+#define MOOG_SAW_PI 3.141592653589793238462643383279502884
+#define MOOG_SAW_TWO_PI (2.0 * MOOG_SAW_PI)
 
-struct MoogSaw {
+struct MoogSaw
+{
     double phase;
     double sample_rate;
     float frequency_hz;
@@ -16,9 +17,12 @@ struct MoogSaw {
 static double wrap_phase(double phase)
 {
     phase -= floor(phase);
-    if (phase >= 1.0) {
+    if (phase >= 1.0)
+    {
         phase = 0.0;
-    } else if (phase < 0.0) {
+    }
+    else if (phase < 0.0)
+    {
         phase += 1.0;
     }
     return phase;
@@ -27,7 +31,8 @@ static double wrap_phase(double phase)
 static double phase_increment(float frequency_hz, double sample_rate)
 {
     if (!isfinite((double)frequency_hz) || frequency_hz <= 0.0f ||
-        !isfinite(sample_rate) || sample_rate <= 0.0) {
+        !isfinite(sample_rate) || sample_rate <= 0.0)
+    {
         return 0.0;
     }
     return (double)frequency_hz / sample_rate;
@@ -36,13 +41,16 @@ static double phase_increment(float frequency_hz, double sample_rate)
 float moog_saw_p(float frequency_hz)
 {
     /* Pekonen et al., equation (6). */
-    if (!isfinite((double)frequency_hz)) {
+    if (!isfinite((double)frequency_hz))
+    {
         return 0.9924f;
     }
 
     float p = 0.9924f - 0.00002151f * frequency_hz;
-    if (p < 0.0f) p = 0.0f;
-    if (p > 1.0f) p = 1.0f;
+    if (p < 0.0f)
+        p = 0.0f;
+    if (p > 1.0f)
+        p = 1.0f;
     return p;
 }
 
@@ -51,18 +59,24 @@ float moog_saw_waveform(double phase, float p)
     phase = wrap_phase(phase);
 
     /* The fitted operating range has 0 < P < 1. */
-    if (p <= 0.0f) {
+    if (p <= 0.0f)
+    {
         p = 1.0e-7f;
-    } else if (p >= 1.0f) {
+    }
+    else if (p >= 1.0f)
+    {
         p = 1.0f - 1.0e-7f;
     }
 
     const double pd_amplitude = MOOG_SAW_PI - MOOG_SAW_TWO_PI * (double)p;
     double phi_mod;
 
-    if (phase < (double)p) {
+    if (phase < (double)p)
+    {
         phi_mod = pd_amplitude * phase / (double)p;
-    } else {
+    }
+    else
+    {
         phi_mod = pd_amplitude * (1.0 - phase) / (1.0 - (double)p);
     }
 
@@ -72,12 +86,14 @@ float moog_saw_waveform(double phase, float p)
 
 MoogSaw *moog_saw_create(double sample_rate)
 {
-    if (!isfinite(sample_rate) || sample_rate <= 0.0) {
+    if (!isfinite(sample_rate) || sample_rate <= 0.0)
+    {
         return NULL;
     }
 
     MoogSaw *osc = (MoogSaw *)calloc(1, sizeof(*osc));
-    if (!osc) {
+    if (!osc)
+    {
         return NULL;
     }
 
@@ -95,14 +111,16 @@ void moog_saw_destroy(MoogSaw *osc)
 
 void moog_saw_reset(MoogSaw *osc, double phase)
 {
-    if (!osc) return;
+    if (!osc)
+        return;
     osc->phase = wrap_phase(phase);
     osc->previous_sync = 0.0f;
 }
 
 void moog_saw_set_frequency(MoogSaw *osc, float frequency_hz)
 {
-    if (!osc) return;
+    if (!osc)
+        return;
     osc->frequency_hz = frequency_hz;
 }
 
@@ -111,31 +129,46 @@ double moog_saw_phase(const MoogSaw *osc)
     return osc ? osc->phase : 0.0;
 }
 
+inline float pow2f(float x)
+{
+    // Truncate or offset the float into the exponent bits of an IEEE 754 float
+    int i = (int)(x * 8388608.0f) + 1065353216;
+    return *(float *)&i;
+}
+
 void moog_saw_process(
     MoogSaw *osc,
     const float *frequency,
+    const float *detune, // in cents
     const float *sync,
     float *output,
     uint32_t frames)
 {
-    if (!osc || !output || frames == 0) return;
+    if (!osc || !output || frames == 0)
+        return;
 
     double phase = osc->phase;
     float prev_sync = osc->previous_sync;
 
-    for (uint32_t i = 0; i < frames; ++i) {
-        const float f = frequency ? frequency[i] : osc->frequency_hz;
+    for (uint32_t i = 0; i < frames; ++i)
+    {
+        const float detuneFactor = detune ? pow2f(detune[i] / 1200.0f) : 1.0f;
+        const float f = (frequency ? frequency[i] : osc->frequency_hz) * detuneFactor;
         const double inc = phase_increment(f, osc->sample_rate);
 
-        if (sync) {
+        if (sync)
+        {
             const float current_sync = sync[i];
 
-            if (prev_sync <= 0.0f && current_sync > 0.0f) {
+            if (prev_sync <= 0.0f && current_sync > 0.0f)
+            {
                 /* Linear interpolation of the zero crossing. */
                 const double delta = (double)current_sync - (double)prev_sync;
                 double u = delta != 0.0 ? -(double)prev_sync / delta : 0.0;
-                if (u < 0.0) u = 0.0;
-                if (u > 1.0) u = 1.0;
+                if (u < 0.0)
+                    u = 0.0;
+                if (u > 1.0)
+                    u = 1.0;
 
                 /*
                  * u is the fraction from sample i-1 to i. The sync event is
@@ -164,14 +197,19 @@ void moog_saw_process_sample(
     double event_offset_samples,
     float *output)
 {
-    if (!osc || !output) return;
+    if (!osc || !output)
+        return;
 
     const double inc = phase_increment(frequency_hz, osc->sample_rate);
 
-    if (sync_event) {
-        if (!isfinite(event_offset_samples)) event_offset_samples = 0.0;
-        if (event_offset_samples < 0.0) event_offset_samples = 0.0;
-        if (event_offset_samples > 1.0) event_offset_samples = 1.0;
+    if (sync_event)
+    {
+        if (!isfinite(event_offset_samples))
+            event_offset_samples = 0.0;
+        if (event_offset_samples < 0.0)
+            event_offset_samples = 0.0;
+        if (event_offset_samples > 1.0)
+            event_offset_samples = 1.0;
 
         const double samples_after_sync = 1.0 - event_offset_samples;
         osc->phase = wrap_phase(samples_after_sync * inc);

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 const wasmModule = vi.hoisted(() => {
   const DEFAULT_RENDER_QUANTUM_SIZE = 128;
-  const WASM_HEAP_FLOAT_COUNT = DEFAULT_RENDER_QUANTUM_SIZE * 2 + 1;
+  const WASM_HEAP_FLOAT_COUNT = DEFAULT_RENDER_QUANTUM_SIZE * 3 + 1;
   const heap = new Float32Array(
     new SharedArrayBuffer(
       WASM_HEAP_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT,
@@ -24,6 +24,7 @@ const wasmModule = vi.hoisted(() => {
       (
         _handle: number,
         frequencyPointer: number,
+        _detunePointer: number,
         _syncPointer: number,
         outputPointer: number,
         frames: number,
@@ -74,10 +75,17 @@ describe('SawProcessor', () => {
         minValue: 0,
         name: 'frequency',
       },
+      {
+        automationRate: 'a-rate',
+        defaultValue: 0,
+        minValue: -12000,
+        maxValue: 12000,
+        name: 'detune',
+      },
     ]);
   });
 
-  it('processes per-sample frequency through the native WASM saw', async () => {
+  it('processes per-sample frequency and detune through the native WASM saw', async () => {
     const processor = new SawProcessor({
       processorOptions: {
         wasmModule: {} as WebAssembly.Module,
@@ -94,26 +102,36 @@ describe('SawProcessor', () => {
     ) => boolean;
     const keepAlive = process([], [[output]], {
       frequency: new Float32Array([1, 1, 1, 1]),
+      detune: new Float32Array([100, 200, 300, 400]),
     });
 
     expect(wasmModule.HEAPF32.buffer).toBeInstanceOf(SharedArrayBuffer);
     expect(wasmModule._moog_saw_wasm_process).toHaveBeenCalledWith(
       1,
       expect.any(Number),
+      expect.any(Number),
       0,
       expect.any(Number),
       4,
     );
+    const detunePointer = wasmModule._moog_saw_wasm_process.mock.calls[0]![2];
+    const detuneIndex = detunePointer / Float32Array.BYTES_PER_ELEMENT;
+    expect(
+      Array.from(wasmModule.HEAPF32.slice(detuneIndex, detuneIndex + 4)),
+    ).toEqual([100, 200, 300, 400]);
     expect(Array.from(output)).toEqual([2, 2, 2, 2]);
     expect(keepAlive).toBe(true);
 
     processor.port.onmessage?.({ data: { type: 'DESTROY' } } as MessageEvent);
 
     expect(wasmModule._moog_saw_wasm_destroy).toHaveBeenCalledWith(1);
-    expect(wasmModule._free).toHaveBeenCalledTimes(2);
-    expect(process([], [[output]], { frequency: new Float32Array([1]) })).toBe(
-      false,
-    );
+    expect(wasmModule._free).toHaveBeenCalledTimes(3);
+    expect(
+      process([], [[output]], {
+        frequency: new Float32Array([1]),
+        detune: new Float32Array([0]),
+      }),
+    ).toBe(false);
   });
 
   it('does not initialize WASM when destroyed before initialization', async () => {

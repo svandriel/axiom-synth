@@ -18,7 +18,7 @@ static void test_progression(void)
     moog_saw_set_frequency(osc, 480.0f);
 
     float out[4];
-    moog_saw_process(osc, NULL, NULL, out, 4);
+    moog_saw_process(osc, NULL, NULL, NULL, out, 4);
 
     for (int i = 0; i < 4; ++i) assert(isfinite(out[i]));
 
@@ -38,7 +38,7 @@ static void test_fractional_sync(void)
     const float freq[] = {480.0f, 480.0f};
     float out[2];
 
-    moog_saw_process(osc, freq, sync, out, 2);
+    moog_saw_process(osc, freq, NULL, sync, out, 2);
 
     /*
      * Event is half-way between samples 0 and 1. At sample 1, 0.5 sample has
@@ -47,6 +47,22 @@ static void test_fractional_sync(void)
      */
     const double expected = 1.5 * 480.0 / 48000.0;
     assert(fabs(moog_saw_phase(osc) - expected) < 1e-12);
+    moog_saw_destroy(osc);
+}
+
+static void test_detune(void)
+{
+    MoogSaw *osc = moog_saw_create(48000.0);
+    assert(osc);
+
+    const float freq[] = {480.0f};
+    const float detune[] = {1200.0f};
+    float out;
+
+    moog_saw_process(osc, freq, detune, NULL, &out, 1);
+
+    const double expected_phase = 2.0 * 480.0 / 48000.0;
+    assert(fabs(moog_saw_phase(osc) - expected_phase) < 1e-12);
     moog_saw_destroy(osc);
 }
 
@@ -70,6 +86,7 @@ int main(void)
     test_parameter_fit();
     test_progression();
     test_fractional_sync();
+    test_detune();
     test_explicit_event();
     puts("all tests passed");
     return 0;

@@ -47,6 +47,10 @@ export class SawOscillatorNode {
     return this.node.parameters.get('frequency')!;
   }
 
+  get detune(): AudioParam {
+    return this.node.parameters.get('detune')!;
+  }
+
   connect(destination: AudioNode): void;
   connect(destination: AudioParam): void;
   connect(destination: AudioParam | AudioNode): void {
