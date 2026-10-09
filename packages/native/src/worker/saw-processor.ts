@@ -19,8 +19,10 @@ export class SawProcessor extends AudioWorkletProcessor {
   private mainModule: MainModule | undefined;
   private sawHandle: number | undefined;
   private frequencyPointer: number | undefined;
+  private detunePointer: number | undefined;
   private outputPointer: number | undefined;
   private frequencyBuffer: Float32Array | undefined;
+  private detuneBuffer: Float32Array | undefined;
   private outputBuffer: Float32Array | undefined;
 
   private renderTimes: Statistics = new Statistics();
@@ -32,6 +34,13 @@ export class SawProcessor extends AudioWorkletProcessor {
         defaultValue: 0,
         minValue: 0,
         name: 'frequency',
+      },
+      {
+        automationRate: 'a-rate',
+        defaultValue: 0,
+        minValue: -1200 * 10, // 10 octaves
+        maxValue: 1200 * 10, // 10 octaves
+        name: 'detune',
       },
     ];
   }
@@ -60,10 +69,15 @@ export class SawProcessor extends AudioWorkletProcessor {
       const blockSizeBytes =
         WEBAUDIO_BLOCK_SIZE * Float32Array.BYTES_PER_ELEMENT;
       this.frequencyPointer = mainModule._malloc(blockSizeBytes);
+      this.detunePointer = mainModule._malloc(blockSizeBytes);
       this.outputPointer = mainModule._malloc(blockSizeBytes);
       this.frequencyBuffer = mainModule.HEAPF32.subarray(
         this.frequencyPointer >>> WASM_POINTER_SHIFT,
         (this.frequencyPointer >>> WASM_POINTER_SHIFT) + WEBAUDIO_BLOCK_SIZE,
+      );
+      this.detuneBuffer = mainModule.HEAPF32.subarray(
+        this.detunePointer >>> WASM_POINTER_SHIFT,
+        (this.detunePointer >>> WASM_POINTER_SHIFT) + WEBAUDIO_BLOCK_SIZE,
       );
       this.outputBuffer = mainModule.HEAPF32.subarray(
         this.outputPointer >>> WASM_POINTER_SHIFT,
@@ -91,31 +105,43 @@ export class SawProcessor extends AudioWorkletProcessor {
     }
 
     const frequencyValues = parameters.frequency!;
+    const detuneValues = parameters.detune!;
     const frequencyPointer = this.frequencyPointer;
+    const detunePointer = this.detunePointer;
     const outputPointer = this.outputPointer;
 
-    if (frequencyPointer === undefined || outputPointer === undefined) {
+    if (
+      frequencyPointer === undefined ||
+      outputPointer === undefined ||
+      detunePointer === undefined
+    ) {
       return true;
     }
 
     const frequencyBuffer = this.frequencyBuffer;
+    const detuneBuffer = this.detuneBuffer;
     const outputBuffer = this.outputBuffer;
 
-    if (!frequencyBuffer || !outputBuffer) {
+    if (!frequencyBuffer || !outputBuffer || !detuneBuffer) {
       return true;
     }
 
-    const isConstant = frequencyValues.length === 1;
-
-    if (isConstant) {
+    if (frequencyValues.length === 1) {
       frequencyBuffer.fill(frequencyValues[0]!, 0, output.length);
     } else {
       frequencyBuffer.set(frequencyValues);
     }
 
+    if (detuneValues.length === 1) {
+      detuneBuffer.fill(detuneValues[0]!, 0, output.length);
+    } else {
+      detuneBuffer.set(detuneValues);
+    }
+
     mainModule._moog_saw_wasm_process(
       sawHandle,
       frequencyPointer,
+      detunePointer,
       SYNC_POINTER,
       outputPointer,
       output.length,
@@ -160,12 +186,16 @@ export class SawProcessor extends AudioWorkletProcessor {
     if (this.frequencyPointer !== undefined) {
       mainModule._free(this.frequencyPointer);
     }
+    if (this.detunePointer !== undefined) {
+      mainModule._free(this.detunePointer);
+    }
     if (this.outputPointer !== undefined) {
       mainModule._free(this.outputPointer);
     }
 
     this.sawHandle = undefined;
     this.frequencyPointer = undefined;
+    this.detunePointer = undefined;
     this.outputPointer = undefined;
     this.frequencyBuffer = undefined;
     this.outputBuffer = undefined;

@@ -318,18 +318,18 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     const nativeModule = await initNativeModule(this.ctxt);
     const osc = nativeModule.createSawOscillator();
 
-    const nativeFrequencySource = this.createConstantSource(0);
     const lfo = this.ctxt.createOscillator();
-    lfo.frequency.value = 200;
+    lfo.frequency.value = 2;
     lfo.type = 'sine';
     lfo.start();
 
     const lfoDepth = this.ctxt.createGain();
-    lfoDepth.gain.value = 10;
-    lfoDepth.connect(osc.frequency);
+    lfoDepth.gain.value = 2 * 1200;
+    lfoDepth.connect(osc.detune);
 
     lfo.connect(lfoDepth);
 
+    const nativeFrequencySource = this.createConstantSource(10);
     if (this.destroyed) {
       nativeFrequencySource.disconnect();
       nativeFrequencySource.stop();
@@ -340,7 +340,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     this.nativeOscillator = osc;
     this.nativeFrequencySource = nativeFrequencySource;
     nativeFrequencySource.connect(osc.frequency);
-    osc.frequency.value = 80;
+    osc.frequency.value = 100;
     osc.connect(this.output);
   }
 

@@ -27,11 +27,12 @@ void moog_saw_wasm_set_frequency(MoogSaw *osc, float frequency_hz)
 void moog_saw_wasm_process(
     MoogSaw *osc,
     const float *frequency,
+    const float *detune,
     const float *sync,
     float *output,
     uint32_t frames)
 {
-    moog_saw_process(osc, frequency, sync, output, frames);
+    moog_saw_process(osc, frequency, detune, sync, output, frames);
 }
 
 #ifdef __cplusplus

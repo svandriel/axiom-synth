@@ -35,6 +35,7 @@ float moog_saw_waveform(double phase, float p);
 void moog_saw_process(
     MoogSaw *osc,
     const float *frequency,
+    const float *detune,
     const float *sync,
     float *output,
     uint32_t frames);
