@@ -17,9 +17,11 @@
     "@axiom/audio-testing": "workspace:*",
     "@vue/tsconfig": "^0.9.1",
     "typescript": "^6.0.3",
+    "vite": "^8.2.2",
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@axiom/audio-engine": "workspace:*"
+    "@axiom/audio-engine": "workspace:*",
+    "@axiom/native": "workspace:*"
   }
 }

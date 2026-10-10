@@ -1,0 +1,32 @@
+{
+  "name": "@axiom/native",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "pnpm build:js && pnpm build:wasm",
+    "build:wasm": "make wasm -C ./c",
+    "build:js": "tsc --noEmit",
+    "test": "pnpm run \"/^test:/\"",
+    "test:native": "make test -C ./c",
+    "test:js": "vitest run",
+    "dev": "pnpm run build:wasm && chokidar \"c/**/*.c\" \"c/Makefile\" -c \"pnpm run build:wasm\" --silent"
+  },
+  "devDependencies": {
+    "@axiom/audio-testing": "workspace:*",
+    "@types/audioworklet": "^0.0.100",
+    "chokidar-cli": "^3.0.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.2.2",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "@axiom/audio-engine": "workspace:*"
+  }
+}

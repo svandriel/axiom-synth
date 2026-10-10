@@ -4,18 +4,19 @@
 
 ### 1) Top-Level Map
 
-| Path                          | Purpose                                                                                             | Evidence                                               |
-| ----------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `app/src/`                    | Vue application source: components, composables, app-only types (`NumericKeys`), display utils      | `app/src/main.ts`, `app/src/App.vue`, `app/src/types/` |
-| `app/` (root files)           | App entry config: `index.html`, `vite.config.ts`, `public/`, `example/`                             | `app/vite.config.ts`, `app/public/favicon.svg`         |
-| `packages/audio-engine/src/`  | Engine package: `engine/`, `types/`, `utils/observable.ts`, `index.ts` barrel                       | `packages/audio-engine/src/index.ts`                   |
-| `packages/axiom-synth/src/`   | Axiom synth package: `axiom-synth.ts`, `axiom-voice.ts`, `axiom-voice-config.ts`, `index.ts` barrel | `packages/axiom-synth/src/index.ts`                    |
-| `packages/audio-testing/src/` | Test-only package: fake Web Audio context and node doubles shared across engine and synth tests     | `packages/audio-testing/src/index.ts`                  |
-| `pnpm-workspace.yaml`         | Workspace root (`app`, `packages/*`)                                                                | `pnpm-workspace.yaml`                                  |
-| `docs/images/`                | README screenshots                                                                                  | `docs/images/axiom-ui.png`                             |
-| `.github/workflows/`          | CI: PR build + Pages deploy                                                                         | `.github/workflows/build.yml`, `deploy-pages.yml`      |
-| `.husky/`                     | Git hooks (pre-commit lint-staged)                                                                  | `.husky/pre-commit`                                    |
-| `.vscode/`                    | Editor config (Tailwind CSS association, Volar extension rec)                                       | `.vscode/settings.json`                                |
+| Path                          | Purpose                                                                                             | Evidence                                                      |
+| ----------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `app/src/`                    | Vue application source: components, composables, app-only types (`NumericKeys`), display utils      | `app/src/main.ts`, `app/src/App.vue`, `app/src/types/`        |
+| `app/` (root files)           | App entry config: `index.html`, `vite.config.ts`, `public/`, `example/`                             | `app/vite.config.ts`, `app/public/favicon.svg`                |
+| `packages/audio-engine/src/`  | Engine package: `engine/`, `types/`, `utils/observable.ts`, `index.ts` barrel                       | `packages/audio-engine/src/index.ts`                          |
+| `packages/axiom-synth/src/`   | Axiom synth package: `axiom-synth.ts`, `axiom-voice.ts`, `axiom-voice-config.ts`, `index.ts` barrel | `packages/axiom-synth/src/index.ts`                           |
+| `packages/native/`            | Native audio package: TypeScript AudioWorklet worker and C/Emscripten WebAssembly sources           | `packages/native/package.json`, `packages/native/c/Makefile`  |
+| `packages/audio-testing/src/` | Test-only package: fake Web Audio context and node doubles shared across engine and synth tests     | `packages/audio-testing/src/index.ts`                         |
+| `pnpm-workspace.yaml`         | Workspace root (`app`, `packages/*`)                                                                | `pnpm-workspace.yaml`                                         |
+| `docs/images/`                | README screenshots                                                                                  | `docs/images/axiom-ui.png`                                    |
+| `.github/workflows/`          | CI: build/test, Pages deploy, and PR preview                                                        | `build.yml`, `test.yml`, `deploy-pages.yml`, `pr-preview.yml` |
+| `.husky/`                     | Git hooks (pre-commit lint-staged)                                                                  | `.husky/pre-commit`                                           |
+| `.vscode/`                    | Editor config (Tailwind CSS association, Volar extension rec)                                       | `.vscode/settings.json`                                       |
 
 ### 2) Entry Points
 

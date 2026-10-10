@@ -26,6 +26,7 @@ import {
 } from '@axiom/audio-engine';
 import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
+import { initNativeModule, type SawOscillatorNode } from '@axiom/native';
 
 const MAX_VOICES = 16;
 const UNISON_RAMP_SECONDS = 0.01;
@@ -176,6 +177,8 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     FixedArray<ConstantSourceNode, LfoTargetCount>,
     LfoCount
   >;
+  private nativeOscillator: SawOscillatorNode | undefined;
+  private nativeFrequencySource: ConstantSourceNode | undefined;
 
   private readonly voiceConfig: AxiomVoiceConfig;
 
@@ -307,6 +310,38 @@ export class AxiomSynth extends Synth<AxiomVoice> {
       lfoRateSources: this.lfoRateSources,
       lfoDepthSources: this.lfoDepthSources,
     };
+
+    this.initNative().catch(console.error);
+  }
+
+  private async initNative() {
+    const nativeModule = await initNativeModule(this.ctxt);
+    const osc = nativeModule.createSawOscillator();
+
+    const lfo = this.ctxt.createOscillator();
+    lfo.frequency.value = 2;
+    lfo.type = 'sine';
+    lfo.start();
+
+    const lfoDepth = this.ctxt.createGain();
+    lfoDepth.gain.value = 2 * 1200;
+    lfoDepth.connect(osc.detune);
+
+    lfo.connect(lfoDepth);
+
+    const nativeFrequencySource = this.createConstantSource(10);
+    if (this.destroyed) {
+      nativeFrequencySource.disconnect();
+      nativeFrequencySource.stop();
+      osc.destroy();
+      return;
+    }
+
+    this.nativeOscillator = osc;
+    this.nativeFrequencySource = nativeFrequencySource;
+    nativeFrequencySource.connect(osc.frequency);
+    osc.frequency.value = 100;
+    osc.connect(this.output);
   }
 
   protected override createVoice(): AxiomVoice {
@@ -532,6 +567,11 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     this.waveShaperDriveSource.disconnect();
     this.waveShaperDriveSource.stop();
     this.waveshaperCurve.destroy();
+    this.nativeFrequencySource?.disconnect();
+    this.nativeFrequencySource?.stop();
+    this.nativeOscillator?.destroy();
+    this.nativeFrequencySource = undefined;
+    this.nativeOscillator = undefined;
     this.lfoRateSources.forEach(source => {
       source.disconnect();
       source.stop();
