@@ -1,6 +1,6 @@
 import { FakeAudioContext, installFakeAudioParam } from '@axiom/audio-testing';
 import { describe, expect, it } from 'vitest';
-import { WebAudioOscillator } from './oscillator';
+import { WebAudioOscillator } from './web-audio-oscillator';
 
 describe('WebAudioOscillator', () => {
   it('does not create a Web Audio oscillator before start', () => {

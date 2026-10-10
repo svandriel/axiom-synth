@@ -1,15 +1,12 @@
 import type { WaveFormType } from '../types';
 import type { Destroyable } from './destroyable';
-import {
-  WebAudioOscillator,
-  type Oscillator,
-  type OscillatorEndSubscription,
-} from './oscillator';
+import { type Oscillator, type OscillatorEndSubscription } from './oscillator';
 import {
   UnisonVoicePathPool,
   type PathLease,
   type UnisonVoicePath,
 } from './unison-voice-path';
+import { WebAudioOscillator } from './web-audio-oscillator';
 
 /**
  * The single-voice path, which does not need the unison path pool.
