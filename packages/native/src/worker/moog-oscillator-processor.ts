@@ -16,6 +16,9 @@ const STATS_SAMPLE_INTERVAL = 5_000;
 
 export class MoogOscillatorProcessor extends AudioWorkletProcessor {
   private destroyed = false;
+  private started = false;
+  private startTime = 0;
+  private stopTime: number | undefined;
   private mainModule: MainModule | undefined;
   private sawHandle: number | undefined;
   private frequencyPointer: number | undefined;
@@ -49,6 +52,13 @@ export class MoogOscillatorProcessor extends AudioWorkletProcessor {
     super();
     this.port.onmessage = (event: MessageEvent<WorkletMessage>) => {
       switch (event.data.type) {
+        case 'START':
+          this.started = true;
+          this.startTime = event.data.when;
+          break;
+        case 'STOP':
+          this.stopTime = event.data.when;
+          break;
         case 'DESTROY':
           this.destroyResources();
           break;
@@ -100,7 +110,18 @@ export class MoogOscillatorProcessor extends AudioWorkletProcessor {
       return false;
     }
 
+    if (this.stopTime !== undefined && currentTime >= this.stopTime) {
+      this.destroyResources();
+      this.port.postMessage({ type: 'ENDED' });
+      return false;
+    }
+
     if (!output || !mainModule || sawHandle === undefined) {
+      return true;
+    }
+
+    if (!this.started || currentTime < this.startTime) {
+      output.fill(0);
       return true;
     }
 
