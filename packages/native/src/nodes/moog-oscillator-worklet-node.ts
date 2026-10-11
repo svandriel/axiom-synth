@@ -11,6 +11,10 @@ export interface MoogOscillatorOptions {
 export class MoogOscillatorWorkletNode {
   private readonly node: AudioWorkletNode;
   private destroyed = false;
+  private started = false;
+  private stopped = false;
+  private ended = false;
+  onended: (() => void) | null = null;
 
   constructor(
     ctxt: AudioContext,
@@ -38,6 +42,12 @@ export class MoogOscillatorWorkletNode {
             `Average render time: ${Math.round(event.data.renderTimeMs * 1000)} μs (${Math.round(speed)}x real-time)`,
           );
           break;
+        case 'ENDED':
+          if (!this.ended) {
+            this.ended = true;
+            this.onended?.();
+          }
+          break;
         default:
           console.warn(`Unrecognized message: ${event.data.type}`);
       }
@@ -58,6 +68,39 @@ export class MoogOscillatorWorkletNode {
     this.node.connect(destination as AudioNode);
   }
 
+  disconnect(): void;
+  disconnect(destination: AudioNode): void;
+  disconnect(destination: AudioParam): void;
+  disconnect(destination?: null | AudioNode | AudioParam): void {
+    if (destination === undefined || destination === null) {
+      this.node.disconnect();
+    } else {
+      this.node.disconnect(destination as AudioNode);
+    }
+  }
+
+  start(when: number): void {
+    if (this.started || this.destroyed) {
+      return;
+    }
+    this.started = true;
+    this.node.port.postMessage({
+      type: 'START',
+      when,
+    } satisfies WorkletMessage);
+  }
+
+  stop(when: number): void {
+    if (this.stopped || this.destroyed) {
+      return;
+    }
+    this.stopped = true;
+    this.node.port.postMessage({
+      type: 'STOP',
+      when,
+    } satisfies WorkletMessage);
+  }
+
   destroy(): void {
     if (this.destroyed) {
       return;
@@ -66,6 +109,8 @@ export class MoogOscillatorWorkletNode {
     this.node.port.postMessage({
       type: 'DESTROY',
     } satisfies WorkletDestroyMessage);
+    this.node.port.onmessage = null;
     this.node.disconnect();
+    this.onended = null;
   }
 }
