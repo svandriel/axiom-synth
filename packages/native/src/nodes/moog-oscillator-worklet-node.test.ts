@@ -22,11 +22,15 @@ class FakeAudioWorkletNode {
 
 Object.assign(globalThis, { AudioWorkletNode: FakeAudioWorkletNode });
 
-const { SawOscillatorNode } = await import('./saw-oscillator-node');
+const { MoogOscillatorWorkletNode } =
+  await import('./moog-oscillator-worklet-node');
 
-describe('SawOscillatorNode', () => {
+describe('MoogOscillatorWorkletNode', () => {
   it('creates a mono worklet with the default frequency', () => {
-    const node = new SawOscillatorNode({} as AudioContext, new ArrayBuffer(0));
+    const node = new MoogOscillatorWorkletNode(
+      {} as AudioContext,
+      new ArrayBuffer(0),
+    );
     const workletNode = node as unknown as { node: FakeAudioWorkletNode };
 
     expect(workletNode.node.name).toBe('saw-processor');
@@ -43,9 +47,13 @@ describe('SawOscillatorNode', () => {
   });
 
   it('passes a custom frequency and exposes the worklet parameter', () => {
-    const node = new SawOscillatorNode({} as AudioContext, new ArrayBuffer(0), {
-      frequency: 220,
-    });
+    const node = new MoogOscillatorWorkletNode(
+      {} as AudioContext,
+      new ArrayBuffer(0),
+      {
+        frequency: 220,
+      },
+    );
     const workletNode = node as unknown as { node: FakeAudioWorkletNode };
 
     expect(workletNode.node.options.parameterData).toEqual({});
@@ -53,7 +61,10 @@ describe('SawOscillatorNode', () => {
   });
 
   it('connects to both audio nodes and audio parameters', () => {
-    const node = new SawOscillatorNode({} as AudioContext, new ArrayBuffer(0));
+    const node = new MoogOscillatorWorkletNode(
+      {} as AudioContext,
+      new ArrayBuffer(0),
+    );
     const workletNode = node as unknown as { node: FakeAudioWorkletNode };
     const destinationNode = {} as AudioNode;
     const destinationParam = {} as AudioParam;
@@ -72,7 +83,10 @@ describe('SawOscillatorNode', () => {
   });
 
   it('destroys the worklet once', () => {
-    const node = new SawOscillatorNode({} as AudioContext, new ArrayBuffer(0));
+    const node = new MoogOscillatorWorkletNode(
+      {} as AudioContext,
+      new ArrayBuffer(0),
+    );
     const workletNode = node as unknown as { node: FakeAudioWorkletNode };
 
     node.destroy();

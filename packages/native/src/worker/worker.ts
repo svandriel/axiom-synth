@@ -1,4 +1,4 @@
-import { SawProcessor } from './saw-processor';
+import { MoogOscillatorProcessor } from './moog-oscillator-processor';
 
 /**
  * Vite rewrites parts of the Emscripten loader to use `location.href` when
@@ -13,4 +13,4 @@ if (typeof globalThis.location?.href !== 'string') {
     writable: true,
   });
 }
-registerProcessor('saw-processor', SawProcessor);
+registerProcessor('saw-processor', MoogOscillatorProcessor);

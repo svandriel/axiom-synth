@@ -26,7 +26,10 @@ import {
 } from '@axiom/audio-engine';
 import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
-import { initNativeModule, type SawOscillatorNode } from '@axiom/native';
+import {
+  initNativeModule,
+  type MoogOscillatorWorkletNode,
+} from '@axiom/native';
 
 const MAX_VOICES = 16;
 const UNISON_RAMP_SECONDS = 0.01;
@@ -177,7 +180,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     FixedArray<ConstantSourceNode, LfoTargetCount>,
     LfoCount
   >;
-  private nativeOscillator: SawOscillatorNode | undefined;
+  private nativeOscillator: MoogOscillatorWorkletNode | undefined;
   private nativeFrequencySource: ConstantSourceNode | undefined;
 
   private readonly voiceConfig: AxiomVoiceConfig;

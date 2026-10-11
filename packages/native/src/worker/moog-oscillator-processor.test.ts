@@ -57,10 +57,10 @@ Object.assign(globalThis, {
   registerProcessor: vi.fn(),
 });
 
-const { SawProcessor } = await import('./saw-processor');
+const { MoogOscillatorProcessor } = await import('./moog-oscillator-processor');
 await import('./worker');
 
-describe('SawProcessor', () => {
+describe('MoogOscillatorProcessor', () => {
   it('registers the processor', () => {
     expect(globalThis.registerProcessor).toHaveBeenCalledWith(
       'saw-processor',
@@ -68,7 +68,7 @@ describe('SawProcessor', () => {
     );
   });
   it('exposes frequency as an a-rate parameter', () => {
-    expect(SawProcessor.parameterDescriptors).toEqual([
+    expect(MoogOscillatorProcessor.parameterDescriptors).toEqual([
       {
         automationRate: 'a-rate',
         defaultValue: 0,
@@ -86,7 +86,7 @@ describe('SawProcessor', () => {
   });
 
   it('processes per-sample frequency and detune through the native WASM saw', async () => {
-    const processor = new SawProcessor({
+    const processor = new MoogOscillatorProcessor({
       processorOptions: {
         wasmModule: {} as WebAssembly.Module,
       },
@@ -138,7 +138,7 @@ describe('SawProcessor', () => {
     const createCalls = wasmModule._moog_saw_wasm_create.mock.calls.length;
     const destroyCalls = wasmModule._moog_saw_wasm_destroy.mock.calls.length;
     const mallocCalls = wasmModule._malloc.mock.calls.length;
-    const processor = new SawProcessor({
+    const processor = new MoogOscillatorProcessor({
       processorOptions: {
         wasmModule: {} as WebAssembly.Module,
       },

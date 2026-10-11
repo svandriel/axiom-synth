@@ -1,5 +1,5 @@
 import { type MainModule } from '../../c/dist/wasm/moog_saw';
-import type { SawProcessorOptions } from '../shared/processor-options';
+import type { WasmWorkletOptions } from '../shared/wasm-worklet-options';
 import type {
   ReportRenderTimeMessage,
   WorkletMessage,
@@ -14,7 +14,7 @@ const WEBAUDIO_BLOCK_SIZE =
   globalThis.renderQuantumSize ?? DEFAULT_RENDER_QUANTUM_SIZE;
 const STATS_SAMPLE_INTERVAL = 5_000;
 
-export class SawProcessor extends AudioWorkletProcessor {
+export class MoogOscillatorProcessor extends AudioWorkletProcessor {
   private destroyed = false;
   private mainModule: MainModule | undefined;
   private sawHandle: number | undefined;
@@ -45,7 +45,7 @@ export class SawProcessor extends AudioWorkletProcessor {
     ];
   }
 
-  constructor(options: SawProcessorOptions) {
+  constructor(options: WasmWorkletOptions) {
     super();
     this.port.onmessage = (event: MessageEvent<WorkletMessage>) => {
       switch (event.data.type) {

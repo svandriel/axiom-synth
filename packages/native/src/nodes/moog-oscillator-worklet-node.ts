@@ -1,20 +1,21 @@
-import type { SawProcessorOptions } from '../shared/processor-options';
+import type { WasmWorkletOptions } from '../shared/wasm-worklet-options';
 import type {
   WorkletDestroyMessage,
   WorkletMessage,
 } from '../shared/worklet-messages';
 
-export interface SawOscillatorOptions {
+export interface MoogOscillatorOptions {
   // empty for now
 }
-export class SawOscillatorNode {
+
+export class MoogOscillatorWorkletNode {
   private readonly node: AudioWorkletNode;
   private destroyed = false;
 
   constructor(
     ctxt: AudioContext,
     wasmModule: WebAssembly.Module,
-    _options: Partial<SawOscillatorOptions> = {},
+    _options: Partial<MoogOscillatorOptions> = {},
   ) {
     this.node = new AudioWorkletNode(ctxt, 'saw-processor', {
       numberOfInputs: 0,
@@ -24,7 +25,7 @@ export class SawOscillatorNode {
       processorOptions: {
         wasmModule,
       },
-    } satisfies SawProcessorOptions);
+    } satisfies WasmWorkletOptions);
 
     this.node.port.onmessage = (event: MessageEvent<WorkletMessage>) => {
       switch (event.data.type) {
