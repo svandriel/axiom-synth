@@ -16,6 +16,7 @@ import { UnisonOscillator } from '@axiom/audio-engine';
 import { Voice } from '@axiom/audio-engine';
 import { Waveshaper } from '@axiom/audio-engine';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
+import { WebAudioOscillator } from '../../audio-engine/src/engine/web-audio-oscillator';
 
 export class AxiomVoice extends Voice {
   private areOscillatorsActive = false;
@@ -219,7 +220,8 @@ export class AxiomVoice extends Voice {
 
     const frequency = freqOf(noteNumber);
     this.oscillators.forEach(osc => {
-      osc.start(frequency, now);
+      osc.frequency.setValueAtTime(frequency, now);
+      osc.start(now);
     });
     this.lfos.forEach(lfo => lfo.start(now));
 

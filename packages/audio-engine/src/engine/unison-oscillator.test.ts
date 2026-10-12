@@ -54,7 +54,7 @@ class TestOscillator implements Oscillator {
     );
   }
 
-  start(_noteHz: number, now: number): void {
+  start(now: number): void {
     if (this.throwOnStart) throw new Error('TestOscillator start failed');
     this.node.start(now);
     if (this.endSynchronouslyOnStart) this.node.end();
@@ -103,7 +103,7 @@ describe('UnisonOscillator', () => {
         },
       );
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
 
       const state = oscillator as unknown as {
         current: unknown;
@@ -116,7 +116,7 @@ describe('UnisonOscillator', () => {
       expect(created[0]?.unsubscribeCalls).toBe(1);
       expect(ctxt.connections).toHaveLength(0);
 
-      oscillator.start(440, 1);
+      oscillator.start(1);
       expect(ctxt.oscillators).toHaveLength(2);
     } finally {
       restoreAudioParam();
@@ -141,7 +141,7 @@ describe('UnisonOscillator', () => {
       );
       oscillator.voices = 2;
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
 
       const state = oscillator as unknown as {
         current: unknown;
@@ -165,7 +165,7 @@ describe('UnisonOscillator', () => {
       });
       expect(created.map(source => source.unsubscribeCalls)).toEqual([1, 1]);
 
-      oscillator.start(440, 1);
+      oscillator.start(1);
 
       expect(ctxt.stereoPanners).toHaveLength(2);
       expect(state.pathPool.counters).toMatchObject({
@@ -193,7 +193,7 @@ describe('UnisonOscillator', () => {
           return oscillator;
         },
       );
-      oneVoice.start(440, 0);
+      oneVoice.start(0);
       expect(created).toHaveLength(1);
 
       const threeVoices = new UnisonOscillator(
@@ -205,7 +205,7 @@ describe('UnisonOscillator', () => {
         },
       );
       threeVoices.voices = 3;
-      threeVoices.start(440, 0);
+      threeVoices.start(0);
       expect(created).toHaveLength(4);
     } finally {
       restoreAudioParam();
@@ -228,13 +228,13 @@ describe('UnisonOscillator', () => {
         },
       );
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       oscillator.stop();
       ctxt.oscillators[0]!.end();
       expect(created[0]?.unsubscribeCalls).toBe(1);
 
       oscillator.voices = 2;
-      oscillator.start(440, 1);
+      oscillator.start(1);
       oscillator.stop();
       ctxt.oscillators.slice(1).forEach(source => source.end());
       expect(
@@ -242,13 +242,13 @@ describe('UnisonOscillator', () => {
       ).toBe(true);
 
       ctxt.waveShapers[0]!.throwOnCurveSet = true;
-      expect(() => oscillator.start(440, 2)).toThrow();
+      expect(() => oscillator.start(2)).toThrow();
       expect(
         created.slice(3).every(source => source.unsubscribeCalls === 1),
       ).toBe(true);
 
       ctxt.waveShapers[0]!.throwOnCurveSet = false;
-      oscillator.start(440, 3);
+      oscillator.start(3);
       oscillator.destroy();
       expect(
         created.slice(5).every(source => source.unsubscribeCalls === 1),
@@ -275,7 +275,7 @@ describe('UnisonOscillator', () => {
       );
       oscillator.voices = 2;
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       ctxt.oscillators[0]!.end();
 
       expect(created).toHaveLength(2);
@@ -291,12 +291,12 @@ describe('UnisonOscillator', () => {
       const ctxt = new FakeAudioContext();
       const oscillator = createUnison(ctxt);
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       ctxt.oscillators[0]!.end();
 
       expect(ctxt.connections).toHaveLength(0);
 
-      oscillator.start(440, 1);
+      oscillator.start(1);
 
       expect(ctxt.oscillators).toHaveLength(2);
     } finally {
@@ -311,7 +311,7 @@ describe('UnisonOscillator', () => {
       const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       const firstSources = [...ctxt.oscillators];
       firstSources.forEach(source => source.end());
 
@@ -319,7 +319,7 @@ describe('UnisonOscillator', () => {
         firstSources.every(source => source.connections.length === 0),
       ).toBe(true);
 
-      oscillator.start(440, 1);
+      oscillator.start(1);
 
       expect(ctxt.oscillators).toHaveLength(4);
       expect(ctxt.stereoPanners).toHaveLength(2);
@@ -344,7 +344,7 @@ describe('UnisonOscillator', () => {
         },
       );
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       created[0]!.throwOnStop = true;
       oscillator.stop();
 
@@ -372,7 +372,7 @@ describe('UnisonOscillator', () => {
       );
       oscillator.voices = 2;
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       created[0]!.throwOnStop = true;
       oscillator.stop();
 
@@ -403,7 +403,7 @@ describe('UnisonOscillator', () => {
       );
       oscillator.voices = 2;
 
-      expect(() => oscillator.start(440, 0)).toThrow(
+      expect(() => oscillator.start(0)).toThrow(
         'TestOscillator creation failed',
       );
 
@@ -431,7 +431,7 @@ describe('UnisonOscillator', () => {
       );
       oscillator.voices = 2;
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       oscillator.stop();
       oscillator.destroy();
 
@@ -448,7 +448,7 @@ describe('UnisonOscillator', () => {
     try {
       const oscillator = createUnison(ctxt);
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
 
       const [fakeOscillator] = ctxt.oscillators;
       const [frequencySource, detuneSource] = ctxt.constantSources;
@@ -508,12 +508,12 @@ describe('UnisonOscillator', () => {
       const oscillator = createUnison(ctxt);
 
       oscillator.voices = 3;
-      oscillator.start(440, 0);
+      oscillator.start(0);
       const firstSources = [...ctxt.oscillators];
       const warmedGainCount = ctxt.gains.length;
       oscillator.stop();
       firstSources.forEach(source => source.end());
-      oscillator.start(440, 1);
+      oscillator.start(1);
 
       expect(ctxt.oscillators).toHaveLength(6);
       expect(ctxt.gains.length).toBe(warmedGainCount);
@@ -528,7 +528,7 @@ describe('UnisonOscillator', () => {
       const ctxt = new FakeAudioContext();
       const oscillator = createUnison(ctxt);
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
 
       expect(ctxt.stereoPanners).toHaveLength(0);
       expect(ctxt.waveShapers).toHaveLength(0);
@@ -544,9 +544,9 @@ describe('UnisonOscillator', () => {
       const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       oscillator.stop();
-      oscillator.start(440, 1);
+      oscillator.start(1);
 
       expect(ctxt.stereoPanners).toHaveLength(4);
       expect(ctxt.oscillators).toHaveLength(4);
@@ -562,7 +562,7 @@ describe('UnisonOscillator', () => {
       const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
 
       const pooledSource = ctxt.oscillators[0]!;
       expect(
@@ -588,10 +588,10 @@ describe('UnisonOscillator', () => {
       const ctxt = new FakeAudioContext();
       const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
-      oscillator.start(440, 0);
+      oscillator.start(0);
       oscillator.stop();
       ctxt.oscillators[0]!.end();
-      oscillator.start(440, 1);
+      oscillator.start(1);
 
       expect(ctxt.stereoPanners).toHaveLength(4);
     } finally {
@@ -606,10 +606,10 @@ describe('UnisonOscillator', () => {
       const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       const oldSources = [...ctxt.oscillators];
       oldSources.forEach(source => source.end());
-      oscillator.start(440, 1);
+      oscillator.start(1);
       oldSources[0]?.end();
 
       expect(
@@ -633,14 +633,14 @@ describe('UnisonOscillator', () => {
       const ctxt = new FakeAudioContext();
       const oscillator = createUnison(ctxt);
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       const direct = ctxt.oscillators[0]!;
       oscillator.stop();
       direct.end();
       expect(direct.connections).toHaveLength(0);
 
       oscillator.voices = 2;
-      oscillator.start(440, 1);
+      oscillator.start(1);
       const pooledSources = ctxt.oscillators.slice(1);
       oscillator.stop();
       pooledSources.forEach(source => source.end());
@@ -681,7 +681,7 @@ describe('UnisonOscillator', () => {
       oscillator.voices = 2;
       const originalStart = ctxt.oscillators;
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       originalStart.forEach(source => source.end());
       const originalCreate = ctxt.createOscillator.bind(ctxt);
       ctxt.createOscillator = () => {
@@ -694,7 +694,7 @@ describe('UnisonOscillator', () => {
         return source;
       };
 
-      expect(() => oscillator.start(440, 1)).toThrow('setup failed');
+      expect(() => oscillator.start(1)).toThrow('setup failed');
       expect(
         ctxt.oscillators
           .slice(2)
@@ -711,18 +711,18 @@ describe('UnisonOscillator', () => {
       const ctxt = new FakeAudioContext();
       const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
-      oscillator.start(440, 0);
+      oscillator.start(0);
       const warmedGainCount = ctxt.gains.length;
       const firstSources = [...ctxt.oscillators];
       oscillator.stop();
       firstSources.forEach(source => source.end());
       ctxt.waveShapers[0]!.throwOnCurveSet = true;
 
-      expect(() => oscillator.start(440, 1)).toThrow(
+      expect(() => oscillator.start(1)).toThrow(
         'FakeWaveShaperNode curve assignment failed',
       );
       ctxt.waveShapers[0]!.throwOnCurveSet = false;
-      oscillator.start(440, 2);
+      oscillator.start(2);
       expect(ctxt.gains).toHaveLength(warmedGainCount);
     } finally {
       restoreAudioParam();
@@ -735,7 +735,7 @@ describe('UnisonOscillator', () => {
       const ctxt = new FakeAudioContext();
       const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
-      oscillator.start(440, 0);
+      oscillator.start(0);
       const firstSources = [...ctxt.oscillators];
       oscillator.stop();
       firstSources.forEach(source => source.end());
@@ -746,13 +746,11 @@ describe('UnisonOscillator', () => {
         return source;
       };
 
-      expect(() => oscillator.start(440, 1)).toThrow(
-        'FakeAudioNode connect failed',
-      );
+      expect(() => oscillator.start(1)).toThrow('FakeAudioNode connect failed');
       expect(ctxt.oscillators[2]!.connections).toHaveLength(0);
       expect(ctxt.oscillators[2]!.stopCalls).toHaveLength(1);
       ctxt.createOscillator = originalCreate;
-      oscillator.start(440, 2);
+      oscillator.start(2);
       expect(ctxt.oscillators).toHaveLength(5);
     } finally {
       restoreAudioParam();
@@ -771,13 +769,11 @@ describe('UnisonOscillator', () => {
         return source;
       };
 
-      expect(() => oscillator.start(440, 0)).toThrow(
-        'FakeAudioNode connect failed',
-      );
+      expect(() => oscillator.start(0)).toThrow('FakeAudioNode connect failed');
       expect(ctxt.oscillators[0]!.connections).toHaveLength(0);
       expect(ctxt.oscillators[0]!.onended).toBeNull();
       ctxt.createOscillator = originalCreate;
-      oscillator.start(440, 1);
+      oscillator.start(1);
       expect(ctxt.oscillators).toHaveLength(2);
     } finally {
       restoreAudioParam();
@@ -797,12 +793,12 @@ describe('UnisonOscillator', () => {
         return source;
       };
 
-      expect(() => oscillator.start(440, 0)).toThrow(
+      expect(() => oscillator.start(0)).toThrow(
         'FakeOscillatorNode type assignment failed',
       );
       expect(ctxt.oscillators[0]!.stopCalls).toHaveLength(1);
       ctxt.createOscillator = originalCreate;
-      oscillator.start(440, 1);
+      oscillator.start(1);
       expect(ctxt.oscillators).toHaveLength(3);
     } finally {
       restoreAudioParam();
@@ -814,14 +810,14 @@ describe('UnisonOscillator', () => {
     try {
       const ctxt = new FakeAudioContext();
       const oscillator = createUnison(ctxt);
-      oscillator.start(440, 0);
+      oscillator.start(0);
       const direct = ctxt.oscillators[0]!;
       oscillator.stop();
       direct.end();
       expect(direct.onended).toBeNull();
 
       oscillator.voices = 2;
-      oscillator.start(440, 1);
+      oscillator.start(1);
       const pooled = ctxt.oscillators.slice(1);
       oscillator.stop();
       pooled.forEach(source => source.end());
@@ -837,7 +833,7 @@ describe('UnisonOscillator', () => {
       const ctxt = new FakeAudioContext();
       const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
-      oscillator.start(440, 0);
+      oscillator.start(0);
       const source = ctxt.oscillators[0]!;
       expect(
         ctxt.connections.some(
@@ -860,7 +856,7 @@ describe('UnisonOscillator', () => {
       const ctxt = new FakeAudioContext();
       const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
-      oscillator.start(440, 0);
+      oscillator.start(0);
       ctxt.oscillators[0]!.throwOnStop = true;
 
       oscillator.stop();
@@ -878,7 +874,7 @@ describe('UnisonOscillator', () => {
               operation.destination === source.detune,
           ),
       );
-      oscillator.start(440, 1);
+      oscillator.start(1);
 
       expect(ctxt.oscillators).toHaveLength(4);
       expect(disconnectsBeforeReuse).toEqual([
@@ -913,7 +909,7 @@ describe('UnisonOscillator', () => {
     try {
       const ctxt = new FakeAudioContext();
       const oscillator = createUnison(ctxt);
-      oscillator.start(440, 0);
+      oscillator.start(0);
       const source = ctxt.oscillators[0]!;
       const [frequencySource, detuneSource] = ctxt.constantSources;
       source.throwOnStop = true;
@@ -935,7 +931,7 @@ describe('UnisonOscillator', () => {
             connection.destination === source.detune,
         ),
       ).toBe(false);
-      oscillator.start(440, 1);
+      oscillator.start(1);
       expect(ctxt.oscillators).toHaveLength(2);
     } finally {
       restoreAudioParam();
@@ -948,7 +944,7 @@ describe('UnisonOscillator', () => {
       const ctxt = new FakeAudioContext();
       const oscillator = createUnison(ctxt);
       oscillator.voices = 2;
-      oscillator.start(440, 0);
+      oscillator.start(0);
       oscillator.stop();
 
       expect(() => oscillator.destroy()).not.toThrow();

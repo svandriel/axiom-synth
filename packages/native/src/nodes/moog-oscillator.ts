@@ -76,11 +76,11 @@ export class MoogOscillator implements Oscillator {
     }
   }
 
-  start(noteHz: number, now: number): void {
+  start(now: number): void {
     if (this.current) {
       this.stop();
     }
-    this.createVoiceNodes(noteHz, now);
+    this.createVoiceNodes(now);
   }
 
   /**
@@ -142,9 +142,9 @@ export class MoogOscillator implements Oscillator {
   /**
    * Builds the per-note oscillator node.
    */
-  private createVoiceNodes(noteHz: number, now: number) {
+  private createVoiceNodes(now: number) {
     const osc = new MoogOscillatorWorkletNode(this.ctxt, this.wasmModule);
-    osc.frequency.setValueAtTime(noteHz, now);
+    osc.frequency.setValueAtTime(0, now);
     this.frequencySource.connect(osc.frequency);
     this.detuneSource.connect(osc.detune);
     osc.onended = () => {

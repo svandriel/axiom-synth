@@ -24,12 +24,10 @@ import {
   type WaveshaperConfig,
   type WaveshaperType,
 } from '@axiom/audio-engine';
-import {
-  initNativeModule,
-  type MoogOscillatorWorkletNode,
-} from '@axiom/native';
+import { initNativeModule } from '@axiom/native';
 import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
+import type { MoogOscillator } from '../../native/src/nodes/moog-oscillator';
 
 const MAX_VOICES = 16;
 const UNISON_RAMP_SECONDS = 0.01;
@@ -180,7 +178,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     FixedArray<ConstantSourceNode, LfoTargetCount>,
     LfoCount
   >;
-  private nativeOscillator: MoogOscillatorWorkletNode | undefined;
+  private nativeOscillator: MoogOscillator | undefined;
   private nativeFrequencySource: ConstantSourceNode | undefined;
 
   private readonly voiceConfig: AxiomVoiceConfig;
@@ -319,7 +317,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
   private async initNative() {
     const nativeModule = await initNativeModule(this.ctxt);
-    const osc = nativeModule.createSawOscillator();
+    const osc = nativeModule.createMoogOscillator();
 
     const lfo = this.ctxt.createOscillator();
     lfo.frequency.value = 2;
@@ -344,7 +342,8 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     this.nativeFrequencySource = nativeFrequencySource;
     nativeFrequencySource.connect(osc.frequency);
     osc.frequency.value = 100;
-    osc.connect(this.output);
+    osc.start(this.ctxt.currentTime);
+    // osc.connect(this.output);
   }
 
   protected override createVoice(): AxiomVoice {
