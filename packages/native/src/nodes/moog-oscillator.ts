@@ -101,11 +101,7 @@ export class MoogOscillator implements Oscillator {
       return;
     }
     this.stoppedNodes.add(osc);
-    if (time === undefined) {
-      osc.stop();
-    } else {
-      osc.stop(time);
-    }
+    osc.stop(time ?? this.ctxt.currentTime);
   }
 
   onEnded(subscriber: () => void): OscillatorEndSubscription {
@@ -129,7 +125,7 @@ export class MoogOscillator implements Oscillator {
     this.activeNodes.forEach(osc => {
       osc.onended = null;
       if (!this.stoppedNodes.has(osc)) {
-        osc.stop();
+        osc.stop(this.ctxt.currentTime);
       }
     });
     this.activeNodes.forEach(osc => this.detachNode(osc));
@@ -148,7 +144,6 @@ export class MoogOscillator implements Oscillator {
    */
   private createVoiceNodes(noteHz: number, now: number) {
     const osc = new MoogOscillatorWorkletNode(this.ctxt, this.wasmModule);
-    osc.type = this.wave;
     osc.frequency.setValueAtTime(noteHz, now);
     this.frequencySource.connect(osc.frequency);
     this.detuneSource.connect(osc.detune);
@@ -167,9 +162,9 @@ export class MoogOscillator implements Oscillator {
     this.current = osc;
   }
 
-  private detachNode(osc: OscillatorNode): void {
+  private detachNode(osc: MoogOscillatorWorkletNode): void {
     this.frequencySource.disconnect(osc.frequency);
     this.detuneSource.disconnect(osc.detune);
-    osc.disconnect();
+    osc.destroy();
   }
 }
