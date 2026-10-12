@@ -1,5 +1,5 @@
-import type { WaveFormType } from '../types';
 import type { Oscillator, OscillatorEndSubscription } from './oscillator';
+import type { WaveFormType } from '../types';
 
 const DEFAULT_OUTPUT_GAIN = 1;
 
@@ -142,10 +142,9 @@ export class WebAudioOscillator implements Oscillator {
   }
 
   /**
-   * Builds the per-note oscillator node(s) and returns them. Unison will later
-   * loop here, applying a per-voice detune intrinsic on each node.
+   * Builds the per-note oscillator node.
    */
-  private createVoiceNodes(noteHz: number, now: number): OscillatorNode[] {
+  private createVoiceNodes(noteHz: number, now: number) {
     const osc = this.ctxt.createOscillator();
     osc.type = this.wave;
     osc.frequency.setValueAtTime(noteHz, now);
@@ -164,7 +163,6 @@ export class WebAudioOscillator implements Oscillator {
     osc.start(now);
     this.activeNodes.add(osc);
     this.current = osc;
-    return [osc];
   }
 
   private detachNode(osc: OscillatorNode): void {

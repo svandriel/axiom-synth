@@ -1,7 +1,7 @@
-export * from './nodes/saw-oscillator-node';
-import { SawOscillatorNode } from './nodes/saw-oscillator-node';
-import workerUrl from './worker/worker?worker&url';
+export * from './nodes/moog-oscillator-worklet-node';
+import { MoogOscillatorWorkletNode } from './nodes/moog-oscillator-worklet-node';
 import { getWasmModule } from './wasm-holder';
+import workerUrl from './worker/worker?worker&url';
 
 export async function initNativeModule(ctxt: AudioContext) {
   await ctxt.audioWorklet.addModule(workerUrl);
@@ -20,7 +20,7 @@ export class NativeModule {
     this.wasmModule = wasmModule;
   }
 
-  createSawOscillator(): SawOscillatorNode {
-    return new SawOscillatorNode(this.ctxt, this.wasmModule);
+  createSawOscillator(): MoogOscillatorWorkletNode {
+    return new MoogOscillatorWorkletNode(this.ctxt, this.wasmModule);
   }
 }
