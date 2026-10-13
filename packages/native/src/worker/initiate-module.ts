@@ -1,8 +1,15 @@
 import Module, { type MainModule } from '../../c/dist/wasm/moog_saw';
 
-export async function initializeMainModule(
+let mainModulePromise: Promise<MainModule> | undefined;
+
+export function initializeMainModule(
   wasmModule: WebAssembly.Module,
 ): Promise<MainModule> {
+  mainModulePromise ??= createMainModule(wasmModule);
+  return mainModulePromise;
+}
+
+function createMainModule(wasmModule: WebAssembly.Module): Promise<MainModule> {
   return Module({
     instantiateWasm(
       imports: WebAssembly.Imports,
