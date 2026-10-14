@@ -10,20 +10,31 @@ Add an Axiom-specific continuous control across six oscillator-shape anchors, us
 
 The original instrument uses discrete waveform selections; continuous morphing is an Axiom feature. Without a hardware recording/reference waveform set, choices that cannot be established from reliable documentation must be labelled as design hypotheses and tuned by listening and measurement.
 
+## Research findings and implications
+
+- Sound On Sound's Model D review reports that Oscillators 1 and 2 offer triangle, shark's tooth, ramp, and three pulse variants; Oscillator 3 replaces shark's tooth with a sawtooth. This supports sharktooth as a real selector shape for Oscillators 1/2, but means the six-shape set is oscillator-specific rather than universal. ([Sound On Sound, Minimoog Model D review](https://www.soundonsound.com/reviews/moog-minimoog-model-d))
+- The official Model D manual describes square, wide-rectangle and narrow-rectangle pulse timbres and explains their duty-cycle/harmonic differences. It supports the three pulse anchors, but does not provide measured duty-cycle values for the original hardware. ([Official Moog Model D manual](https://api.moogmusic.com/sites/default/files/2018-01/Minimoog_Model_D_Manual.pdf))
+- The Model D technical service manual describes sawtooth signals being processed into triangle and variable-width rectangular waveforms. This is evidence for a related circuit path, not proof that ideal mathematical shapes or a single shared phase transform reproduce the hardware. ([Model D technical service manual](https://manuals.plus/m/60a4fe7267f2c66ac033917355bd1b8ce2fea581c4dee57692fcfa047fa44ac5))
+- Pekonen et al. model a recorded Moog sawtooth using a fitted phase-distortion model and a separate spectral post-equalization method. Their fitted phase distortion is a saw-specific model; the paper does not validate reusing it for triangle, sharktooth or pulse shapes. ([Pekonen et al., 2011, DOI: 10.1155/2011/785103](https://doi.org/10.1155/2011/785103))
+
+**Design implication:** the current six-anchor proposal corresponds to the Oscillator 1/2 selector family, with the existing Pekonen saw at the ramp-like anchor for compatibility. Before implementation, explicitly decide whether the new control targets that family only, or whether Oscillator 3 needs a different anchor set where sawtooth replaces sharktooth. Do not silently treat the two selector sets as identical.
+
 ## Anchor set: provisional, must be resolved before implementation
 
-The current proposal is:
+The documented selector family for Minimoog Model D Oscillators 1 and 2 is represented provisionally as:
 
 | Value | Candidate anchor | Initial definition |
 | ---: | --- | --- |
-| 0.0 | Triangle | Candidate shape derived from a shared phase representation |
-| 1.0 | Sharktooth | Provisional asymmetric ramp-like shape; not yet established as a Model D selector position |
-| 2.0 | Sawtooth | Existing Pekonen output, unchanged |
+| 0.0 | Triangle | Candidate shape; exact waveform and phase alignment still need definition |
+| 1.0 | Sharktooth | Documented selector shape; exact digital equation is not established by the sources below |
+| 2.0 | Ramp / legacy saw | Existing Pekonen output, unchanged for compatibility |
 | 3.0 | Square | 50% duty cycle |
-| 4.0 | Wide pulse | 75% duty cycle; provisional Axiom choice |
-| 5.0 | Narrow pulse | 25% duty cycle; provisional Axiom choice |
+| 4.0 | Wide rectangle / pulse | 75% duty cycle; provisional Axiom value, not a measured hardware value |
+| 5.0 | Narrow rectangle / pulse | 25% duty cycle; provisional Axiom value, not a measured hardware value |
 
-**Phase 0 must verify the intended reference waveform set before these anchors are frozen.** In particular, establish whether “sharktooth” is the intended shape or whether a reverse-saw / another documented Model D shape belongs in the set. Do not silently label an Axiom-invented shape as an original hardware waveform. If six anchors cannot faithfully represent the selected reference set, record the trade-off and obtain approval before implementation.
+Sound On Sound reports that Oscillators 1 and 2 have triangle, shark's tooth, ramp and three pulse variants. Oscillator 3 replaces shark's tooth with a sawtooth. **Phase 0 must decide which oscillator family this feature represents.** If the feature must represent all three oscillators faithfully, one fixed six-anchor map is insufficient: either provide oscillator-specific maps or document the deliberate compromise and obtain approval.
+
+The labels “ramp” and “sawtooth” may refer to related but not necessarily identical measured waveforms in this instrument context. The legacy Pekonen output remains at value 2.0 for compatibility; this placement is a design decision, not proof of an exact hardware match. Do not invent a reverse-saw anchor to stand in for sharktooth without a documented or measured basis.
 
 The 75%/25% duty cycles are starting design values, not asserted measurements of original hardware. Keep widths fixed for this feature; do not add a separate pulse-width control.
 
@@ -143,6 +154,13 @@ Relevant files include packages/native/c/Makefile, packages/native/c/src/moog_sa
 - Hard sync, reset, frequency/detune changes, finite output, WASM pointer offsets/buffer lengths, multi-instance behavior and processing performance are tested.
 - No allocations occur in the real-time render loop.
 - WAVs are reviewed by ear and by waveform/spectrum inspection; subjective tuning is labelled as such.
+
+## References
+
+1. Sound On Sound, [“Moog Minimoog Model D”](https://www.soundonsound.com/reviews/moog-minimoog-model-d) — selector differences between Oscillators 1/2 and Oscillator 3.
+2. Moog Music, [Minimoog Model D manual (PDF)](https://api.moogmusic.com/sites/default/files/2018-01/Minimoog_Model_D_Manual.pdf) — pulse/square/rectangle descriptions.
+3. [Minimoog Model D technical service manual](https://manuals.plus/m/60a4fe7267f2c66ac033917355bd1b8ce2fea581c4dee57692fcfa047fa44ac5) — oscillator-board signal-path description; third-party-hosted scan.
+4. Pekonen, Lazzarini, Timoney, Kleimola and Välimäki, [“Discrete-Time Modelling of the Moog Sawtooth Oscillator Waveform” (2011)](https://doi.org/10.1155/2011/785103) — saw-specific phase-distortion and spectral-matching models.
 
 ## Explicit non-goals
 
