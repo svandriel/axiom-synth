@@ -64,7 +64,7 @@ pnpm test                         # tests across workspace packages
 pnpm build                        # all workspace builds; requires emcc on PATH
 pnpm --filter @axiom/native build # type-check native JS and compile WASM
 pnpm --filter @axiom/native test  # native C and JS tests
-pnpm build:pages                  # build with the /axiom-synth/ base path
+pnpm build                          # build (base controlled via VITE_BASE_PATH)
 pnpm format                       # prettier --write
 ```
 

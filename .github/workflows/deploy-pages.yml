@@ -41,7 +41,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build production site
-        run: pnpm run build:pages
+        env:
+          VITE_BASE_PATH: /axiom-synth/
+        run: pnpm run build
 
       # Preserve only the preview tree. A blanket keep_files=true would also
       # retain obsolete hashed production assets indefinitely.

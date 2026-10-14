@@ -47,7 +47,7 @@ audio processor to WebAssembly with Emscripten.
 pnpm install
 pnpm dev          # dev server on port 4000 (app/vite.config.ts)
 pnpm build        # all workspace packages; requires emcc on PATH
-pnpm build:pages  # build the app with --base=/axiom-synth/ (Pages deploy)
+pnpm build        # build (base via VITE_BASE_PATH)
 pnpm test         # all tests: JS packages, native C, and Playwright E2E
 pnpm --filter @axiom/native build # type-check JS and compile WASM; requires emcc
 pnpm --filter @axiom/native test  # native C and JavaScript tests
@@ -56,7 +56,7 @@ pnpm lint         # prettier --check .   (not run manually; pre-commit handles i
 pnpm format       # prettier --write .
 ```
 
-Tooling lives at the workspace root: prettier/husky/lint-staged live in the root `package.json` (packages ship no prettier tooling); `pnpm dev`/`pnpm build:pages` run through `pnpm --filter @axiom/app`. Workspace builds include `@axiom/native`, whose `make wasm` target requires Emscripten `emcc` on `PATH`. GitHub Actions installs SDK `6.0.12` with `emscripten-core/setup-emsdk@v15`.
+Tooling lives at the workspace root: prettier/husky/lint-staged live in the root `package.json` (packages ship no prettier tooling); `pnpm dev`/`pnpm build` run through `pnpm -r --sort`. Workspace builds include `@axiom/native`, whose `make wasm` target requires Emscripten `emcc` on `PATH`. GitHub Actions installs SDK `6.0.12` with `emscripten-core/setup-emsdk@v15`.
 
 Testing uses Vitest across the JavaScript packages and native C tests in `packages/native`: `pnpm test` runs `pnpm -r --parallel test`, and the app package's `test` script runs the Playwright E2E suite, so `pnpm test` covers everything. Build the WASM module first (`pnpm build`) because E2E loads it at runtime. Shared fake Web Audio fakes live in `packages/audio-testing`. Browser E2E uses Playwright and lives in the app package (`app/playwright.config.ts`, `app/e2e/`); run only E2E with `pnpm --filter @axiom/app test:e2e`.
 

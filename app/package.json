@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "build:pages": "vue-tsc -b && vite build --base=/axiom-synth/",
     "preview": "vite preview",
     "test": "pnpm run test:e2e",
     "test:e2e": "playwright test"

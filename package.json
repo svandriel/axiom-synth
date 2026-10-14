@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "pnpm -r --parallel --if-present dev",
     "build": "pnpm -r --sort build",
-    "build:pages": "pnpm --filter @axiom/app build:pages",
     "preview": "pnpm --filter @axiom/app preview",
     "test": "pnpm -r --parallel test",
     "lint": "prettier --check .",
