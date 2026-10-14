@@ -1,10 +1,11 @@
 #include "moog_saw.h"
+#include "moog_saw_math.h"
 
 #include <math.h>
 #include <stdlib.h>
 
-#define MOOG_SAW_PI 3.141592653589793238462643383279502884
-#define MOOG_SAW_TWO_PI (2.0 * MOOG_SAW_PI)
+/* Clamp margin that keeps the two-segment waveform denominator non-zero. */
+#define MOOG_SAW_P_EPSILON 1.0e-7f
 
 struct MoogSaw
 {
@@ -13,20 +14,6 @@ struct MoogSaw
     float frequency_hz;
     float previous_sync;
 };
-
-static double wrap_phase(double phase)
-{
-    phase -= floor(phase);
-    if (phase >= 1.0)
-    {
-        phase = 0.0;
-    }
-    else if (phase < 0.0)
-    {
-        phase += 1.0;
-    }
-    return phase;
-}
 
 static double phase_increment(float frequency_hz, double sample_rate)
 {
@@ -54,18 +41,17 @@ float moog_saw_p(float frequency_hz)
     return p;
 }
 
-float moog_saw_waveform(double phase, float p)
+/* Evaluate the waveform for a phase already known to lie in [0, 1). */
+static float waveform_unwrapped(double phase, float p)
 {
-    phase = wrap_phase(phase);
-
     /* The fitted operating range has 0 < P < 1. */
     if (p <= 0.0f)
     {
-        p = 1.0e-7f;
+        p = MOOG_SAW_P_EPSILON;
     }
     else if (p >= 1.0f)
     {
-        p = 1.0f - 1.0e-7f;
+        p = 1.0f - MOOG_SAW_P_EPSILON;
     }
 
     const double pd_amplitude = MOOG_SAW_PI - MOOG_SAW_TWO_PI * (double)p;
@@ -81,7 +67,12 @@ float moog_saw_waveform(double phase, float p)
     }
 
     /* Equation (4). */
-    return (float)(-cos(MOOG_SAW_TWO_PI * phase + phi_mod));
+    return (float)(-quadrant_cos(MOOG_SAW_TWO_PI * phase + phi_mod));
+}
+
+float moog_saw_waveform(double phase, float p)
+{
+    return waveform_unwrapped(wrap_phase(phase), p);
 }
 
 MoogSaw *moog_saw_create(double sample_rate)
@@ -129,25 +120,54 @@ double moog_saw_phase(const MoogSaw *osc)
     return osc ? osc->phase : 0.0;
 }
 
-void moog_saw_process(
+/* True when every one of the first `frames` values equals values[0]. */
+static int block_is_uniform(const float *values, uint32_t frames)
+{
+    for (uint32_t i = 1; i < frames; ++i)
+    {
+        if (values[i] != values[0])
+            return 0;
+    }
+    return 1;
+}
+
+/*
+ * Frequency ratio for one sample. A NULL detune pointer means the block's
+ * detune is a single value, already folded into uniform_ratio; otherwise the
+ * per-sample cents are looked up and a zero detune skips exp2f.
+ */
+static inline float detune_ratio(
+    const float *detune, uint32_t i, float uniform_ratio)
+{
+    if (detune == NULL)
+        return uniform_ratio;
+
+    const float cents = detune[i];
+    return cents != 0.0f ? cents_to_ratio(cents) : 1.0f;
+}
+
+static void render_block(
     MoogSaw *osc,
     const float *frequency,
-    const float *detune, // in cents
+    const float *detune,
+    float uniform_ratio,
     const float *sync,
     float *output,
     uint32_t frames)
 {
-    if (!osc || !output || frames == 0)
-        return;
-
+    /* The sample rate is validated at creation, so a reciprocal is safe and
+     * replaces one division per sample with one multiplication. */
+    const double inv_sample_rate = 1.0 / osc->sample_rate;
     double phase = osc->phase;
     float prev_sync = osc->previous_sync;
 
     for (uint32_t i = 0; i < frames; ++i)
     {
-        const float detuneFactor = detune ? exp2f(detune[i] / 1200.0f) : 1.0f;
-        const float f = (frequency ? frequency[i] : osc->frequency_hz) * detuneFactor;
-        const double inc = phase_increment(f, osc->sample_rate);
+        const float f = (frequency ? frequency[i] : osc->frequency_hz) *
+                        detune_ratio(detune, i, uniform_ratio);
+        const double inc = (f > 0.0f && isfinite((double)f))
+                               ? (double)f * inv_sample_rate
+                               : 0.0;
 
         if (sync)
         {
@@ -175,12 +195,43 @@ void moog_saw_process(
             prev_sync = current_sync;
         }
 
-        output[i] = moog_saw_waveform(phase, moog_saw_p(f));
+        output[i] = waveform_unwrapped(phase, moog_saw_p(f));
         phase = wrap_phase(phase + inc);
     }
 
     osc->phase = phase;
     osc->previous_sync = prev_sync;
+}
+
+void moog_saw_process(
+    MoogSaw *osc,
+    const float *frequency,
+    const float *detune, // in cents
+    const float *sync,
+    float *output,
+    uint32_t frames)
+{
+    if (!osc || !output || frames == 0)
+        return;
+
+    /*
+     * A block whose detune is a single non-zero value (e.g. a fine-tune with
+     * no per-sample modulation) folds exp2f into one ratio, leaving the loop
+     * with no detune lookup. A uniform zero block is already cheap in the
+     * general path, so it is not special-cased.
+     */
+    const int uniform_detune =
+        detune != NULL && detune[0] != 0.0f && block_is_uniform(detune, frames);
+
+    if (uniform_detune)
+    {
+        const float ratio = cents_to_ratio(detune[0]);
+        render_block(osc, frequency, NULL, ratio, sync, output, frames);
+    }
+    else
+    {
+        render_block(osc, frequency, detune, 1.0f, sync, output, frames);
+    }
 }
 
 void moog_saw_process_sample(
