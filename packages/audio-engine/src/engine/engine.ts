@@ -2,6 +2,7 @@ import type { Destroyable } from './destroyable';
 import { FeedbackDelay } from './feedback-delay';
 import { resumeIfSuspended } from './helpers';
 import { Meter } from './meter';
+import { Reverb } from './reverb';
 
 export class AudioEngine implements Destroyable {
   public readonly ctxt: AudioContext;
@@ -11,6 +12,7 @@ export class AudioEngine implements Destroyable {
   private readonly analyser: AnalyserNode;
   private readonly comp: DynamicsCompressorNode;
   private readonly feedbackDelay: FeedbackDelay;
+  private readonly reverb: Reverb;
   private destroyed = false;
   public readonly id: number;
 
@@ -34,8 +36,12 @@ export class AudioEngine implements Destroyable {
     this.feedbackDelay.cutoff.setValueAtTime(400, this.ctxt.currentTime);
     this.feedbackDelay.delayTime.setValueAtTime(0.55, this.ctxt.currentTime);
 
+    this.reverb = new Reverb(this.ctxt);
+    this.reverb.wet.setValueAtTime(0.4, this.ctxt.currentTime);
+
     this.masterInput.connect(this.feedbackDelay.input);
-    this.feedbackDelay.connect(this.master);
+    this.feedbackDelay.connect(this.reverb.input);
+    this.reverb.connect(this.master);
     this.master.connect(this.comp);
     this.comp.connect(this.analyser);
     this.comp.connect(this.meter.input);
@@ -48,6 +54,14 @@ export class AudioEngine implements Destroyable {
 
   get meterLevel(): number {
     return this.meter.value;
+  }
+
+  get reverbBuffer(): AudioBuffer | null {
+    return this.reverb.buffer;
+  }
+
+  set reverbBuffer(buffer: AudioBuffer | null) {
+    this.reverb.buffer = buffer;
   }
 
   ensureStarted() {
