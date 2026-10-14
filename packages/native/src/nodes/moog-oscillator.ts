@@ -148,6 +148,7 @@ export class MoogOscillator implements Oscillator {
     this.frequencySource.connect(osc.frequency);
     this.detuneSource.connect(osc.detune);
     osc.onended = () => {
+      console.log('[moog-oscillator] onended');
       this.frequencySource.disconnect(osc.frequency);
       this.detuneSource.disconnect(osc.detune);
       this.activeNodes.delete(osc);

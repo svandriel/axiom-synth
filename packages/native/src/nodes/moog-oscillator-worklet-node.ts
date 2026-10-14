@@ -45,6 +45,7 @@ export class MoogOscillatorWorkletNode {
         case 'ENDED':
           if (!this.ended) {
             this.ended = true;
+            console.log('Moog oscillator worklet node ended');
             this.onended?.();
           }
           break;

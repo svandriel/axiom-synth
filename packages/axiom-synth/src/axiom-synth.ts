@@ -24,7 +24,7 @@ import {
   type WaveshaperConfig,
   type WaveshaperType,
 } from '@axiom/audio-engine';
-import { initNativeModule } from '@axiom/native';
+import { initNativeModule, NativeModule } from '@axiom/native';
 import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
 import type { MoogOscillator } from '../../native/src/nodes/moog-oscillator';
@@ -58,6 +58,7 @@ function lfoDepthSignal(target: LfoTarget, depth: number): number {
 export class AxiomSynth extends Synth<AxiomVoice> {
   public readonly output: GainNode;
   private readonly id: number;
+  private readonly nativeModule: NativeModule;
 
   private readonly _oscillatorConfigs: FixedArray<
     OscillatorConfig,
@@ -183,10 +184,20 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
   private readonly voiceConfig: AxiomVoiceConfig;
 
-  constructor(ctxt: AudioContext, audioSink: AudioNode) {
+  static async create(ctxt: AudioContext, sink: AudioNode) {
+    const nativeModule = await initNativeModule(ctxt);
+    return new AxiomSynth(ctxt, nativeModule, sink);
+  }
+
+  private constructor(
+    ctxt: AudioContext,
+    nativeModule: NativeModule,
+    audioSink: AudioNode,
+  ) {
     super(ctxt, audioSink, { maxVoices: MAX_VOICES });
 
     this.id = Math.round(Date.now() / 1000);
+    this.nativeModule = nativeModule;
 
     console.log(`Creating AxiomSynth #${this.id}`);
 
@@ -330,7 +341,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
     lfo.connect(lfoDepth);
 
-    const nativeFrequencySource = this.createConstantSource(10);
+    const nativeFrequencySource = this.createConstantSource(60);
     if (this.destroyed) {
       nativeFrequencySource.disconnect();
       nativeFrequencySource.stop();
@@ -341,13 +352,17 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     this.nativeOscillator = osc;
     this.nativeFrequencySource = nativeFrequencySource;
     nativeFrequencySource.connect(osc.frequency);
-    osc.frequency.value = 100;
     osc.start(this.ctxt.currentTime);
     // osc.connect(this.output);
   }
 
   protected override createVoice(): AxiomVoice {
-    return new AxiomVoice(this.ctxt, this.output, this.voiceConfig);
+    return new AxiomVoice(
+      this.ctxt,
+      this.output,
+      this.voiceConfig,
+      this.nativeModule,
+    );
   }
 
   get oscillatorConfigs(): FixedArray<OscillatorConfig, OscillatorCount> {

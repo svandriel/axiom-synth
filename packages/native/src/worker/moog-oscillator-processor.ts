@@ -58,6 +58,11 @@ export class MoogOscillatorProcessor extends AudioWorkletProcessor {
           break;
         case 'STOP':
           this.stopTime = event.data.when;
+          // A node that has been disconnected from the destination is no longer
+          // pulled through `process()`, so a due stop must tear down here.
+          if (currentTime >= this.stopTime) {
+            this.emitEnded();
+          }
           break;
         case 'DESTROY':
           this.destroyResources();
@@ -93,6 +98,8 @@ export class MoogOscillatorProcessor extends AudioWorkletProcessor {
         this.outputPointer >>> WASM_POINTER_SHIFT,
         (this.outputPointer >>> WASM_POINTER_SHIFT) + WEBAUDIO_BLOCK_SIZE,
       );
+
+      console.log('MoogOscillator created');
     });
   }
 
@@ -111,8 +118,7 @@ export class MoogOscillatorProcessor extends AudioWorkletProcessor {
     }
 
     if (this.stopTime !== undefined && currentTime >= this.stopTime) {
-      this.destroyResources();
-      this.port.postMessage({ type: 'ENDED' });
+      this.emitEnded();
       return false;
     }
 
@@ -188,6 +194,19 @@ export class MoogOscillatorProcessor extends AudioWorkletProcessor {
     }
 
     return true;
+  }
+
+  /**
+   * Free WASM resources and tell the wrapper the generation has ended. Guarded
+   * so the message is emitted exactly once, whether the stop is observed in the
+   * port handler (disconnected node) or in `process` (still-connected node).
+   */
+  private emitEnded(): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.destroyResources();
+    this.port.postMessage({ type: 'ENDED' });
   }
 
   private destroyResources(): void {

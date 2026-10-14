@@ -36,5 +36,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Install Playwright browser
+        run: pnpm --filter @axiom/app exec playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: pnpm --filter @axiom/app test:e2e
+
       - name: Lint
         run: pnpm lint

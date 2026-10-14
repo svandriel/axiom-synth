@@ -1,28 +1,29 @@
+import type { FixedArray } from '@axiom/audio-engine';
 import {
+  Envelope,
+  Filter,
+  freqOf,
+  Lfo,
   LFO_COUNT,
   LFO_TARGET_INDEX,
+  ModulationRouter,
   OSCILLATOR_COUNT,
+  UnisonOscillator,
+  Voice,
+  Waveshaper,
   type LfoCount,
   type OscillatorCount,
   type OscillatorIndex,
 } from '@axiom/audio-engine';
-import type { FixedArray } from '@axiom/audio-engine';
-import { Envelope } from '@axiom/audio-engine';
-import { Filter } from '@axiom/audio-engine';
-import { freqOf } from '@axiom/audio-engine';
-import { Lfo } from '@axiom/audio-engine';
-import { ModulationRouter } from '@axiom/audio-engine';
-import { UnisonOscillator } from '@axiom/audio-engine';
-import { Voice } from '@axiom/audio-engine';
-import { Waveshaper } from '@axiom/audio-engine';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
-import { WebAudioOscillator } from '../../audio-engine/src/engine/web-audio-oscillator';
+import type { NativeModule } from '@axiom/native';
 
 export class AxiomVoice extends Voice {
   private areOscillatorsActive = false;
   private oscillators: FixedArray<UnisonOscillator, OscillatorCount>;
 
   private readonly config: AxiomVoiceConfig;
+  private readonly nativeModule: NativeModule;
   private readonly ampEnvelope: Envelope;
   // private readonly gainNodes: FixedArray<GainNode, OscillatorCount>;
   private readonly filterEnvelope: Envelope;
@@ -43,10 +44,12 @@ export class AxiomVoice extends Voice {
     ctxt: AudioContext,
     audioSink: AudioNode,
     config: AxiomVoiceConfig,
+    nativeModule: NativeModule,
   ) {
     super(ctxt, audioSink);
 
     this.config = config;
+    this.nativeModule = nativeModule;
 
     this.modulationRouter = new ModulationRouter();
 
@@ -121,7 +124,9 @@ export class AxiomVoice extends Voice {
     this.oscillators = new Array(OSCILLATOR_COUNT)
       .fill(null)
       .map((_value, index) => {
-        const osc = new UnisonOscillator(ctxt);
+        const osc = new UnisonOscillator(ctxt, () =>
+          this.nativeModule.createMoogOscillator(),
+        );
         osc.voices =
           this.config.oscillatorUnisonVoices.value[index as OscillatorIndex];
         osc.waveform =
