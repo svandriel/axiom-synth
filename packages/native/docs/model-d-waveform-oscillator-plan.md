@@ -6,8 +6,8 @@ This plan is gated on approval of model-d-waveform-oscillator-spec.md. Do not st
 
 1. Read packages/native/c/src/moog_saw.c, packages/native/c/include/moog_saw.h, packages/native/c/tests/test_moog_saw.c, and packages/native/c/Makefile.
 2. Capture the current C test results and deterministic golden saw renders at representative frequencies, including frequency modulation and hard sync. Preserve exact inputs and build/runtime details so the legacy path can be regression-tested.
-3. Resolve the intended six-anchor set. Verify whether sharktooth is a documented/intended Model D waveform or whether reverse saw / another shape is more appropriate. Label any Axiom-specific addition explicitly; do not claim hardware authenticity without evidence. Record the final proposed anchors and rationale for approval before implementation.
-4. Analyze the exact Pekonen equation and document the candidate shared representation: wrapped phase x, fitted P(f), phase offset, and theta = 2*pi*x + phi_mod. Check periodicity, monotonicity, discontinuities, and behavior at x = P; do not assume theta is a valid conventional phase coordinate.
+3. Use the source review to resolve the selector family. Sound On Sound reports triangle, shark's tooth, ramp and three pulse variants for Oscillators 1/2, while Oscillator 3 substitutes sawtooth for shark's tooth. The official manual documents square, wide-rectangle and narrow-rectangle pulse timbres. Decide whether the feature targets Oscillators 1/2, Oscillator 3, or needs oscillator-specific maps. Record this decision and rationale for approval before implementation. Do not treat the six-anchor map as universal across all three oscillators.
+4. Analyze the exact Pekonen equation and document the candidate shared representation: wrapped phase x, fitted P(f), phase offset, and theta = 2*pi*x + phi_mod. Check periodicity, monotonicity, discontinuities, and behavior at x = P; do not assume theta is a valid conventional phase coordinate. The paper validates this fitted phase-distortion approach for a recorded Moog sawtooth, not for other shapes.
 5. Write explicit candidate equations for every non-saw anchor. For each, document phase alignment, polarity, amplitude, DC convention, shape-specific parameters, and discontinuities. Treat these as hypotheses, not circuit facts. If the shared representation is unsuitable, propose a separate transformation while preserving the saw path.
 6. Define waveform sanitization consistently: finite values clamp to 0–5, NaN selects anchor 2.0, negative infinity selects 0, and positive infinity selects 5. Define the extended C API pointer contract: non-null waveform points to at least frames values; null means legacy saw for the block. A scalar/constant control, if needed, must use a distinct API.
 7. Establish the reproducible aliasing measurement method: deterministic pitch/sample-rate matrix; documented high-rate reference and downsampling method; FFT windowing/bin classification; RMS/peak error; alias energy ratio; and CPU cost. Propose acceptance thresholds and rationale before choosing the new-shape algorithm.
@@ -30,7 +30,8 @@ This plan is gated on approval of model-d-waveform-oscillator-spec.md. Do not st
 - Existing API and null extended-buffer path match the legacy saw.
 - Each anchor, anchor endpoints, interpolation midpoints, and clamping.
 - NaN and both infinities follow the specified policy.
-- Shape-specific invariants, phase alignment, polarity, amplitude, DC convention, and pulse duty cycles.
+- Ideal-shape invariant tests, independent of anti-aliasing: periodicity, phase landmarks, symmetry/asymmetry, polarity, peak-to-peak amplitude, DC convention, and pulse duty cycle.
+- Rendered/band-limited output tests, separately: finite output, spectral/alias metrics, and error against the high-rate reference. Do not compare a band-limited pulse's edge samples directly to an ideal discontinuous pulse.
 - Waveform automation does not reset phase or alter sync state.
 - Output remains finite for supported input ranges.
 
@@ -68,6 +69,13 @@ This plan is gated on approval of model-d-waveform-oscillator-spec.md. Do not st
 3. Attach deterministic WAV renders, spectra, metric results, and listening notes to the implementation PR.
 4. Review for API compatibility, real-time allocations, duplicate shape work, non-finite handling, and unintended saw changes.
 5. Update this plan with completed items and deviations from the approved spec.
+
+## Research references
+
+- Sound On Sound, [“Moog Minimoog Model D”](https://www.soundonsound.com/reviews/moog-minimoog-model-d): selector shapes for Oscillators 1/2 versus Oscillator 3.
+- Moog Music, [Minimoog Model D manual (PDF)](https://api.moogmusic.com/sites/default/files/2018-01/Minimoog_Model_D_Manual.pdf): pulse, square and rectangle timbral descriptions.
+- [Minimoog Model D technical service manual](https://manuals.plus/m/60a4fe7267f2c66ac033917355bd1b8ce2fea581c4dee57692fcfa047fa44ac5): oscillator-board signal path; third-party-hosted scan.
+- Pekonen et al., [“Discrete-Time Modelling of the Moog Sawtooth Oscillator Waveform” (2011)](https://doi.org/10.1155/2011/785103): phase-distortion and spectral-matching approaches validated for the sawtooth.
 
 ## Proposed commit/PR structure after approval
 
