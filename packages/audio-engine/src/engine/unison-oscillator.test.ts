@@ -4,6 +4,7 @@ import type { Oscillator } from './oscillator';
 import {
   FakeAudioContext,
   FakeAudioParam,
+  FakeConstantSourceNode,
   type FakeAudioDestination,
   type FakeOscillatorNode,
   installFakeAudioParam,
@@ -484,6 +485,29 @@ describe('UnisonOscillator', () => {
       expect(
         ctxt.operations.filter(operation => operation.type === 'disconnect'),
       ).toHaveLength(4);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
+  it('plays a direct note at its own frequency without doubling it', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    const ctxt = new FakeAudioContext();
+    try {
+      const oscillator = new UnisonOscillator(ctxt as unknown as AudioContext);
+
+      oscillator.start(440, 0);
+
+      const source = ctxt.oscillators[0]!;
+      const modulators = ctxt.connections.filter(
+        connection => connection.destination === source.frequency,
+      );
+      expect(modulators).toHaveLength(1);
+      const modulator = modulators[0]!.source;
+      expect(modulator).toBeInstanceOf(FakeConstantSourceNode);
+      const modulationOffset = (modulator as FakeConstantSourceNode).offset
+        .value;
+      expect(source.frequency.value + modulationOffset).toBe(440);
     } finally {
       restoreAudioParam();
     }
