@@ -66,6 +66,24 @@ static void test_detune(void)
     moog_saw_destroy(osc);
 }
 
+static void test_semitone_detune(void)
+{
+    MoogSaw *osc = moog_saw_create(48000.0);
+    assert(osc);
+
+    const float freq[] = {480.0f};
+    /* +5 semitones (perfect fourth) is 500 cents. */
+    const float detune[] = {500.0f};
+    float out;
+
+    moog_saw_process(osc, freq, detune, NULL, &out, 1);
+
+    const double expected_freq = 480.0 * pow(2.0, 5.0 / 12.0);
+    const double expected_phase = expected_freq / 48000.0;
+    assert(fabs(moog_saw_phase(osc) - expected_phase) < 1e-9);
+    moog_saw_destroy(osc);
+}
+
 static void test_explicit_event(void)
 {
     MoogSaw *osc = moog_saw_create(48000.0);
@@ -87,6 +105,7 @@ int main(void)
     test_progression();
     test_fractional_sync();
     test_detune();
+    test_semitone_detune();
     test_explicit_event();
     puts("all tests passed");
     return 0;
