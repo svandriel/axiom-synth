@@ -49,6 +49,10 @@ jobs:
         if: github.event.action != 'closed'
         run: pnpm install --frozen-lockfile
 
+      - name: Build native WASM
+        if: github.event.action != 'closed'
+        run: pnpm --filter @axiom/native build
+
       - name: Type-check
         if: github.event.action != 'closed'
         run: pnpm --filter @axiom/app exec vue-tsc -b
