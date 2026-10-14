@@ -18,7 +18,9 @@ export function useAudioEnvironment(): Ref<AudioEnvironment> {
       .then(response => response.arrayBuffer())
       .then(buffer => engine.ctxt.decodeAudioData(buffer))
       .then(audioBuffer => {
-        console.log(`Loaded ${impulseResponse}`);
+        console.log(
+          `Loaded ${impulseResponse}: ${audioBuffer.duration.toFixed(1)} s, samplerate ${audioBuffer.sampleRate}, channels: ${audioBuffer.numberOfChannels}`,
+        );
         engine.reverbBuffer = audioBuffer;
       })
       .catch(err => {
