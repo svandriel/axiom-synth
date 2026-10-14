@@ -8,14 +8,17 @@ Work in progress. Use the caveman skill in ultra mode.
 
 - `pnpm dev` — Vite dev server on port 4000
 - `pnpm build` — `pnpm -r --sort build` (builds all workspace packages)
-- `pnpm test` — package tests, including native C and JavaScript tests
+- `pnpm test` — all tests: JavaScript packages, native C, and Playwright browser E2E
+- `pnpm --filter @axiom/app test:e2e` — Playwright browser E2E only (starts the app dev server)
 - `pnpm lint` — `prettier --check .`
 - `pnpm format` — `prettier --write .`
 
 Linting runs in the pre-commit hook. New features and behavior changes require
 automated tests. `pnpm build` compiles the native WebAssembly module and needs
-Emscripten (`emcc`) on `PATH`. GitHub Actions runs `pnpm test`, `pnpm build`,
-and `pnpm lint`; build workflows install Emscripten SDK `6.0.12`.
+Emscripten (`emcc`) on `PATH`; the E2E suite also needs a built WASM module, so
+run `pnpm build` before `pnpm test` on a clean checkout. GitHub Actions runs
+`pnpm build`, `pnpm test` (which includes the Playwright E2E suite), and
+`pnpm lint`; build workflows install Emscripten SDK `6.0.12`.
 
 ## Way of working
 

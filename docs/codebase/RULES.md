@@ -82,6 +82,19 @@ barrel declares.
 Reference: `packages/axiom-synth/src/index.ts` earns its keep — it exports only
 `AxiomSynth`/`AxiomVoice`; `AxiomVoiceConfig` stays package-internal.
 
+### 8. Native worklet teardown must not depend on process() being pulled
+
+An `AudioWorkletNode` disconnected from the destination is no longer reachable
+from the destination and is therefore not pulled through `process()`. A native
+oscillator processor must observe a due `STOP` in its port `onmessage` handler
+(`currentTime >= when`), not only in `process()`. Both the handler and
+`process()` must route through one guarded teardown that frees WASM and posts
+`ENDED` exactly once.
+
+Reference: `packages/native/src/worker/moog-oscillator-processor.ts`
+(`emitEnded`). Design:
+`docs/superpowers/specs/2026-10-11-native-oscillator-lifecycle-design.md`.
+
 ## History
 
 - Rule 6 ("New engine modules stay internal") superseded by rule 6

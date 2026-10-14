@@ -30,17 +30,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Test
-        run: pnpm test
-
       - name: Build
         run: pnpm build
 
       - name: Install Playwright browser
         run: pnpm --filter @axiom/app exec playwright install --with-deps chromium
 
-      - name: End-to-end tests
-        run: pnpm --filter @axiom/app test:e2e
+      - name: Test
+        run: pnpm test
 
       - name: Lint
         run: pnpm lint

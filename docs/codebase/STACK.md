@@ -30,15 +30,16 @@ audio processor to WebAssembly with Emscripten.
 
 ### 3) Development Toolchain
 
-| Tool                        | Purpose                                                                          | Evidence                                  |
-| --------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------- |
-| Vite 8.2.2                  | Dev server + build                                                               | `app/package.json`, `app/vite.config.ts`  |
-| vue-tsc 3.3.11              | Type-check `.vue`/`.ts` in `pnpm build`                                          | `app/package.json`                        |
-| TypeScript ~6.0.2           | `strict`, `noUnusedLocals/Params`, `erasableSyntaxOnly`                          | `app/tsconfig.app.json`                   |
-| Prettier 3.9.6              | Only linter/formatter (single quotes, trailing commas, 80-char)                  | `.prettierrc.yaml`                        |
-| prettier-plugin-tailwindcss | Tailwind class ordering in Prettier                                              | `.prettierrc.yaml`                        |
-| Husky 9 + lint-staged 17    | Pre-commit auto-format of staged files                                           | `.husky/pre-commit`, `.lintstagedrc.json` |
-| GitHub Actions              | PR build/test, GitHub Pages deploy, and PR previews; Emscripten setup for builds | `.github/workflows/*.yml`                 |
+| Tool                        | Purpose                                                                          | Evidence                                       |
+| --------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Vite 8.2.2                  | Dev server + build                                                               | `app/package.json`, `app/vite.config.ts`       |
+| vue-tsc 3.3.11              | Type-check `.vue`/`.ts` in `pnpm build`                                          | `app/package.json`                             |
+| Playwright 1.64             | Browser E2E smoke test (`app/e2e/`) against the app dev server                   | `app/package.json`, `app/playwright.config.ts` |
+| TypeScript ~6.0.2           | `strict`, `noUnusedLocals/Params`, `erasableSyntaxOnly`                          | `app/tsconfig.app.json`                        |
+| Prettier 3.9.6              | Only linter/formatter (single quotes, trailing commas, 80-char)                  | `.prettierrc.yaml`                             |
+| prettier-plugin-tailwindcss | Tailwind class ordering in Prettier                                              | `.prettierrc.yaml`                             |
+| Husky 9 + lint-staged 17    | Pre-commit auto-format of staged files                                           | `.husky/pre-commit`, `.lintstagedrc.json`      |
+| GitHub Actions              | PR build/test, GitHub Pages deploy, and PR previews; Emscripten setup for builds | `.github/workflows/*.yml`                      |
 
 ### 4) Key Commands
 
@@ -47,19 +48,21 @@ pnpm install
 pnpm dev          # dev server on port 4000 (app/vite.config.ts)
 pnpm build        # all workspace packages; requires emcc on PATH
 pnpm build:pages  # build the app with --base=/axiom-synth/ (Pages deploy)
+pnpm test         # all tests: JS packages, native C, and Playwright E2E
 pnpm --filter @axiom/native build # type-check JS and compile WASM; requires emcc
 pnpm --filter @axiom/native test  # native C and JavaScript tests
+pnpm --filter @axiom/app test:e2e # Playwright browser E2E only (starts the app dev server)
 pnpm lint         # prettier --check .   (not run manually; pre-commit handles it)
 pnpm format       # prettier --write .
 ```
 
 Tooling lives at the workspace root: prettier/husky/lint-staged live in the root `package.json` (packages ship no prettier tooling); `pnpm dev`/`pnpm build:pages` run through `pnpm --filter @axiom/app`. Workspace builds include `@axiom/native`, whose `make wasm` target requires Emscripten `emcc` on `PATH`. GitHub Actions installs SDK `6.0.12` with `emscripten-core/setup-emsdk@v15`.
 
-Testing uses Vitest across the JavaScript packages and native C tests in `packages/native`: `pnpm test` runs `pnpm -r --sort test`. Shared fake Web Audio fakes live in `packages/audio-testing`.
+Testing uses Vitest across the JavaScript packages and native C tests in `packages/native`: `pnpm test` runs `pnpm -r --parallel test`, and the app package's `test` script runs the Playwright E2E suite, so `pnpm test` covers everything. Build the WASM module first (`pnpm build`) because E2E loads it at runtime. Shared fake Web Audio fakes live in `packages/audio-testing`. Browser E2E uses Playwright and lives in the app package (`app/playwright.config.ts`, `app/e2e/`); run only E2E with `pnpm --filter @axiom/app test:e2e`.
 
 ### 5) Environment and Config
 
-- Config sources: `app/vite.config.ts`, `app/tsconfig*.json`, `packages/audio-engine/tsconfig.json`, `packages/axiom-synth/tsconfig.json`, `packages/audio-testing/tsconfig.json`, `.prettierrc.yaml`, `.lintstagedrc.json`, `.husky/pre-commit`, `pnpm-workspace.yaml`
+- Config sources: `app/vite.config.ts`, `app/tsconfig*.json`, `app/playwright.config.ts`, `packages/audio-engine/tsconfig.json`, `packages/axiom-synth/tsconfig.json`, `packages/audio-testing/tsconfig.json`, `.prettierrc.yaml`, `.lintstagedrc.json`, `.husky/pre-commit`, `pnpm-workspace.yaml`
 - Required env vars: **none** (no `.env` files; `.gitignore` has `*.local`). No env reads found in `app/src/`.
 - Deployment/runtime constraints: no Node runtime used in-app — pure client-side. CI expects Node 24 + pnpm 11. Frequencies/knob ranges are hardcoded UI values, not env-configurable.
 
