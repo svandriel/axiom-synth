@@ -74,7 +74,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
       semi: 0,
       detune: 0,
       waveform: 'sawtooth',
-      gain: 1,
+      gain: 0.4,
       unison: { voices: 1, detune: 0, depth: 0, blend: 1 },
     },
     {
@@ -99,14 +99,14 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
   public readonly filterConfig: FilterConfig = {
     type: 'lowpass24',
-    frequency: 3000,
+    frequency: 1300,
     q: 6,
     envAmount: 4800,
     tracking: 0.9,
   };
 
   private readonly _filterEnvelope: EnvelopeConfig = {
-    attackSeconds: 0.2,
+    attackSeconds: 0.05,
     attackCurve: 'linear',
     decaySeconds: 0.7,
     decayCurve: 'analog',
@@ -117,7 +117,7 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
   public readonly lfoConfigs: FixedArray<LfoConfig, LfoCount> = [
     { rateHz: 2, waveform: 'sine', depths: [-0.01, 0.01, 0, 0, -0.1, 0] },
-    { rateHz: 3.47, waveform: 'sine', depths: [0, 0, 0, 0.2, 0, 0] },
+    { rateHz: 0.8, waveform: 'sine', depths: [0, 0, 0, 0.2, 0, 0] },
     { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
     { rateHz: 2, waveform: 'sine', depths: [0, 0, 0, 0, 0, 0] },
   ];
