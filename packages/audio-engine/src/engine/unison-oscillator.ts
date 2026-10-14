@@ -181,7 +181,6 @@ export class UnisonOscillator implements Destroyable {
         } satisfies PooledSource;
         sources.push(source);
         oscillator.waveform = this.wave;
-        oscillator.frequency.setValueAtTime(noteHz, now);
         this.frequencySource.connect(oscillator.frequency);
         this.detuneSource.connect(oscillator.detune);
         path.arm(oscillator);
@@ -298,7 +297,6 @@ export class UnisonOscillator implements Destroyable {
     this.current = bundle;
     try {
       oscillator.waveform = this.wave;
-      oscillator.frequency.setValueAtTime(noteHz, now);
       this.frequencySource.connect(oscillator.frequency);
       this.detuneSource.connect(oscillator.detune);
       oscillator.connect(this.outputGain);
