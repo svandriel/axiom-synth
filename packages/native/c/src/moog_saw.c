@@ -1,5 +1,4 @@
 #include "moog_saw.h"
-#include "math_utils.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -146,7 +145,7 @@ void moog_saw_process(
 
     for (uint32_t i = 0; i < frames; ++i)
     {
-        const float detuneFactor = detune ? pow2f(detune[i] / 1200.0f) : 1.0f;
+        const float detuneFactor = detune ? exp2f(detune[i] / 1200.0f) : 1.0f;
         const float f = (frequency ? frequency[i] : osc->frequency_hz) * detuneFactor;
         const double inc = phase_increment(f, osc->sample_rate);
 
