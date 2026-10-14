@@ -12,6 +12,7 @@ import {
   FakeAudioNode,
   FakeConstantSourceNode,
 } from '@axiom/audio-testing';
+import type { NativeModule } from '@axiom/native';
 import { AxiomSynth } from './axiom-synth';
 
 vi.mock('@axiom/native', () => ({
@@ -30,12 +31,13 @@ const TARGET_INDEX = {
 
 const DEPTH_SOURCE_COUNT = LFO_COUNT * LFO_TARGET_COUNT;
 
-function makeSynth() {
+async function makeSynth() {
   const ctx = new FakeAudioContext();
   const sink = new FakeAudioNode(ctx);
-  const synth = new AxiomSynth(
+  const synth = await AxiomSynth.create(
     ctx as unknown as AudioContext,
     sink as unknown as AudioNode,
+    {} as NativeModule,
   );
   return { ctx, synth };
 }
@@ -63,9 +65,9 @@ afterEach(() => {
 });
 
 describe('AxiomSynth LFO depth sources', () => {
-  it('starts at the offsets setLfoConfiguration would produce', () => {
+  it('starts at the offsets setLfoConfiguration would produce', async () => {
     vi.useFakeTimers();
-    const { ctx, synth } = makeSynth();
+    const { ctx, synth } = await makeSynth();
     const constructed = allOffsets(ctx);
 
     ctx.currentTime = 1;
@@ -78,9 +80,9 @@ describe('AxiomSynth LFO depth sources', () => {
     synth.destroy();
   });
 
-  it('scales the stock pitch and cutoff depths to audible ranges', () => {
+  it('scales the stock pitch and cutoff depths to audible ranges', async () => {
     vi.useFakeTimers();
-    const { ctx, synth } = makeSynth();
+    const { ctx, synth } = await makeSynth();
 
     expect(depthOffset(ctx, 0, TARGET_INDEX.osc1)).toBe(-12);
     expect(depthOffset(ctx, 0, TARGET_INDEX.osc2)).toBe(12);
@@ -89,9 +91,9 @@ describe('AxiomSynth LFO depth sources', () => {
     synth.destroy();
   });
 
-  it('scales an updated depth into its target range', () => {
+  it('scales an updated depth into its target range', async () => {
     vi.useFakeTimers();
-    const { ctx, synth } = makeSynth();
+    const { ctx, synth } = await makeSynth();
 
     ctx.currentTime = 1;
     synth.setLfoConfiguration(0, {
@@ -106,9 +108,9 @@ describe('AxiomSynth LFO depth sources', () => {
     synth.destroy();
   });
 
-  it('clamps a negative drive depth to unipolar', () => {
+  it('clamps a negative drive depth to unipolar', async () => {
     vi.useFakeTimers();
-    const { ctx, synth } = makeSynth();
+    const { ctx, synth } = await makeSynth();
 
     ctx.currentTime = 1;
     synth.setLfoConfiguration(0, {

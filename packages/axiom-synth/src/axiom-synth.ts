@@ -184,9 +184,13 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
   private readonly voiceConfig: AxiomVoiceConfig;
 
-  static async create(ctxt: AudioContext, sink: AudioNode) {
-    const nativeModule = await initNativeModule(ctxt);
-    return new AxiomSynth(ctxt, nativeModule, sink);
+  static async create(
+    ctxt: AudioContext,
+    sink: AudioNode,
+    nativeModule?: NativeModule,
+  ) {
+    const module = nativeModule ?? (await initNativeModule(ctxt));
+    return new AxiomSynth(ctxt, module, sink);
   }
 
   private constructor(
