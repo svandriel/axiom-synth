@@ -11,6 +11,7 @@ import {
   FakeAudioContext,
   FakeAudioNode,
   FakeConstantSourceNode,
+  installFakeAudioParam,
 } from '@axiom/audio-testing';
 import { AxiomSynth } from './axiom-synth';
 
@@ -115,5 +116,56 @@ describe('AxiomSynth LFO depth sources', () => {
     expect(depthOffset(ctx, 0, TARGET_INDEX.drive)).toBe(0);
 
     synth.destroy();
+  });
+});
+
+describe('AxiomVoice idle seam', () => {
+  it('drops the voice amp-mod gain from the output when idle', () => {
+    vi.useFakeTimers();
+    const restoreAudioParam = installFakeAudioParam();
+    const { ctx, synth } = makeSynth();
+
+    synth.noteOn(60, 1);
+    const output = synth.output as unknown as FakeAudioNode;
+    const voiceAmpMod = ctx.gains.find(gain =>
+      gain.connections.some(c => c.destination === output),
+    );
+    expect(voiceAmpMod).toBeDefined();
+
+    synth.noteOff(60);
+    vi.advanceTimersByTime(4_000);
+
+    expect(voiceAmpMod!.connections.some(c => c.destination === output)).toBe(
+      false,
+    );
+    synth.destroy();
+    restoreAudioParam();
+  });
+});
+
+describe('AxiomSynth activity forwarding', () => {
+  it('activates the activity sink on noteOn', () => {
+    vi.useFakeTimers();
+    const restoreAudioParam = installFakeAudioParam();
+    const ctx = new FakeAudioContext();
+    const sink = new FakeAudioNode(ctx);
+    let activated = 0;
+    const synth = new AxiomSynth(
+      ctx as unknown as AudioContext,
+      sink as unknown as AudioNode,
+      {
+        activity: {
+          activate: () => {
+            activated++;
+          },
+        },
+      },
+    );
+
+    synth.noteOn(60, 1);
+
+    expect(activated).toBe(1);
+    synth.destroy();
+    restoreAudioParam();
   });
 });

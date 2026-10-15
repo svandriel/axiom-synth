@@ -82,6 +82,16 @@ barrel declares.
 Reference: `packages/axiom-synth/src/index.ts` earns its keep — it exports only
 `AxiomSynth`/`AxiomVoice`; `AxiomVoiceConfig` stays package-internal.
 
+### 8. Monitor nodes are leaf taps, never in the audio chain
+
+Analysers and meters observe the signal; they must not sit in the signal path.
+The chain runs `… → destination`, and each monitor hangs off a chain node as a
+side branch (`comp → destination`, `comp → analyser`, `comp → meter.input`).
+A monitor node still processes whenever it is connected, so it is attached only
+as a leaf and never given a passthrough role (`analyser → destination` is
+forbidden). Reference: `AudioEngine` master chain
+(`packages/audio-engine/src/engine/engine.ts`).
+
 ## History
 
 - Rule 6 ("New engine modules stay internal") superseded by rule 6

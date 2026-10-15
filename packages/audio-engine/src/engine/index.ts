@@ -1,3 +1,4 @@
+export * from './activity-sink';
 export * from './analyser';
 export * from './constants';
 export * from './curve-node';
