@@ -1,12 +1,14 @@
 import { onMounted, onUnmounted, watch, type Ref } from 'vue';
 
 /** Target frames per second for canvas render loops. */
-export const RENDER_FPS_CAP = 30;
+export const RENDER_FPS_CAP = 60;
 /** Upper bound on device-pixel-ratio used when sizing canvases. */
-export const RENDER_DPR_CAP = 1.5;
+export const RENDER_DPR_CAP = 3;
 
 const MILLISECONDS_PER_SECOND = 1000;
 const TIMING_LOG_INTERVAL_MS = 1000;
+/** Jitter tolerance so a slightly-short rAF delta does not drop a whole frame. */
+const FRAME_INTERVAL_TOLERANCE_MS = 2;
 
 export interface RenderSize {
   width: number;
@@ -17,7 +19,6 @@ export interface RenderSize {
 export interface CanvasRenderOptions {
   label: string;
   paused: Ref<boolean>;
-  prepare?: (context: CanvasRenderingContext2D, size: RenderSize) => void;
   render: (context: CanvasRenderingContext2D, size: RenderSize) => void;
 }
 
@@ -52,9 +53,6 @@ export function useCanvasRender(
     }
     size = { width, height, dpr };
     context = element.getContext('2d');
-    if (context) {
-      options.prepare?.(context, size);
-    }
   }
 
   function logTiming(elapsedMs: number): void {
@@ -87,7 +85,10 @@ export function useCanvasRender(
 
   function loop(timestamp: number): void {
     frameRequestId = requestAnimationFrame(loop);
-    if (timestamp - lastFrameTimestamp < frameIntervalMs) {
+    if (
+      timestamp - lastFrameTimestamp <
+      frameIntervalMs - FRAME_INTERVAL_TOLERANCE_MS
+    ) {
       return;
     }
     lastFrameTimestamp = timestamp;
