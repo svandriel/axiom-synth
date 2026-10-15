@@ -226,9 +226,17 @@ export class FakeBiquadFilterNode extends FakeAudioNode {
 export class FakeAnalyserNode extends FakeAudioNode {
   fftSize = 2048;
   smoothingTimeConstant = 0.8;
+  timeDomainData: ArrayLike<number> | null = null;
 
   getFloatTimeDomainData(array: Float32Array<ArrayBuffer>): void {
-    array.fill(0);
+    const data = this.timeDomainData;
+    if (data === null) {
+      array.fill(0);
+      return;
+    }
+    for (let i = 0; i < array.length; i++) {
+      array[i] = data[i] ?? 0;
+    }
   }
 }
 
