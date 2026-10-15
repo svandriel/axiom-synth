@@ -36,7 +36,16 @@ const scopeColor3 = styles.getPropertyValue('--color-accent-900');
 
 const timeData = new Float32Array(2048);
 
+let strokeGradient: CanvasGradient | null = null;
+
 const isIdle = useObservable(audioEngine.idle);
+
+function prepare(sctx: CanvasRenderingContext2D, size: RenderSize): void {
+  strokeGradient = sctx.createLinearGradient(0, 0, size.width, 0);
+  strokeGradient.addColorStop(0, scopeColor1);
+  strokeGradient.addColorStop(0.5, scopeColor2);
+  strokeGradient.addColorStop(1, scopeColor3);
+}
 
 function render(sctx: CanvasRenderingContext2D, size: RenderSize): void {
   const w = size.width;
@@ -58,14 +67,10 @@ function render(sctx: CanvasRenderingContext2D, size: RenderSize): void {
   sctx.globalAlpha = 1;
 
   audioEngine.getScopeData(timeData);
-  const grad = sctx.createLinearGradient(0, 0, w, 0);
-  grad.addColorStop(0, scopeColor1);
-  grad.addColorStop(0.5, scopeColor2);
-  grad.addColorStop(1, scopeColor3);
 
   sctx.lineWidth = 2.2 * size.dpr;
   sctx.lineJoin = 'round';
-  sctx.strokeStyle = grad;
+  sctx.strokeStyle = strokeGradient ?? scopeColor2;
   sctx.beginPath();
 
   let start = 0;
@@ -92,6 +97,7 @@ function render(sctx: CanvasRenderingContext2D, size: RenderSize): void {
 useCanvasRender(scope, {
   label: 'scope',
   paused: isIdle,
+  prepare,
   render,
 });
 </script>
