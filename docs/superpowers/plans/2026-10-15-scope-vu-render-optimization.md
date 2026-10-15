@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Outcome (2026-10-15):** Tasks 1–4 shipped. Tasks 5–8 (30 fps, drop `shadowBlur`, DPR cap 1.5, cached gradients) were implemented, measured, and **reverted** — they gave no measurable CPU benefit (idle suspension alone took idle CPU from ~15% to ~2.8%; the audio graph dominates while playing). The shipped governor uses `RENDER_FPS_CAP = 60` and `RENDER_DPR_CAP = 3` plus a jitter tolerance. See the spec's "Measurement outcome".
+
 **Goal:** Cut the idle CPU spent by the `ScopePanel` and `VUMeter` canvas `requestAnimationFrame` loops by suspending them while the audio engine is silent and by making each active frame cheaper.
 
 **Architecture:** The engine already knows when it is silent — its `IdleGate` (task `#61`) closes a valve and sleeps the FX island. Expose that state as an `Observable<boolean>` on the engine, bridge it into Vue with a generic `useObservable` composable, and drive both canvases through one shared `useCanvasRender` governor that cancels its rAF loop while paused and fits the canvas on mount/resize only. Active-frame cost is reduced incrementally (30 fps, no `shadowBlur`, DPR cap, reused gradients), measuring after each change.

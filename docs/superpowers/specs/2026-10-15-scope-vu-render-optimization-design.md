@@ -1,7 +1,7 @@
 # Scope + VU render optimization — design
 
 Date: 2026-10-15
-Status: approved (ready for implementation plan)
+Status: implemented and measured — only the idle suspension paid; the cheaper-frame steps were reverted (see "Measurement outcome")
 Follow-up from: issue #62, pull request #61
 
 ## Problem
@@ -152,12 +152,35 @@ Steps:
 - **F.** Reuse gradients. Measure. (Per-frame re-fit is already removed by
   the governor's fit-on-resize introduced in step A.)
 
+### Measurement outcome
+
+Measured on Chrome Task Manager (fresh idle; 1 voice while playing), after
+implementation:
+
+| Step | Change           | Idle CPU | Playing CPU | fps |
+| ---- | ---------------- | -------- | ----------- | --- |
+| A    | governor, 60 fps | ~15%     | ~40.5%      | 47  |
+| B    | suspend on idle  | ~2.9%    | ~45%        | 49  |
+| C    | 30 fps cap       | ~2.7%    | ~45.5%      | 26  |
+| D    | no `shadowBlur`  | ~2.8%    | ~46.7%      | 27  |
+| E    | DPR 1.5          | ~2.7%    | ~47.5%      | 27  |
+| F    | cached gradients | ~2.8%    | ~51%        | 27  |
+
+Only step B paid: idle CPU dropped from ~15% to ~2.8%. Steps C–F made no
+measurable difference to idle or playing CPU — while playing, the audio graph
+dominates and per-frame canvas JS is only ~0.1–0.3 ms, so cheaper frames are
+invisible in tab CPU; they only cost smoothness and looks. Steps C, D, E and F
+were therefore reverted, keeping the shared governor (A) and the idle suspension
+(B). The fps throttle also under-fired (47/60), so the governor now carries a
+small jitter tolerance. The shipped constants are `RENDER_FPS_CAP = 60` and
+`RENDER_DPR_CAP = 3`.
+
 ## Constants
 
 Named constants, no magic numbers:
 
-- `RENDER_FPS_CAP = 30`
-- `RENDER_DPR_CAP = 1.5`
+- `RENDER_FPS_CAP = 60` (final; the 30 fps cap was measured and reverted)
+- `RENDER_DPR_CAP = 3` (final; the 1.5 cap was measured and reverted)
 
 (The existing `SILENCE_*` and `IDLE_DEBOUNCE_SECONDS` constants in `IdleGate` are
 unchanged.)
@@ -175,7 +198,9 @@ unchanged.)
 ## Risks
 
 - The look changes: no glow, softer edges (DPR 1.5), 30 fps. If it reads poorly,
-  revert individual steps (they are measured separately).
+  revert individual steps (they are measured separately). In practice these steps
+  gave no measurable CPU benefit and were reverted, so the shipped look is
+  unchanged from before.
 - The per-render timer under-reports raster cost. Rely on Task Manager CPU.
 
 ## Out of scope
