@@ -85,6 +85,7 @@ describe('IdleGate', () => {
     analyser.timeDomainData = new Float32Array([0, 0, 0]);
     gate.destroy();
 
+    expect(vi.getTimerCount()).toBe(0);
     expect(tapsAnalyser()).toBe(false);
     expect(() => ticks(SILENCE_POLL_INTERVAL_MS * 8)).not.toThrow();
   });
