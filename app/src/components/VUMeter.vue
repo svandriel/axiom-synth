@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, useTemplateRef } from 'vue';
+import { toRef, useTemplateRef } from 'vue';
 import {
   useCanvasRender,
   type RenderSize,
@@ -18,13 +18,17 @@ const props = withDefaults(
   defineProps<{
     getValue: () => number;
     maxLevel?: number;
+    isIdle?: boolean;
   }>(),
   {
     maxLevel: 1.2,
+    isIdle: false,
   },
 );
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas');
+
+const isIdle = toRef(props, 'isIdle');
 
 const styles = getComputedStyle(document.documentElement);
 const scopeColor1 = styles.getPropertyValue('--color-green-500');
@@ -52,7 +56,7 @@ function render(sctx: CanvasRenderingContext2D, size: RenderSize): void {
 
 useCanvasRender(canvas, {
   label: 'vu',
-  paused: ref(false),
+  paused: isIdle,
   render,
 });
 </script>

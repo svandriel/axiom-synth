@@ -1,7 +1,7 @@
 <template>
   <Panel label="Scope">
     <div class="flex flex-row gap-4">
-      <VUMeter :get-value="() => audioEngine.meterLevel" />
+      <VUMeter :get-value="() => audioEngine.meterLevel" :is-idle="isIdle" />
       <div class="relative h-full w-full overflow-hidden rounded-2xl">
         <canvas
           ref="scope"
@@ -14,11 +14,12 @@
 
 <script setup lang="ts">
 import type { AudioEngine } from '@axiom/audio-engine';
-import { ref, useTemplateRef } from 'vue';
+import { useTemplateRef } from 'vue';
 import {
   useCanvasRender,
   type RenderSize,
 } from '../composables/use-canvas-render';
+import { useObservable } from '../composables/use-observable';
 import Panel from './Panel.vue';
 import VUMeter from './VUMeter.vue';
 
@@ -34,6 +35,8 @@ const scopeColor2 = styles.getPropertyValue('--color-accent-500');
 const scopeColor3 = styles.getPropertyValue('--color-accent-900');
 
 const timeData = new Float32Array(2048);
+
+const isIdle = useObservable(audioEngine.idle);
 
 function render(sctx: CanvasRenderingContext2D, size: RenderSize): void {
   const w = size.width;
@@ -91,7 +94,7 @@ function render(sctx: CanvasRenderingContext2D, size: RenderSize): void {
 
 useCanvasRender(scope, {
   label: 'scope',
-  paused: ref(false),
+  paused: isIdle,
   render,
 });
 </script>
