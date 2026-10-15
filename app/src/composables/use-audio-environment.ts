@@ -45,7 +45,9 @@ export function useAudioEnvironment(): Ref<AudioEnvironment> {
 }
 
 function createSynth(engine: AudioEngine): AxiomSynth {
-  const synth = markRaw(new AxiomSynth(engine.ctxt, engine.masterInput));
+  const synth = markRaw(
+    new AxiomSynth(engine.ctxt, engine.masterInput, { activity: engine }),
+  );
   synth.output.connect(engine.masterInput);
   return synth;
 }

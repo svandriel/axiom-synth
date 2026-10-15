@@ -7,6 +7,7 @@ import {
   Observable,
   Synth,
   WaveshaperCurve,
+  type ActivitySink,
   type EnvelopeConfig,
   type FilterConfig,
   type FilterType,
@@ -179,8 +180,15 @@ export class AxiomSynth extends Synth<AxiomVoice> {
 
   private readonly voiceConfig: AxiomVoiceConfig;
 
-  constructor(ctxt: AudioContext, audioSink: AudioNode) {
-    super(ctxt, audioSink, { maxVoices: MAX_VOICES });
+  constructor(
+    ctxt: AudioContext,
+    audioSink: AudioNode,
+    options: { activity?: ActivitySink } = {},
+  ) {
+    super(ctxt, audioSink, {
+      maxVoices: MAX_VOICES,
+      activity: options.activity,
+    });
 
     this.id = Math.round(Date.now() / 1000);
 

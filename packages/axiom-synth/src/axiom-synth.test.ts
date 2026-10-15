@@ -142,3 +142,30 @@ describe('AxiomVoice idle seam', () => {
     restoreAudioParam();
   });
 });
+
+describe('AxiomSynth activity forwarding', () => {
+  it('activates the activity sink on noteOn', () => {
+    vi.useFakeTimers();
+    const restoreAudioParam = installFakeAudioParam();
+    const ctx = new FakeAudioContext();
+    const sink = new FakeAudioNode(ctx);
+    let activated = 0;
+    const synth = new AxiomSynth(
+      ctx as unknown as AudioContext,
+      sink as unknown as AudioNode,
+      {
+        activity: {
+          activate: () => {
+            activated++;
+          },
+        },
+      },
+    );
+
+    synth.noteOn(60, 1);
+
+    expect(activated).toBe(1);
+    synth.destroy();
+    restoreAudioParam();
+  });
+});
