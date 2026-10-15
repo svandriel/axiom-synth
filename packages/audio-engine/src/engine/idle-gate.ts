@@ -34,7 +34,7 @@ export class IdleGate implements Destroyable {
       size: SILENCE_FFT_SIZE,
       type: 'timeDomain',
     });
-    this._input.connect(this.analyser.input);
+    this._output.connect(this.analyser.input);
 
     this.pollIntervalId = setInterval(
       () => this.poll(),
@@ -81,7 +81,7 @@ export class IdleGate implements Destroyable {
       this.close();
     }
     try {
-      this._input.disconnect(this.analyser.input);
+      this._output.disconnect(this.analyser.input);
     } catch {
       // Already disconnected.
     }

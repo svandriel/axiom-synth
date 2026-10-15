@@ -90,8 +90,11 @@ boundary.
 
 #### Activity detection
 
-- The gate creates an `AnalyserNode` and taps **its own `_input`** (i.e. the
-  post-FX signal). The analyser is a leaf tap (no output); RULES.md rule 8.
+- The gate creates an `AnalyserNode` and taps **its own `_output`** (the valve's
+  downstream node, carrying the post-FX signal while open). The analyser is a
+  leaf tap (no output); RULES.md rule 8. A leaf `AnalyserNode` with a connected
+  input is auto-pulled by the Web Audio engine every render quantum, so tapping
+  `_input` would keep the whole FX island rendering and defeat the gate.
 - A poll (`SILENCE_POLL_INTERVAL_MS`) reads the time-domain data. Any
   `|sample| > SILENCE_THRESHOLD` counts as activity.
 - While open with sustained activity, a silent-accumulator stays at 0.

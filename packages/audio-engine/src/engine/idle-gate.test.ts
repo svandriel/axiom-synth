@@ -20,9 +20,9 @@ function makeGate() {
   const isOpen = () =>
     input.connections.some(connection => connection.destination === output);
   const tapsAnalyser = () =>
-    input.connections.some(connection => connection.destination === analyser);
+    output.connections.some(connection => connection.destination === analyser);
   const ticks = (ms: number) => vi.advanceTimersByTime(ms);
-  return { gate, analyser, input, isOpen, tapsAnalyser, ticks };
+  return { gate, analyser, input, output, isOpen, tapsAnalyser, ticks };
 }
 
 describe('IdleGate', () => {
@@ -34,10 +34,11 @@ describe('IdleGate', () => {
     vi.useRealTimers();
   });
 
-  it('starts open and taps its own input', () => {
-    const { isOpen, tapsAnalyser } = makeGate();
+  it('starts open and taps its own output', () => {
+    const { isOpen, input, output, analyser } = makeGate();
     expect(isOpen()).toBe(true);
-    expect(tapsAnalyser()).toBe(true);
+    expect(output.connections.some(c => c.destination === analyser)).toBe(true);
+    expect(input.connections.some(c => c.destination === analyser)).toBe(false);
   });
 
   it('closes after the debounce of silence', () => {
