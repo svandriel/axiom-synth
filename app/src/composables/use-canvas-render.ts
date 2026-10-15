@@ -1,7 +1,7 @@
 import { onMounted, onUnmounted, watch, type Ref } from 'vue';
 
 /** Target frames per second for canvas render loops. */
-export const RENDER_FPS_CAP = 60;
+export const RENDER_FPS_CAP = 30;
 /** Upper bound on device-pixel-ratio used when sizing canvases. */
 export const RENDER_DPR_CAP = 3;
 
