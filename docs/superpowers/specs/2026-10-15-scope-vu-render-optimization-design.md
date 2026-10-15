@@ -149,7 +149,8 @@ Steps:
 - **C.** 30 fps cap. Measure.
 - **D.** Drop `shadowBlur`. Measure (Task Manager matters most).
 - **E.** DPR cap 3 -> 1.5. Measure.
-- **F.** Reuse gradients; stop per-frame re-fit. Measure.
+- **F.** Reuse gradients. Measure. (Per-frame re-fit is already removed by
+  the governor's fit-on-resize introduced in step A.)
 
 ## Constants
 
