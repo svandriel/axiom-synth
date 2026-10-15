@@ -123,4 +123,34 @@ describe('IdleGate', () => {
     expect(tapsAnalyser()).toBe(false);
     expect(() => ticks(SILENCE_POLL_INTERVAL_MS * 8)).not.toThrow();
   });
+
+  it('starts with idle false while the gate is open', () => {
+    const { gate } = makeGate();
+    expect(gate.idle.value).toBe(false);
+  });
+
+  it('sets idle true when it closes and false when it reopens', () => {
+    const { gate, analyser, ticks } = makeGate();
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+
+    ticks(IDLE_DEBOUNCE_SECONDS * 1000 + SILENCE_POLL_INTERVAL_MS);
+    expect(gate.idle.value).toBe(true);
+
+    analyser.timeDomainData = new Float32Array([0.5, 0, 0]);
+    ticks(SILENCE_POLL_INTERVAL_MS);
+    expect(gate.idle.value).toBe(false);
+  });
+
+  it('notifies idle subscribers on transitions only', () => {
+    const { gate, analyser, ticks } = makeGate();
+    const seen: boolean[] = [];
+    gate.idle.subscribe(value => seen.push(value));
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+
+    ticks(IDLE_DEBOUNCE_SECONDS * 1000 + SILENCE_POLL_INTERVAL_MS);
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+    ticks(SILENCE_POLL_INTERVAL_MS);
+
+    expect(seen).toEqual([true]);
+  });
 });

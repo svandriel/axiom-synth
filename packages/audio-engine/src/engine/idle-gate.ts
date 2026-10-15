@@ -1,5 +1,6 @@
 import { Analyser } from './analyser';
 import type { Destroyable } from './destroyable';
+import { Observable } from '../utils/observable';
 
 /** Time-domain samples per silence check; power of two, cheap to analyse. */
 export const SILENCE_FFT_SIZE = 32;
@@ -24,6 +25,7 @@ export class IdleGate implements Destroyable {
   private silentSeconds = 0;
   private open = true;
   private destroyed = false;
+  public readonly idle = new Observable<boolean>(false);
 
   constructor(ctxt: AudioContext) {
     this._input = ctxt.createGain();
@@ -68,6 +70,7 @@ export class IdleGate implements Destroyable {
     if (!this.open) {
       this.open = true;
       this._input.connect(this._output);
+      this.idle.value = false;
       console.log('[IdleGate] opened — activity resumed, FX island active');
     }
   }
@@ -121,6 +124,7 @@ export class IdleGate implements Destroyable {
   private close(): void {
     this.open = false;
     this._input.disconnect(this._output);
+    this.idle.value = true;
     console.log('[IdleGate] closed — output silent, FX island asleep');
   }
 }
