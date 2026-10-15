@@ -1,7 +1,7 @@
 <template>
   <Panel label="Scope">
     <div class="flex flex-row gap-4">
-      <VUMeter :get-value="() => audioEngine.meterLevel" />
+      <VUMeter :get-value="() => audioEngine.meterLevel" :is-idle="isIdle" />
       <div class="relative h-full w-full overflow-hidden rounded-2xl">
         <canvas
           ref="scope"
@@ -14,7 +14,12 @@
 
 <script setup lang="ts">
 import type { AudioEngine } from '@axiom/audio-engine';
-import { onMounted, onUnmounted, useTemplateRef } from 'vue';
+import { useTemplateRef } from 'vue';
+import {
+  useCanvasRender,
+  type RenderSize,
+} from '../composables/use-canvas-render';
+import { useObservable } from '../composables/use-observable';
 import Panel from './Panel.vue';
 import VUMeter from './VUMeter.vue';
 
@@ -29,60 +34,18 @@ const scopeColor1 = styles.getPropertyValue('--color-accent-300');
 const scopeColor2 = styles.getPropertyValue('--color-accent-500');
 const scopeColor3 = styles.getPropertyValue('--color-accent-900');
 
-let rafId: number | undefined = undefined;
-let timeData = new Float32Array(2048);
+const timeData = new Float32Array(2048);
 
-onMounted(() => {
-  window.addEventListener('resize', onResize);
-  if (scope.value) {
-    const elem = scope.value;
-    fit(elem);
-    const sctxt = scope.value.getContext('2d');
-    if (!sctxt) return;
+const isIdle = useObservable(audioEngine.idle);
 
-    rafId = requestAnimationFrame(() => {
-      render(elem, sctxt);
-    });
-  }
-});
-
-onUnmounted(() => {
-  window.removeEventListener('resize', onResize);
-  if (rafId) {
-    cancelAnimationFrame(rafId);
-    rafId = undefined;
-  }
-});
-
-function onResize() {
-  if (scope.value) {
-    fit(scope.value);
-  }
-}
-
-function fit(c: HTMLCanvasElement) {
-  if (!c.parentNode) return { w: 0, h: 0, dpr: 1 };
-  const r = (c.parentNode as HTMLElement).getBoundingClientRect();
-  const dpr = Math.min(3, window.devicePixelRatio || 1);
-  const w = Math.max(1, Math.round(r.width * dpr));
-  const h = Math.max(1, Math.round(r.height * dpr));
-  if (c.width !== w || c.height !== h) {
-    c.width = w;
-    c.height = h;
-  }
-  return { w: w, h: h, dpr: dpr };
-}
-
-function render(scope: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
-  const d = fit(scope);
-  const w = d.w;
-  const h = d.h;
-  // Set background color
+function render(sctx: CanvasRenderingContext2D, size: RenderSize): void {
+  const w = size.width;
+  const h = size.height;
   sctx.clearRect(0, 0, w, h);
   sctx.strokeStyle = scopeGridColor;
   sctx.globalAlpha = 0.2;
   sctx.lineWidth = 1;
-  for (var g = 1; g < 8; g++) {
+  for (let g = 1; g < 8; g++) {
     sctx.beginPath();
     sctx.moveTo((w * g) / 8, 0);
     sctx.lineTo((w * g) / 8, h);
@@ -92,7 +55,6 @@ function render(scope: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
   sctx.moveTo(0, h / 2);
   sctx.lineTo(w, h / 2);
   sctx.stroke();
-
   sctx.globalAlpha = 1;
 
   audioEngine.getScopeData(timeData);
@@ -100,14 +62,14 @@ function render(scope: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
   grad.addColorStop(0, scopeColor1);
   grad.addColorStop(0.5, scopeColor2);
   grad.addColorStop(1, scopeColor3);
-  sctx.lineWidth = 2.2 * d.dpr;
+
+  sctx.lineWidth = 2.2 * size.dpr;
   sctx.lineJoin = 'round';
-  sctx.shadowBlur = 18 * d.dpr;
+  sctx.shadowBlur = 18 * size.dpr;
   sctx.shadowColor = 'rgba(255,45,149,1)';
   sctx.strokeStyle = grad;
   sctx.beginPath();
 
-  // Find index of zero crossing
   let start = 0;
   for (let i = 1; i < timeData.length / 2; i++) {
     if (timeData[i - 1]! < 0 && timeData[i]! >= 0) {
@@ -117,7 +79,7 @@ function render(scope: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
   }
   const n = Math.min(timeData.length - start, 1024);
   for (let i = 0; i < n; i++) {
-    var v = timeData[start + i]! * 1.6;
+    const v = timeData[start + i]! * 1.6;
     const x = (i / (n - 1)) * w;
     const y = h / 2 - (v * h) / 2;
     if (i === 0) {
@@ -128,9 +90,11 @@ function render(scope: HTMLCanvasElement, sctx: CanvasRenderingContext2D) {
   }
   sctx.stroke();
   sctx.shadowBlur = 0;
-
-  rafId = requestAnimationFrame(() => {
-    render(scope, sctx);
-  });
 }
+
+useCanvasRender(scope, {
+  label: 'scope',
+  paused: isIdle,
+  render,
+});
 </script>

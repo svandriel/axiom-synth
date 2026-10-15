@@ -1,6 +1,8 @@
 import type { ActivitySink } from './activity-sink';
 import type { Destroyable } from './destroyable';
 import { FeedbackDelay } from './feedback-delay';
+import type { Observable } from '../utils/observable';
+
 import { resumeIfSuspended } from './helpers';
 import { IdleGate } from './idle-gate';
 import { Meter } from './meter';
@@ -61,6 +63,10 @@ export class AudioEngine implements Destroyable, ActivitySink {
 
   get meterLevel(): number {
     return this.meter.value;
+  }
+
+  get idle(): Observable<boolean> {
+    return this.idleGate.idle;
   }
 
   get reverbBuffer(): AudioBuffer | null {
