@@ -32,6 +32,7 @@ describe('IdleGate', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('starts open and taps its own output', () => {
@@ -79,6 +80,38 @@ describe('IdleGate', () => {
     gate.activate();
 
     expect(isOpen()).toBe(true);
+  });
+
+  it('logs when it closes', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { analyser, ticks } = makeGate();
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+
+    ticks(IDLE_DEBOUNCE_SECONDS * 1000 + SILENCE_POLL_INTERVAL_MS);
+
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('closed'));
+  });
+
+  it('logs when it reopens after activity resumes', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { analyser, ticks } = makeGate();
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+    ticks(IDLE_DEBOUNCE_SECONDS * 1000 + SILENCE_POLL_INTERVAL_MS);
+    log.mockClear();
+
+    analyser.timeDomainData = new Float32Array([0.5, 0, 0]);
+    ticks(SILENCE_POLL_INTERVAL_MS);
+
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('opened'));
+  });
+
+  it('does not log when activate() is a no-op', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { gate } = makeGate();
+
+    gate.activate();
+
+    expect(log).not.toHaveBeenCalled();
   });
 
   it('destroy() stops polling and detaches the analyser tap', () => {

@@ -68,6 +68,7 @@ export class IdleGate implements Destroyable {
     if (!this.open) {
       this.open = true;
       this._input.connect(this._output);
+      console.log('[IdleGate] opened — activity resumed, FX island active');
     }
   }
 
@@ -120,5 +121,6 @@ export class IdleGate implements Destroyable {
   private close(): void {
     this.open = false;
     this._input.disconnect(this._output);
+    console.log('[IdleGate] closed — output silent, FX island asleep');
   }
 }
