@@ -65,8 +65,6 @@ function render(sctx: CanvasRenderingContext2D, size: RenderSize): void {
 
   sctx.lineWidth = 2.2 * size.dpr;
   sctx.lineJoin = 'round';
-  sctx.shadowBlur = 18 * size.dpr;
-  sctx.shadowColor = 'rgba(255,45,149,1)';
   sctx.strokeStyle = grad;
   sctx.beginPath();
 
@@ -89,7 +87,6 @@ function render(sctx: CanvasRenderingContext2D, size: RenderSize): void {
     }
   }
   sctx.stroke();
-  sctx.shadowBlur = 0;
 }
 
 useCanvasRender(scope, {
