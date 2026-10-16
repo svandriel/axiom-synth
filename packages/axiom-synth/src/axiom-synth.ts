@@ -25,8 +25,10 @@ import {
   type WaveshaperConfig,
   type WaveshaperType,
 } from '@axiom/audio-engine';
+import { initNativeModule, NativeModule } from '@axiom/native';
 import { AxiomVoice } from './axiom-voice';
 import type { AxiomVoiceConfig } from './axiom-voice-config';
+import type { MoogOscillator } from '../../native/src/nodes/moog-oscillator';
 
 const MAX_VOICES = 16;
 const UNISON_RAMP_SECONDS = 0.01;
@@ -57,6 +59,7 @@ function lfoDepthSignal(target: LfoTarget, depth: number): number {
 export class AxiomSynth extends Synth<AxiomVoice> {
   public readonly output: GainNode;
   private readonly id: number;
+  private readonly nativeModule: NativeModule;
 
   private readonly _oscillatorConfigs: FixedArray<
     OscillatorConfig,
@@ -177,20 +180,34 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     FixedArray<ConstantSourceNode, LfoTargetCount>,
     LfoCount
   >;
+  private nativeOscillator: MoogOscillator | undefined;
+  private nativeFrequencySource: ConstantSourceNode | undefined;
 
   private readonly voiceConfig: AxiomVoiceConfig;
 
-  constructor(
+  static async create(
     ctxt: AudioContext,
+    sink: AudioNode,
+    options: { activity?: ActivitySink } = {},
+    nativeModule?: NativeModule,
+  ) {
+    const module = nativeModule ?? (await initNativeModule(ctxt));
+    return new AxiomSynth(ctxt, module, sink, options);
+  }
+
+  private constructor(
+    ctxt: AudioContext,
+    nativeModule: NativeModule,
     audioSink: AudioNode,
     options: { activity?: ActivitySink } = {},
   ) {
     super(ctxt, audioSink, {
-      maxVoices: MAX_VOICES,
       activity: options.activity,
+      maxVoices: MAX_VOICES,
     });
 
     this.id = Math.round(Date.now() / 1000);
+    this.nativeModule = nativeModule;
 
     console.log(`Creating AxiomSynth #${this.id}`);
 
@@ -315,10 +332,47 @@ export class AxiomSynth extends Synth<AxiomVoice> {
       lfoRateSources: this.lfoRateSources,
       lfoDepthSources: this.lfoDepthSources,
     };
+
+    this.initNative().catch(console.error);
+  }
+
+  private async initNative() {
+    const nativeModule = await initNativeModule(this.ctxt);
+    const osc = nativeModule.createMoogOscillator();
+
+    const lfo = this.ctxt.createOscillator();
+    lfo.frequency.value = 2;
+    lfo.type = 'sine';
+    lfo.start();
+
+    const lfoDepth = this.ctxt.createGain();
+    lfoDepth.gain.value = 2 * 1200;
+    lfoDepth.connect(osc.detune);
+
+    lfo.connect(lfoDepth);
+
+    const nativeFrequencySource = this.createConstantSource(60);
+    if (this.destroyed) {
+      nativeFrequencySource.disconnect();
+      nativeFrequencySource.stop();
+      osc.destroy();
+      return;
+    }
+
+    this.nativeOscillator = osc;
+    this.nativeFrequencySource = nativeFrequencySource;
+    nativeFrequencySource.connect(osc.frequency);
+    osc.start(this.ctxt.currentTime);
+    // osc.connect(this.output);
   }
 
   protected override createVoice(): AxiomVoice {
-    return new AxiomVoice(this.ctxt, this.output, this.voiceConfig);
+    return new AxiomVoice(
+      this.ctxt,
+      this.output,
+      this.voiceConfig,
+      this.nativeModule,
+    );
   }
 
   get oscillatorConfigs(): FixedArray<OscillatorConfig, OscillatorCount> {
@@ -540,6 +594,11 @@ export class AxiomSynth extends Synth<AxiomVoice> {
     this.waveShaperDriveSource.disconnect();
     this.waveShaperDriveSource.stop();
     this.waveshaperCurve.destroy();
+    this.nativeFrequencySource?.disconnect();
+    this.nativeFrequencySource?.stop();
+    this.nativeOscillator?.destroy();
+    this.nativeFrequencySource = undefined;
+    this.nativeOscillator = undefined;
     this.lfoRateSources.forEach(source => {
       source.disconnect();
       source.stop();

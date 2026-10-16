@@ -36,18 +36,25 @@ TypeScript flags (in `app/tsconfig.app.json`): `strict: true`, `noUncheckedIndex
 
 ### 5) Testing Conventions
 
-- Test framework: Vitest, used by `@axiom/audio-engine`.
+- Test frameworks: Vitest for workspace JavaScript packages, plus native C unit
+  tests in `@axiom/native`; browser E2E uses Playwright and lives in the app
+  package (`app/e2e/`, `app/playwright.config.ts`).
 - Test file naming/location rule: tests sit beside the module under test in
   `packages/audio-engine/src/engine/` and use the `<module>.test.ts` naming
-  pattern.
-- Test command: `pnpm test` runs the audio-engine Vitest suite through the root
-  workspace script.
+  pattern; app E2E specs live in `app/e2e/` as `<feature>.spec.ts`.
+- Test command: `pnpm test` runs all tests through the root workspace script
+  (`pnpm -r --parallel test`): JavaScript package tests, native C tests, and the
+  Playwright browser E2E suite; `pnpm --filter @axiom/app test:e2e` runs only the
+  E2E suite against the app dev server. Build the WASM module (`pnpm build`)
+  before running E2E on a clean checkout.
 - Mocking strategy norm: deterministic engine graph tests use focused fake Web
   Audio nodes and contexts; tests do not require a real browser.
 - Coverage expectation: no coverage threshold is configured. New features and
   behavior changes require automated tests.
-- CI gates: `.github/workflows/test.yml` runs `pnpm test`, `pnpm build`, and
-  `pnpm lint` after frozen dependency installation.
+- CI gates: `.github/workflows/test.yml` builds first, installs the Playwright
+  browser, then runs `pnpm test` (which includes the E2E suite) and `pnpm lint`
+  after frozen dependency installation. Build-capable workflows set up
+  Emscripten SDK `6.0.12` for `emcc`.
 
 ### 6) Evidence
 

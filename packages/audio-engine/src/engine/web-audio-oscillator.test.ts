@@ -29,6 +29,25 @@ describe('WebAudioOscillator', () => {
     }
   });
 
+  it('sets the raw oscillator base frequency to zero', () => {
+    const restoreAudioParam = installFakeAudioParam();
+    const context = new FakeAudioContext();
+
+    try {
+      const oscillator = new WebAudioOscillator(
+        context as unknown as AudioContext,
+      );
+
+      oscillator.start(0);
+
+      expect(context.oscillators[0]?.frequency.operations).toEqual([
+        { type: 'setValueAtTime', value: 0, time: 0 },
+      ]);
+    } finally {
+      restoreAudioParam();
+    }
+  });
+
   it('notifies each active end subscriber once and supports idempotent unsubscribe', () => {
     const restoreAudioParam = installFakeAudioParam();
     const context = new FakeAudioContext();
@@ -40,7 +59,7 @@ describe('WebAudioOscillator', () => {
       let calls = 0;
       const subscription = oscillator.onEnded(() => calls++);
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       context.oscillators[0]!.end();
       subscription.unsubscribe();
       subscription.unsubscribe();
@@ -60,9 +79,9 @@ describe('WebAudioOscillator', () => {
         context as unknown as AudioContext,
       );
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       context.oscillators[0]!.end();
-      oscillator.start(220, 1);
+      oscillator.start(1);
 
       expect(context.oscillators).toHaveLength(2);
     } finally {
@@ -80,7 +99,7 @@ describe('WebAudioOscillator', () => {
       );
       let calls = 0;
       oscillator.onEnded(() => calls++);
-      oscillator.start(440, 0);
+      oscillator.start(0);
       const source = context.oscillators[0]!;
 
       oscillator.destroy();
