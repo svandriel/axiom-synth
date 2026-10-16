@@ -2,6 +2,7 @@ import {
   FakeAudioContext,
   FakeAudioParam,
   type FakeAudioDestination,
+  type FakeConnection,
   type FakeOscillatorNode,
 } from '@axiom/audio-testing';
 import type { Oscillator } from '../engine/oscillator';
@@ -39,6 +40,10 @@ export class TestOscillator implements Oscillator {
 
   get gain() {
     return this.gainParam as unknown as AudioParam;
+  }
+
+  get connections(): readonly FakeConnection[] {
+    return this.node.connections;
   }
 
   connect(destination: AudioNode | AudioParam): void {
