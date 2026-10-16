@@ -234,7 +234,7 @@ git commit -m "refactor(engine): share TestOscillator across oscillator suites"
 - [ ] **Step 1: Create `test-voice.ts`**
 
 ```ts
-import type { Voice } from '../engine/voice';
+import { Voice } from '../engine/voice';
 
 export class TestVoice extends Voice {
   readonly label: string;
