@@ -6,7 +6,7 @@
 
 /* Clamp margin that keeps the two-segment waveform denominator non-zero. */
 #define MOOG_SAW_P_EPSILON 1.0e-7f
-#define MOOG_SAW_OSC_DRIFT 0.002
+#define MOOG_SAW_OSC_DRIFT 0.0005
 
 struct MoogSaw
 {
