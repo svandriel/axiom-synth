@@ -1,63 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { FakeAudioContext } from '@axiom/audio-testing';
-import { Synth } from './synth';
-import { Voice } from './voice';
+import { SpySynth } from '../testing/spy-synth';
+import { SpyVoice } from '../testing/spy-voice';
 import { VoiceManager } from './voice-manager';
-
-class TestVoice extends Voice {
-  readonly noteOnCalls: {
-    noteNumber: number;
-    velocity: number;
-    startTimeOffset: number;
-  }[] = [];
-  readonly noteOffSpy = vi.fn();
-  readonly fastChokeSpy = vi.fn();
-  readonly destroySpy = vi.fn();
-
-  override noteOn(
-    noteNumber: number,
-    velocity: number,
-    startTimeOffset: number,
-  ): void {
-    this.noteOnCalls.push({ noteNumber, velocity, startTimeOffset });
-    this.currentNote = noteNumber;
-    this.lastUsed = this.ctxt.currentTime + startTimeOffset;
-    this.endTime = Infinity;
-  }
-
-  override noteOff(): void {
-    this.noteOffSpy();
-    this.currentNote = null;
-  }
-
-  override fastChoke(now: number): void {
-    this.fastChokeSpy(now);
-  }
-
-  override destroy(): void {
-    this.destroySpy();
-  }
-
-  protected override onSoundStop(): void {}
-  protected override internalFastChoke(
-    _chokeTime: number,
-    _now: number,
-  ): void {}
-  protected override internalNoteOn(): void {}
-  protected override internalNoteOff(): { silentAt: number } {
-    return { silentAt: 0 };
-  }
-}
 
 function createManager(
   context: FakeAudioContext,
-  voices: TestVoice[],
+  voices: SpyVoice[],
   maxVoices = 2,
-): VoiceManager<TestVoice> {
+): VoiceManager<SpyVoice> {
   return new VoiceManager(
     () => {
-      const voice = new TestVoice(
+      const voice = new SpyVoice(
         context as unknown as AudioContext,
         context.destination as unknown as AudioNode,
       );
@@ -68,20 +23,10 @@ function createManager(
   );
 }
 
-class TestSynth extends Synth<TestVoice> {
-  readonly voices: TestVoice[] = [];
-
-  protected override createVoice(): TestVoice {
-    const voice = new TestVoice(this.ctxt, this.audioSink);
-    this.voices.push(voice);
-    return voice;
-  }
-}
-
 describe('VoiceManager', () => {
   it('keeps Synth destruction guard while delegating voice lifecycle', () => {
     const context = new FakeAudioContext();
-    const synth = new TestSynth(
+    const synth = new SpySynth(
       context as unknown as AudioContext,
       context.destination as unknown as AudioNode,
       {
@@ -102,7 +47,7 @@ describe('VoiceManager', () => {
 
   it('creates voices lazily and assigns an available voice', () => {
     const context = new FakeAudioContext();
-    const voices: TestVoice[] = [];
+    const voices: SpyVoice[] = [];
     const manager = createManager(context, voices);
 
     expect(voices).toHaveLength(0);
@@ -115,7 +60,7 @@ describe('VoiceManager', () => {
 
   it('releases an active note before retriggering it', () => {
     const context = new FakeAudioContext();
-    const voices: TestVoice[] = [];
+    const voices: SpyVoice[] = [];
     const manager = createManager(context, voices);
 
     manager.noteOn(60, 0.8, context.currentTime);
@@ -130,7 +75,7 @@ describe('VoiceManager', () => {
 
   it('releases the voice mapped to a note', () => {
     const context = new FakeAudioContext();
-    const voices: TestVoice[] = [];
+    const voices: SpyVoice[] = [];
     const manager = createManager(context, voices);
 
     manager.noteOn(60, 0.8, context.currentTime);
@@ -142,7 +87,7 @@ describe('VoiceManager', () => {
 
   it('steals the oldest voice at capacity with choke delay', () => {
     const context = new FakeAudioContext();
-    const voices: TestVoice[] = [];
+    const voices: SpyVoice[] = [];
     const manager = createManager(context, voices);
 
     manager.noteOn(60, 0.8, context.currentTime);
@@ -164,7 +109,7 @@ describe('VoiceManager', () => {
 
   it('cleans up the stolen note mapping before assigning the new note', () => {
     const context = new FakeAudioContext();
-    const voices: TestVoice[] = [];
+    const voices: SpyVoice[] = [];
     const manager = createManager(context, voices);
 
     manager.noteOn(60, 0.8, context.currentTime);
@@ -183,7 +128,7 @@ describe('VoiceManager', () => {
 
   it('releases all active voices', () => {
     const context = new FakeAudioContext();
-    const voices: TestVoice[] = [];
+    const voices: SpyVoice[] = [];
     const manager = createManager(context, voices);
 
     manager.noteOn(60, 0.8, context.currentTime);
@@ -196,7 +141,7 @@ describe('VoiceManager', () => {
 
   it('destroys the lazily-created voice pool', () => {
     const context = new FakeAudioContext();
-    const voices: TestVoice[] = [];
+    const voices: SpyVoice[] = [];
     const manager = createManager(context, voices);
 
     manager.destroy();
@@ -210,7 +155,7 @@ describe('VoiceManager', () => {
 
   it('preserves allocation lifecycle logs', () => {
     const context = new FakeAudioContext();
-    const voices: TestVoice[] = [];
+    const voices: SpyVoice[] = [];
     const manager = createManager(context, voices);
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
