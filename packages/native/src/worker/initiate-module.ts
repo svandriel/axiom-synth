@@ -25,5 +25,8 @@ function createMainModule(wasmModule: WebAssembly.Module): Promise<MainModule> {
         });
       return {};
     },
+  }).then(mainModule => {
+    mainModule._moog_saw_wasm_init();
+    return mainModule;
   });
 }

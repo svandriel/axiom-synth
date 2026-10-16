@@ -76,7 +76,7 @@ $(WASM)/moog_saw.js: Makefile $(WASM_SRC) $(HEADERS)
 		-sENVIRONMENT=worklet \
 		-sSHARED_MEMORY=1 \
 		--emit-tsd $(WASM_TSD) \
-		-sEXPORTED_FUNCTIONS='["_moog_saw_wasm_create","_moog_saw_wasm_destroy","_moog_saw_wasm_reset","_moog_saw_wasm_set_frequency","_moog_saw_wasm_process","_malloc","_free"]' \
+		-sEXPORTED_FUNCTIONS='["_moog_saw_wasm_init", "_moog_saw_wasm_create","_moog_saw_wasm_destroy","_moog_saw_wasm_reset","_moog_saw_wasm_set_frequency","_moog_saw_wasm_process","_malloc","_free"]' \
 		-sEXPORTED_RUNTIME_METHODS='["HEAPF32"]' \
 		-o $@
 

@@ -6,6 +6,7 @@
 
 /* Clamp margin that keeps the two-segment waveform denominator non-zero. */
 #define MOOG_SAW_P_EPSILON 1.0e-7f
+#define MOOG_SAW_OSC_DRIFT 0.002
 
 struct MoogSaw
 {
@@ -13,6 +14,7 @@ struct MoogSaw
     double sample_rate;
     float frequency_hz;
     float previous_sync;
+    float drift_ratio;
 };
 
 static double phase_increment(float frequency_hz, double sample_rate)
@@ -75,6 +77,11 @@ float moog_saw_waveform(double phase, float p)
     return waveform_unwrapped(wrap_phase(phase), p);
 }
 
+void moog_saw_init(void)
+{
+    srand((unsigned int)0);
+}
+
 MoogSaw *moog_saw_create(double sample_rate)
 {
     if (!isfinite(sample_rate) || sample_rate <= 0.0)
@@ -89,7 +96,9 @@ MoogSaw *moog_saw_create(double sample_rate)
     }
 
     osc->sample_rate = sample_rate;
-    osc->phase = 0.0;
+    osc->phase = MOOG_SAW_TWO_PI * unit_random();
+
+    osc->drift_ratio = (float)range_random(1.0 - MOOG_SAW_OSC_DRIFT, 1.0 + MOOG_SAW_OSC_DRIFT);
     osc->frequency_hz = 440.0f;
     osc->previous_sync = 0.0f;
     return osc;
@@ -164,7 +173,7 @@ static void render_block(
     for (uint32_t i = 0; i < frames; ++i)
     {
         const float f = (frequency ? frequency[i] : osc->frequency_hz) *
-                        detune_ratio(detune, i, uniform_ratio);
+                        detune_ratio(detune, i, uniform_ratio) * osc->drift_ratio;
         const double inc = (f > 0.0f && isfinite((double)f))
                                ? (double)f * inv_sample_rate
                                : 0.0;

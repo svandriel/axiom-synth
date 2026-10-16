@@ -3,6 +3,7 @@
 
 #include <math.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #define MOOG_SAW_PI 3.141592653589793238462643383279502884
 #define MOOG_SAW_TWO_PI (2.0 * MOOG_SAW_PI)
@@ -31,6 +32,16 @@ static inline double wrap_phase(double phase)
         phase += 1.0;
     }
     return phase;
+}
+
+static inline double unit_random(void)
+{
+    return (double)rand() / RAND_MAX;
+}
+
+static inline double range_random(double min, double max)
+{
+    return min + (max - min) * unit_random();
 }
 
 /* cos on [-pi/4, pi/4]; Taylor has a < 3e-8 remainder over that range. */
