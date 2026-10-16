@@ -95,6 +95,41 @@ Reference: `packages/native/src/worker/moog-oscillator-processor.ts`
 (`emitEnded`). Design:
 `docs/superpowers/specs/2026-10-11-native-oscillator-lifecycle-design.md`.
 
+### 9. Monitor nodes are leaf taps, never in the audio chain
+
+Analysers and meters observe the signal; they must not sit in the signal path.
+The chain runs `… → destination`, and each monitor hangs off a chain node as a
+side branch (`comp → destination`, `comp → analyser`, `comp → meter.input`).
+A monitor node still processes whenever it is connected, so it is attached only
+as a leaf and never given a passthrough role (`analyser → destination` is
+forbidden). Reference: `AudioEngine` master chain
+(`packages/audio-engine/src/engine/engine.ts`).
+
+## TypeScript
+
+### 10. No `as` type assertions in production code
+
+Production code must not use the `as` type assertion to force a type onto a
+value (`value as T`). An assertion tells the compiler to stop checking; it hides
+a real mismatch instead of resolving it. Reach for the right tool instead:
+
+- When the goal is to _check_ that an expression conforms to a type, prefer
+  `satisfies` — it validates the value without widening (or lying about) its
+  inferred type.
+- Otherwise fix the types so the expression already has the required type:
+  correct the generics/type arguments, add a narrowing guard, or reach for the
+  right API (e.g. `shallowRef` instead of `ref` when deep unwrapping is
+  unwanted — see `app/src/composables/use-observable.ts`).
+
+`as const` is out of scope: it is a literal-type annotation, not a way to
+override a type the compiler rejects. Tests are exempt.
+
+Reference: `app/src/composables/use-observable.ts` (`shallowRef` keeps the
+`Ref<T>` return type without an assertion; `ref` requires one because its return
+type is `Ref<UnwrapRef<T>>`). Pre-existing casts (e.g. the `as FixedArray<…>`
+in `@axiom/axiom-synth`) predate this rule and may be migrated opportunistically;
+new code must not add them.
+
 ## History
 
 - Rule 6 ("New engine modules stay internal") superseded by rule 6

@@ -1,0 +1,156 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { FakeAudioContext, FakeGainNode } from '@axiom/audio-testing';
+import {
+  IDLE_DEBOUNCE_SECONDS,
+  IdleGate,
+  SILENCE_POLL_INTERVAL_MS,
+} from './idle-gate';
+
+function makeGate() {
+  const ctx = new FakeAudioContext();
+  const destination = ctx.createGain();
+  const gate = new IdleGate(ctx as unknown as AudioContext);
+  gate.connect(destination as unknown as AudioNode);
+
+  const analyser = ctx.analysers[0]!;
+  const input = gate.input as unknown as FakeGainNode;
+  const output = ctx.gains.find(gain =>
+    gain.connections.some(connection => connection.destination === destination),
+  )!;
+  const isOpen = () =>
+    input.connections.some(connection => connection.destination === output);
+  const tapsAnalyser = () =>
+    output.connections.some(connection => connection.destination === analyser);
+  const ticks = (ms: number) => vi.advanceTimersByTime(ms);
+  return { gate, analyser, input, output, isOpen, tapsAnalyser, ticks };
+}
+
+describe('IdleGate', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('starts open and taps its own output', () => {
+    const { isOpen, input, output, analyser } = makeGate();
+    expect(isOpen()).toBe(true);
+    expect(output.connections.some(c => c.destination === analyser)).toBe(true);
+    expect(input.connections.some(c => c.destination === analyser)).toBe(false);
+  });
+
+  it('closes after the debounce of silence', () => {
+    const { analyser, isOpen, ticks } = makeGate();
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+
+    ticks(IDLE_DEBOUNCE_SECONDS * 1000 - SILENCE_POLL_INTERVAL_MS);
+    expect(isOpen()).toBe(true);
+
+    ticks(SILENCE_POLL_INTERVAL_MS);
+    expect(isOpen()).toBe(false);
+  });
+
+  it('reopens when activity resumes while closed', () => {
+    const { analyser, isOpen, ticks } = makeGate();
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+    ticks(IDLE_DEBOUNCE_SECONDS * 1000 + SILENCE_POLL_INTERVAL_MS);
+    expect(isOpen()).toBe(false);
+
+    analyser.timeDomainData = new Float32Array([0.5, 0, 0]);
+    ticks(SILENCE_POLL_INTERVAL_MS);
+    expect(isOpen()).toBe(true);
+  });
+
+  it('never closes while the input carries signal', () => {
+    const { analyser, isOpen, ticks } = makeGate();
+    analyser.timeDomainData = new Float32Array([0.5, 0.5, 0.5]);
+    ticks(SILENCE_POLL_INTERVAL_MS * 10);
+    expect(isOpen()).toBe(true);
+  });
+
+  it('activate() reopens immediately', () => {
+    const { gate, analyser, isOpen, ticks } = makeGate();
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+    ticks(IDLE_DEBOUNCE_SECONDS * 1000 + SILENCE_POLL_INTERVAL_MS);
+    expect(isOpen()).toBe(false);
+
+    gate.activate();
+
+    expect(isOpen()).toBe(true);
+  });
+
+  it('logs when it closes', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { analyser, ticks } = makeGate();
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+
+    ticks(IDLE_DEBOUNCE_SECONDS * 1000 + SILENCE_POLL_INTERVAL_MS);
+
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('closed'));
+  });
+
+  it('logs when it reopens after activity resumes', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { analyser, ticks } = makeGate();
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+    ticks(IDLE_DEBOUNCE_SECONDS * 1000 + SILENCE_POLL_INTERVAL_MS);
+    log.mockClear();
+
+    analyser.timeDomainData = new Float32Array([0.5, 0, 0]);
+    ticks(SILENCE_POLL_INTERVAL_MS);
+
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('opened'));
+  });
+
+  it('does not log when activate() is a no-op', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { gate } = makeGate();
+
+    gate.activate();
+
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it('destroy() stops polling and detaches the analyser tap', () => {
+    const { gate, analyser, tapsAnalyser, ticks } = makeGate();
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+    gate.destroy();
+
+    expect(vi.getTimerCount()).toBe(0);
+    expect(tapsAnalyser()).toBe(false);
+    expect(() => ticks(SILENCE_POLL_INTERVAL_MS * 8)).not.toThrow();
+  });
+
+  it('starts with idle false while the gate is open', () => {
+    const { gate } = makeGate();
+    expect(gate.idle.value).toBe(false);
+  });
+
+  it('sets idle true when it closes and false when it reopens', () => {
+    const { gate, analyser, ticks } = makeGate();
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+
+    ticks(IDLE_DEBOUNCE_SECONDS * 1000 + SILENCE_POLL_INTERVAL_MS);
+    expect(gate.idle.value).toBe(true);
+
+    analyser.timeDomainData = new Float32Array([0.5, 0, 0]);
+    ticks(SILENCE_POLL_INTERVAL_MS);
+    expect(gate.idle.value).toBe(false);
+  });
+
+  it('notifies idle subscribers on transitions only', () => {
+    const { gate, analyser, ticks } = makeGate();
+    const seen: boolean[] = [];
+    gate.idle.subscribe(value => seen.push(value));
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+
+    ticks(IDLE_DEBOUNCE_SECONDS * 1000 + SILENCE_POLL_INTERVAL_MS);
+    analyser.timeDomainData = new Float32Array([0, 0, 0]);
+    ticks(SILENCE_POLL_INTERVAL_MS);
+
+    expect(seen).toEqual([true]);
+  });
+});

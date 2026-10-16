@@ -40,7 +40,9 @@ export function useAudioEnvironment() {
 
 async function createSynth(engine: AudioEngine): Promise<AxiomSynth> {
   const synth = markRaw(
-    await AxiomSynth.create(engine.ctxt, engine.masterInput),
+    await AxiomSynth.create(engine.ctxt, engine.masterInput, {
+      activity: engine,
+    }),
   );
   synth.output.connect(engine.masterInput);
   return synth;

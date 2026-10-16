@@ -2,7 +2,9 @@
 
 Vue 3 + TypeScript + Vite web synthesizer using the Web Audio API.
 
-Work in progress. Use the caveman skill in ultra mode.
+Work in progress.
+
+Use the ultracave skill.
 
 ## Commands
 

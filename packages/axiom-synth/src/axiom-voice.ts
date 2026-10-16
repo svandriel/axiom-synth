@@ -100,10 +100,12 @@ export class AxiomVoice extends Voice {
         ),
     ) as FixedArray<Lfo, LfoCount>;
 
-    // Create ampModGain (bias 1.0, sits between envelope and sink)
+    // Create ampModGain (bias 1.0, sits between envelope and sink). The
+    // envelope link is permanent; the sink link is a per-note switch so idle
+    // voices leave the graph entirely.
     this.ampModGain = ctxt.createGain();
     this.ampModGain.gain.value = 1.0;
-    this.ampModGain.connect(this.audioSink);
+    this.ampEnvelope.node.connect(this.ampModGain);
 
     // Wire LFO non-osc targets (cutoff, amp, drive)
     for (const lfo of this.lfos) {
@@ -218,9 +220,10 @@ export class AxiomVoice extends Voice {
       this.oscillators.forEach(osc => osc.stop(now));
       this.lfos.forEach(lfo => lfo.stop());
     } else {
-      // ampEnvelope.node <-> ampModGain is a per-note audio-path switch,
-      // intentionally not patched (ModulationRouter is static node-to-param only).
-      this.ampEnvelope.node.connect(this.ampModGain);
+      // ampModGain <-> sink is a per-note audio-path switch so idle voices
+      // leave the graph, intentionally not patched (ModulationRouter is static
+      // node-to-param only).
+      this.ampModGain.connect(this.audioSink);
     }
 
     const frequency = freqOf(noteNumber);
@@ -238,7 +241,7 @@ export class AxiomVoice extends Voice {
     this.lfos.forEach(lfo => lfo.stop());
 
     try {
-      this.ampEnvelope.node.disconnect(this.ampModGain);
+      this.ampModGain.disconnect(this.audioSink);
     } catch (exp) {
       // Was not connected, it's ok
     }
@@ -256,6 +259,7 @@ export class AxiomVoice extends Voice {
     this.config.filterEnvAmount.disconnect(this.filterEnvelope.node);
     this.oscillatorWaveformSubscription?.unsubscribe();
     this.oscillatorUnisonVoicesSubscription?.unsubscribe();
+    this.ampEnvelope.node.disconnect(this.ampModGain);
     this.ampEnvelope.destroy();
     this.filter.destroy();
     this.filterEnvelope.destroy();
