@@ -193,7 +193,7 @@ In `packages/audio-engine/src/engine/unison-voice-path.test.ts`:
 - Remove the local `function createOscillator(context: FakeAudioContext): Oscillator & { ... } { ... }` block (currently lines 28–61).
 - Remove `import type { Oscillator } from './oscillator';` (currently line 3) — it is now unused.
 - Add `import { createTestOscillator } from '../testing/test-oscillator';` after the `@axiom/audio-testing` import.
-- Replace every call to `createOscillator(context)` with `createTestOscillator(context)` (11 call sites; the definition itself is removed).
+- Replace every call to `createOscillator(context)` with `createTestOscillator(context)` (10 call sites; the definition itself is removed).
 
 The import block becomes:
 
