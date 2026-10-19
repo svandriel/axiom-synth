@@ -34,9 +34,17 @@ static inline double wrap_phase(double phase)
     return phase;
 }
 
+#ifdef MOOG_SAW_TEST_RNG
+double moog_saw_test_unit_random(void);
+#endif
+
 static inline double unit_random(void)
 {
+#ifdef MOOG_SAW_TEST_RNG
+    return moog_saw_test_unit_random();
+#else
     return (double)rand() / RAND_MAX;
+#endif
 }
 
 static inline double range_random(double min, double max)

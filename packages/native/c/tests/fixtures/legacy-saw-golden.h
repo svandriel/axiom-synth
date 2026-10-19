@@ -3,6 +3,13 @@
 
 #include <stdint.h>
 
+/*
+ * Exact bit fixtures are supported for the native C build's GCC C11 -O2
+ * configuration with IEEE-754 binary32 float/binary64 double, default
+ * round-to-nearest behavior, and no fast-math flags. Other compiler or
+ * floating-point configurations may differ by bits and are outside this
+ * fixture's portability guarantee.
+ */
 #define LEGACY_SAW_SAMPLE_RATE 48000.0
 #define LEGACY_SAW_STATIC_FRAMES 64
 #define LEGACY_SAW_FREQUENCY_DETUNE_FRAMES 64

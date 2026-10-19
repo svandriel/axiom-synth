@@ -2,6 +2,7 @@ CC      := gcc
 EMCC    := emcc
 
 CFLAGS  := -std=c11 -O2 -Wall -Wextra -Wpedantic
+TEST_CFLAGS := $(CFLAGS) -DMOOG_SAW_TEST_RNG
 LDFLAGS := -lm
 
 INCLUDE := -Iinclude
@@ -31,7 +32,7 @@ native: $(NATIVE)/test_moog_saw $(NATIVE)/test_moog_saw_math
 
 $(NATIVE)/test_moog_saw: Makefile $(SRC) $(TEST_SRC) $(HEADERS)
 	@mkdir -p $(NATIVE)
-	$(CC) $(CFLAGS) $(INCLUDE) $(SRC) $(TEST_SRC) $(LDFLAGS) -o $@
+	$(CC) $(TEST_CFLAGS) $(INCLUDE) $(SRC) $(TEST_SRC) $(LDFLAGS) -o $@
 
 $(NATIVE)/test_moog_saw_math: Makefile $(TEST_MATH_SRC) $(HEADERS)
 	@mkdir -p $(NATIVE)

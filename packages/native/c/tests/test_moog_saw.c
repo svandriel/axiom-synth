@@ -7,27 +7,34 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TEST_RAND_UPPER_MIDPOINT ((RAND_MAX / 2) + (RAND_MAX % 2))
+static int test_rng_enabled;
+static unsigned int test_rng_index;
 
-/* Use a zero start phase and a midpoint drift sample rounded to float 1.0. */
-static int next_random_is_initial_phase = 1;
+static const double TEST_RNG_INITIAL_PHASE = 0.0;
+static const double TEST_RNG_DRIFT_SAMPLE = 0.5;
+static const double test_rng_values[] = {
+    TEST_RNG_INITIAL_PHASE,
+    TEST_RNG_DRIFT_SAMPLE,
+};
 
-int rand(void)
+double moog_saw_test_unit_random(void)
 {
-    if (next_random_is_initial_phase)
-    {
-        next_random_is_initial_phase = 0;
-        return 0;
-    }
+    if (!test_rng_enabled)
+        return (double)rand() / RAND_MAX;
 
-    next_random_is_initial_phase = 1;
-    return TEST_RAND_UPPER_MIDPOINT;
+    return test_rng_values[
+        test_rng_index++ % (sizeof(test_rng_values) / sizeof(test_rng_values[0]))];
 }
 
-void srand(unsigned int seed)
+static void test_rng_begin(void)
 {
-    (void)seed;
-    next_random_is_initial_phase = 1;
+    test_rng_index = 0;
+    test_rng_enabled = 1;
+}
+
+static void test_rng_end(void)
+{
+    test_rng_enabled = 0;
 }
 
 static uint32_t float_bits(float value)
@@ -39,6 +46,7 @@ static uint32_t float_bits(float value)
 
 static void test_legacy_saw_golden_static(void)
 {
+    test_rng_begin();
     moog_saw_init();
     MoogSaw *osc = moog_saw_create(LEGACY_SAW_SAMPLE_RATE);
     assert(osc);
@@ -53,10 +61,12 @@ static void test_legacy_saw_golden_static(void)
         assert(float_bits(output[i]) == legacy_saw_static_golden_bits[i]);
     assert(moog_saw_phase(osc) == LEGACY_SAW_STATIC_FINAL_PHASE);
     moog_saw_destroy(osc);
+    test_rng_end();
 }
 
 static void test_legacy_saw_golden_frequency_detune(void)
 {
+    test_rng_begin();
     moog_saw_init();
     MoogSaw *osc = moog_saw_create(LEGACY_SAW_SAMPLE_RATE);
     assert(osc);
@@ -72,10 +82,12 @@ static void test_legacy_saw_golden_frequency_detune(void)
         assert(float_bits(output[i]) == legacy_saw_frequency_detune_golden_bits[i]);
     assert(moog_saw_phase(osc) == LEGACY_SAW_FREQUENCY_DETUNE_FINAL_PHASE);
     moog_saw_destroy(osc);
+    test_rng_end();
 }
 
 static void test_legacy_saw_golden_fractional_sync(void)
 {
+    test_rng_begin();
     moog_saw_init();
     MoogSaw *osc = moog_saw_create(LEGACY_SAW_SAMPLE_RATE);
     assert(osc);
@@ -91,6 +103,7 @@ static void test_legacy_saw_golden_fractional_sync(void)
         assert(float_bits(output[i]) == legacy_saw_fractional_sync_golden_bits[i]);
     assert(moog_saw_phase(osc) == LEGACY_SAW_FRACTIONAL_SYNC_FINAL_PHASE);
     moog_saw_destroy(osc);
+    test_rng_end();
 }
 
 static void test_parameter_fit(void)
@@ -101,6 +114,7 @@ static void test_parameter_fit(void)
 
 static void test_progression(void)
 {
+    test_rng_begin();
     MoogSaw *osc = moog_saw_create(48000.0);
     assert(osc);
 
@@ -114,10 +128,12 @@ static void test_progression(void)
     const double expected_phase = 4.0 * 480.0 / 48000.0;
     assert(fabs(moog_saw_phase(osc) - expected_phase) < 1e-12);
     moog_saw_destroy(osc);
+    test_rng_end();
 }
 
 static void test_fractional_sync(void)
 {
+    test_rng_begin();
     MoogSaw *osc = moog_saw_create(48000.0);
     assert(osc);
 
@@ -137,10 +153,12 @@ static void test_fractional_sync(void)
     const double expected = 1.5 * 480.0 / 48000.0;
     assert(fabs(moog_saw_phase(osc) - expected) < 1e-12);
     moog_saw_destroy(osc);
+    test_rng_end();
 }
 
 static void test_detune(void)
 {
+    test_rng_begin();
     MoogSaw *osc = moog_saw_create(48000.0);
     assert(osc);
 
@@ -153,10 +171,12 @@ static void test_detune(void)
     const double expected_phase = 2.0 * 480.0 / 48000.0;
     assert(fabs(moog_saw_phase(osc) - expected_phase) < 1e-12);
     moog_saw_destroy(osc);
+    test_rng_end();
 }
 
 static void test_semitone_detune(void)
 {
+    test_rng_begin();
     MoogSaw *osc = moog_saw_create(48000.0);
     assert(osc);
 
@@ -171,6 +191,7 @@ static void test_semitone_detune(void)
     const double expected_phase = expected_freq / 48000.0;
     assert(fabs(moog_saw_phase(osc) - expected_phase) < 1e-9);
     moog_saw_destroy(osc);
+    test_rng_end();
 }
 
 /* The ideal waveform, evaluated with libm cos, to bound any fast-trig error. */
@@ -207,6 +228,7 @@ static void test_waveform_accuracy(void)
 
 static void test_explicit_event(void)
 {
+    test_rng_begin();
     MoogSaw *osc = moog_saw_create(48000.0);
     assert(osc);
 
@@ -218,6 +240,7 @@ static void test_explicit_event(void)
     assert(fabs(moog_saw_phase(osc) - expected) < 1e-12);
     assert(isfinite(out));
     moog_saw_destroy(osc);
+    test_rng_end();
 }
 
 int main(void)
