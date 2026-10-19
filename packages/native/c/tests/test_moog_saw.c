@@ -1,8 +1,73 @@
 #include "moog_saw.h"
+#include "fixtures/legacy-saw-golden.h"
 
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
+
+static uint32_t float_bits(float value)
+{
+    uint32_t bits;
+    memcpy(&bits, &value, sizeof(bits));
+    return bits;
+}
+
+static void test_legacy_saw_golden_static(void)
+{
+    moog_saw_init();
+    MoogSaw *osc = moog_saw_create(LEGACY_SAW_SAMPLE_RATE);
+    assert(osc);
+
+    moog_saw_reset(osc, LEGACY_SAW_STATIC_PHASE);
+    moog_saw_set_frequency(osc, 440.0f);
+
+    float output[LEGACY_SAW_STATIC_FRAMES];
+    moog_saw_process(osc, NULL, NULL, NULL, output, LEGACY_SAW_STATIC_FRAMES);
+
+    for (int i = 0; i < LEGACY_SAW_STATIC_FRAMES; ++i)
+        assert(float_bits(output[i]) == legacy_saw_static_golden_bits[i]);
+    assert(moog_saw_phase(osc) == LEGACY_SAW_STATIC_FINAL_PHASE);
+    moog_saw_destroy(osc);
+}
+
+static void test_legacy_saw_golden_frequency_detune(void)
+{
+    moog_saw_init();
+    MoogSaw *osc = moog_saw_create(LEGACY_SAW_SAMPLE_RATE);
+    assert(osc);
+
+    moog_saw_reset(osc, LEGACY_SAW_FREQUENCY_DETUNE_PHASE);
+
+    float output[LEGACY_SAW_FREQUENCY_DETUNE_FRAMES];
+    moog_saw_process(
+        osc, legacy_saw_frequency_sequence, legacy_saw_detune_sequence, NULL, output,
+        LEGACY_SAW_FREQUENCY_DETUNE_FRAMES);
+
+    for (int i = 0; i < LEGACY_SAW_FREQUENCY_DETUNE_FRAMES; ++i)
+        assert(float_bits(output[i]) == legacy_saw_frequency_detune_golden_bits[i]);
+    assert(moog_saw_phase(osc) == LEGACY_SAW_FREQUENCY_DETUNE_FINAL_PHASE);
+    moog_saw_destroy(osc);
+}
+
+static void test_legacy_saw_golden_fractional_sync(void)
+{
+    moog_saw_init();
+    MoogSaw *osc = moog_saw_create(LEGACY_SAW_SAMPLE_RATE);
+    assert(osc);
+
+    moog_saw_reset(osc, LEGACY_SAW_FRACTIONAL_SYNC_PHASE);
+
+    float output[LEGACY_SAW_FRACTIONAL_SYNC_FRAMES];
+    moog_saw_process(
+        osc, legacy_saw_sync_frequency, NULL, legacy_saw_sync_signal, output,
+        LEGACY_SAW_FRACTIONAL_SYNC_FRAMES);
+
+    for (int i = 0; i < LEGACY_SAW_FRACTIONAL_SYNC_FRAMES; ++i)
+        assert(float_bits(output[i]) == legacy_saw_fractional_sync_golden_bits[i]);
+    assert(moog_saw_phase(osc) == LEGACY_SAW_FRACTIONAL_SYNC_FINAL_PHASE);
+    moog_saw_destroy(osc);
+}
 
 static void test_parameter_fit(void)
 {
@@ -133,6 +198,9 @@ static void test_explicit_event(void)
 
 int main(void)
 {
+    test_legacy_saw_golden_static();
+    test_legacy_saw_golden_frequency_detune();
+    test_legacy_saw_golden_fractional_sync();
     test_parameter_fit();
     test_progression();
     test_fractional_sync();
