@@ -123,7 +123,7 @@ Review the implementation note with the user. Expected: approval of equations, h
 **Files:**
 
 - Create: `packages/native/c/include/moog_oscillator.h`
-- Create: `packages/native/c/src/moog_oscillator.c`
+- Move: `packages/native/c/src/moog_saw.c` to `packages/native/c/src/moog_oscillator.c`
 - Create: `packages/native/c/src/moog_waveforms.h`
 - Create: `packages/native/c/src/moog_waveforms.c`
 - Create: `packages/native/c/src/moog_saw_compat.c`
@@ -198,6 +198,7 @@ git commit -m "feat(native): add generic oscillator waveform core"
 - Modify: `packages/native/c/tests/test_moog_waveforms.c`
 - Modify: `packages/native/c/tests/test_moog_oscillator.c`
 - Rename: `packages/native/c/tests/bench_moog_saw.c` to `packages/native/c/tests/bench_moog_oscillator.c`
+- Rename generated benchmark outputs from `bench_moog_saw` to `bench_moog_oscillator` in `packages/native/c/Makefile` (`dist/native/` and `dist/bench/`).
 - Modify: `packages/native/c/Makefile`
 - Modify: `packages/native/c/BENCHMARKS.md`
 
