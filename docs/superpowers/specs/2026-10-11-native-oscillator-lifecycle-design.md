@@ -2,6 +2,8 @@
 
 Date: 2026-10-11
 Status: Approved
+Amended: 2026-10-14 — due stops tear down in the `STOP` port handler, because a
+disconnected worklet node is no longer pulled through `process()`.
 
 ## Problem
 
@@ -73,27 +75,37 @@ New fields: `started = false`, `startTime = 0`, `stopTime: number | undefined`.
 Message handling:
 
 - `START` → `started = true; startTime = event.data.when`.
-- `STOP` → `stopTime = event.data.when`.
+- `STOP` → `stopTime = event.data.when`; if `currentTime >= stopTime`, tear
+  down immediately via `emitEnded()` (see timing note below).
 - `DESTROY` → `destroyResources()` (unchanged).
+
+`emitEnded()` frees WASM (`destroyResources()`) and posts `ENDED`, guarded by
+`destroyed` so it fires exactly once regardless of which path observes the stop.
 
 `process()` order:
 
 1. If `destroyed` → return `false` (unchanged).
-2. If `stopTime !== undefined && currentTime >= stopTime` → `destroyResources()`,
-   `port.postMessage({ type: 'ENDED' })`, return `false`.
+2. If `stopTime !== undefined && currentTime >= stopTime` → `emitEnded()`,
+   return `false`.
 3. If `!started || currentTime < startTime` → zero the output buffer and return
    `true` (keep the processor alive, emit silence).
 4. Otherwise render through WASM (unchanged).
 
 `currentTime` is the `AudioWorkletGlobalScope` global (declared by
 `@types/audioworklet`). Stop is checked before the start gate so a node that is
-stopped before it ever starts still tears down. A `STOP` whose `when` is in the
-past (`<= currentTime`) tears down on the next `process()`.
+stopped before it ever starts still tears down.
 
-**Timing.** Port messages are delivered before the next `process()` call, so a
-stop lands within one render quantum (128 samples ≈ 2.7 ms at 48 kHz). This is
-acceptable: the engine's choke fade is 3 ms and is driven by the amp envelope,
-not by oscillator teardown.
+**Timing and disconnected nodes.** A voice disconnects its amp envelope from the
+sink when it goes silent (`AxiomVoice.onSoundStop`), which leaves the worklet
+node unreachable from the destination; Chrome then stops pulling it through
+`process()`. A stop that must be acted on while the node is disconnected is
+therefore handled in the `STOP` port message: when `when <= currentTime`, the
+processor tears down in the handler instead of waiting for a `process()` call
+that will never come. A future-dated stop on a still-connected node continues to
+tear down in `process()`. Port messages are delivered before the next
+`process()` call, so either way teardown lands within one render quantum (128
+samples ≈ 2.7 ms at 48 kHz) — acceptable, because the engine's choke fade is
+3 ms and is driven by the amp envelope, not by oscillator teardown.
 
 ### 3. Wrapper (`packages/native/src/nodes/moog-oscillator-worklet-node.ts`)
 
@@ -123,8 +135,8 @@ has none).
   unchanged (detaches inbound source→param links, deletes bookkeeping,
   disconnects, fires subscribers).
 - `stop(time?)`: delegate `osc.stop(time ?? this.ctxt.currentTime)`. Immediate
-  stop uses the current audio-clock time; the processor tears down on its next
-  quantum.
+  stop uses the current audio-clock time; the processor tears down in the `STOP`
+  handler (or on its next quantum if the node is still connected).
 - `detachNode(osc: MoogOscillatorWorkletNode)`: call `osc.destroy()` (posts
   `DESTROY` and disconnects the outgoing link) instead of a bare `disconnect()`,
   so hard teardown frees the processor/WASM.
@@ -140,8 +152,9 @@ has none).
 - **`moog-oscillator-processor.test.ts`**: with a controllable global
   `currentTime`, assert that before `START` (and before `startTime`) the output
   is silence and `process` returns `true`; that `STOP` posts `ENDED`, frees WASM
-  (`_free` × 3, `_moog_saw_wasm_destroy`), and returns `false`; existing DESTROY
-  and parameter tests unchanged.
+  (`_free` × 3, `_moog_saw_wasm_destroy`), and returns `false`; that a `STOP`
+  whose `when <= currentTime` posts `ENDED` and frees WASM from the port handler
+  without a `process()` call; existing DESTROY and parameter tests unchanged.
 - **New `moog-oscillator.test.ts`** (mirrors `web-audio-oscillator.test.ts`
   using `FakeAudioContext`, `installFakeAudioParam`, and a fake global
   `AudioWorkletNode`): no node created before `start`; a fresh node per

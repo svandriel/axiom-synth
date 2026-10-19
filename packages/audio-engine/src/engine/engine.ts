@@ -1,9 +1,14 @@
+import type { ActivitySink } from './activity-sink';
 import type { Destroyable } from './destroyable';
 import { FeedbackDelay } from './feedback-delay';
-import { resumeIfSuspended } from './helpers';
-import { Meter } from './meter';
+import type { Observable } from '../utils/observable';
 
-export class AudioEngine implements Destroyable {
+import { resumeIfSuspended } from './helpers';
+import { IdleGate } from './idle-gate';
+import { Meter } from './meter';
+import { Reverb } from './reverb';
+
+export class AudioEngine implements Destroyable, ActivitySink {
   public readonly ctxt: AudioContext;
   public readonly masterInput: GainNode;
   private readonly master: GainNode;
@@ -11,6 +16,8 @@ export class AudioEngine implements Destroyable {
   private readonly analyser: AnalyserNode;
   private readonly comp: DynamicsCompressorNode;
   private readonly feedbackDelay: FeedbackDelay;
+  private readonly reverb: Reverb;
+  private readonly idleGate: IdleGate;
   private destroyed = false;
   public readonly id: number;
 
@@ -30,16 +37,24 @@ export class AudioEngine implements Destroyable {
     this.comp = this.ctxt.createDynamicsCompressor();
 
     this.feedbackDelay = new FeedbackDelay(this.ctxt);
-    this.feedbackDelay.wet.setValueAtTime(0, this.ctxt.currentTime);
+    this.feedbackDelay.wet.setValueAtTime(0.2, this.ctxt.currentTime);
     this.feedbackDelay.cutoff.setValueAtTime(400, this.ctxt.currentTime);
     this.feedbackDelay.delayTime.setValueAtTime(0.55, this.ctxt.currentTime);
 
+    this.reverb = new Reverb(this.ctxt);
+    this.reverb.wet.setValueAtTime(0.4, this.ctxt.currentTime);
+    this.idleGate = new IdleGate(this.ctxt);
+
     this.masterInput.connect(this.feedbackDelay.input);
-    this.feedbackDelay.connect(this.master);
+    this.feedbackDelay.connect(this.reverb.input);
+    this.reverb.connect(this.idleGate.input);
+    this.idleGate.connect(this.master);
+
+    // Master chain; analyser and meter are leaf taps, not in the path.
     this.master.connect(this.comp);
+    this.comp.connect(this.ctxt.destination);
     this.comp.connect(this.analyser);
     this.comp.connect(this.meter.input);
-    this.analyser.connect(this.ctxt.destination);
   }
 
   getScopeData(buffer: Float32Array<ArrayBuffer>) {
@@ -50,8 +65,24 @@ export class AudioEngine implements Destroyable {
     return this.meter.value;
   }
 
+  get idle(): Observable<boolean> {
+    return this.idleGate.idle;
+  }
+
+  get reverbBuffer(): AudioBuffer | null {
+    return this.reverb.buffer;
+  }
+
+  set reverbBuffer(buffer: AudioBuffer | null) {
+    this.reverb.buffer = buffer;
+  }
+
   ensureStarted() {
     resumeIfSuspended(this.ctxt);
+  }
+
+  activate(): void {
+    this.idleGate.activate();
   }
 
   destroy() {
@@ -65,6 +96,7 @@ export class AudioEngine implements Destroyable {
     this.analyser.disconnect();
     this.masterInput.disconnect();
     this.master.disconnect();
+    this.idleGate.destroy();
     this.ctxt.close();
   }
 }

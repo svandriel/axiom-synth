@@ -1,3 +1,4 @@
+import type { ActivitySink } from './activity-sink';
 import type { Destroyable } from './destroyable';
 import { resumeIfSuspended } from './helpers';
 import type { Voice } from './voice';
@@ -8,18 +9,20 @@ export abstract class Synth<V extends Voice> implements Destroyable {
   protected readonly audioSink: AudioNode;
   protected destroyed = false;
 
+  private readonly activity: ActivitySink | undefined;
   private readonly voiceManager: VoiceManager<V>;
 
   constructor(
     ctxt: AudioContext,
     audioSink: AudioNode,
-    options: { maxVoices: number },
+    options: { maxVoices: number; activity?: ActivitySink },
   ) {
     if (ctxt.state === 'closed') {
       throw new Error('Cannot create Synth with a closed AudioContext');
     }
     this.ctxt = ctxt;
     this.audioSink = audioSink;
+    this.activity = options.activity;
     this.voiceManager = new VoiceManager(() => this.createVoice(), options);
   }
 
@@ -30,6 +33,7 @@ export abstract class Synth<V extends Voice> implements Destroyable {
       return;
     }
     resumeIfSuspended(this.ctxt);
+    this.activity?.activate();
     this.voiceManager.noteOn(noteNumber, velocity, this.ctxt.currentTime);
   }
 

@@ -1,5 +1,4 @@
-export * from './nodes/moog-oscillator-worklet-node';
-import { MoogOscillatorWorkletNode } from './nodes/moog-oscillator-worklet-node';
+import { MoogOscillator } from './nodes/moog-oscillator';
 import { getWasmModule } from './wasm-holder';
 import workerUrl from './worker/worker?worker&url';
 
@@ -20,7 +19,7 @@ export class NativeModule {
     this.wasmModule = wasmModule;
   }
 
-  createSawOscillator(): MoogOscillatorWorkletNode {
-    return new MoogOscillatorWorkletNode(this.ctxt, this.wasmModule);
+  createMoogOscillator(): MoogOscillator {
+    return new MoogOscillator(this.ctxt, this.wasmModule);
   }
 }

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ActivitySink } from './activity-sink';
 import { Synth } from './synth';
 import { Voice } from './voice';
 import { FakeAudioContext, FakeAudioNode } from '@axiom/audio-testing';
@@ -34,8 +35,13 @@ class TestVoice extends Voice {
 class TestSynth extends Synth<TestVoice> {
   readonly voices: TestVoice[] = [];
 
-  constructor(ctxt: AudioContext, audioSink: AudioNode, maxVoices: number) {
-    super(ctxt, audioSink, { maxVoices });
+  constructor(
+    ctxt: AudioContext,
+    audioSink: AudioNode,
+    maxVoices: number,
+    activity?: ActivitySink,
+  ) {
+    super(ctxt, audioSink, { maxVoices, activity });
   }
 
   protected createVoice(): TestVoice {
@@ -211,5 +217,48 @@ describe('Synth voice allocation', () => {
     expect(v0.noteOffCount).toBe(1);
     expect(v1.noteOnCalls).toEqual([{ note: 60, velocity: 1, now: 5 }]);
     expect(v1.fastChokeCalls).toHaveLength(0);
+  });
+});
+
+describe('Synth activity notification', () => {
+  it('activates the activity sink on noteOn', () => {
+    const ctx = new FakeAudioContext();
+    const sink = new FakeAudioNode(ctx);
+    let activated = 0;
+    const synth = new TestSynth(
+      ctx as unknown as AudioContext,
+      sink as unknown as AudioNode,
+      1,
+      {
+        activate: () => {
+          activated++;
+        },
+      },
+    );
+
+    synth.noteOn(60, 1);
+
+    expect(activated).toBe(1);
+  });
+
+  it('does not activate the activity sink after destroy', () => {
+    const ctx = new FakeAudioContext();
+    const sink = new FakeAudioNode(ctx);
+    let activated = 0;
+    const synth = new TestSynth(
+      ctx as unknown as AudioContext,
+      sink as unknown as AudioNode,
+      1,
+      {
+        activate: () => {
+          activated++;
+        },
+      },
+    );
+
+    synth.destroy();
+    synth.noteOn(60, 1);
+
+    expect(activated).toBe(0);
   });
 });

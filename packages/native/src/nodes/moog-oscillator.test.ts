@@ -68,7 +68,7 @@ describe('MoogOscillator', () => {
     }
   });
 
-  it('starts a fresh worklet node per generation and schedules its frequency', () => {
+  it('starts a fresh worklet node per generation with zero base frequency', () => {
     const restoreAudioParam = installFakeAudioParam();
     const context = new FakeAudioContext();
 
@@ -78,7 +78,7 @@ describe('MoogOscillator', () => {
         new ArrayBuffer(0),
       );
 
-      oscillator.start(440, 1);
+      oscillator.start(1);
       expect(createdNodes).toHaveLength(1);
       const first = createdNodes[0]!;
       expect(first.port.postMessage).toHaveBeenCalledWith({
@@ -86,7 +86,7 @@ describe('MoogOscillator', () => {
         when: 1,
       });
       expect(first.parameters.get('frequency')!.operations).toEqual([
-        { type: 'setValueAtTime', value: 440, time: 1 },
+        { type: 'setValueAtTime', value: 0, time: 1 },
       ]);
       expect(first.connect).toHaveBeenCalledTimes(1);
       expect(context.connections.length).toBeGreaterThan(0);
@@ -106,7 +106,7 @@ describe('MoogOscillator', () => {
         new ArrayBuffer(0),
       );
 
-      oscillator.start(440, 6);
+      oscillator.start(6);
       oscillator.stop();
       expect(createdNodes[0]!.port.postMessage).toHaveBeenCalledWith({
         type: 'STOP',
@@ -120,7 +120,7 @@ describe('MoogOscillator', () => {
         when: 7,
       });
 
-      oscillator.start(220, 8);
+      oscillator.start(8);
       oscillator.stop(9);
       expect(createdNodes[1]!.port.postMessage).toHaveBeenCalledWith({
         type: 'STOP',
@@ -143,7 +143,7 @@ describe('MoogOscillator', () => {
       let calls = 0;
       const subscription = oscillator.onEnded(() => calls++);
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       createdNodes[0]!.port.onmessage?.({
         data: { type: 'ENDED' },
       } as MessageEvent);
@@ -166,11 +166,11 @@ describe('MoogOscillator', () => {
         new ArrayBuffer(0),
       );
 
-      oscillator.start(440, 0);
+      oscillator.start(0);
       createdNodes[0]!.port.onmessage?.({
         data: { type: 'ENDED' },
       } as MessageEvent);
-      oscillator.start(220, 1);
+      oscillator.start(1);
 
       expect(createdNodes).toHaveLength(2);
     } finally {
@@ -189,7 +189,7 @@ describe('MoogOscillator', () => {
       );
       let calls = 0;
       oscillator.onEnded(() => calls++);
-      oscillator.start(440, 0);
+      oscillator.start(0);
       const first = createdNodes[0]!;
 
       oscillator.destroy();

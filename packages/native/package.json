@@ -16,7 +16,7 @@
     "test": "pnpm run \"/^test:/\"",
     "test:native": "make test -C ./c",
     "test:js": "vitest run",
-    "dev": "pnpm run build:wasm && chokidar \"c/**/*.c\" \"c/Makefile\" -c \"pnpm run build:wasm\" --silent"
+    "dev": "pnpm run build:wasm && chokidar \"c/**/*.c\" \"c/**/*.h\" \"c/Makefile\" -c \"pnpm run build:wasm\" --silent"
   },
   "devDependencies": {
     "@axiom/audio-testing": "workspace:*",

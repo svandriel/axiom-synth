@@ -66,6 +66,56 @@ static void test_detune(void)
     moog_saw_destroy(osc);
 }
 
+static void test_semitone_detune(void)
+{
+    MoogSaw *osc = moog_saw_create(48000.0);
+    assert(osc);
+
+    const float freq[] = {480.0f};
+    /* +5 semitones (perfect fourth) is 500 cents. */
+    const float detune[] = {500.0f};
+    float out;
+
+    moog_saw_process(osc, freq, detune, NULL, &out, 1);
+
+    const double expected_freq = 480.0 * pow(2.0, 5.0 / 12.0);
+    const double expected_phase = expected_freq / 48000.0;
+    assert(fabs(moog_saw_phase(osc) - expected_phase) < 1e-9);
+    moog_saw_destroy(osc);
+}
+
+/* The ideal waveform, evaluated with libm cos, to bound any fast-trig error. */
+static double reference_waveform(double phase, float p)
+{
+    const double pi = 3.141592653589793238462643383279502884;
+    double ph = phase - floor(phase);
+    if (p <= 0.0f)
+        p = 1.0e-7f;
+    else if (p >= 1.0f)
+        p = 1.0f - 1.0e-7f;
+
+    const double amplitude = pi - 2.0 * pi * (double)p;
+    const double phi_mod =
+        ph < (double)p ? amplitude * ph / (double)p
+                       : amplitude * (1.0 - ph) / (1.0 - (double)p);
+    return -cos(2.0 * pi * ph + phi_mod);
+}
+
+static void test_waveform_accuracy(void)
+{
+    const float fits[] = {0.001f, 0.05f, 0.25f, 0.5f, 0.75f, 0.95f, 0.999f};
+    for (int fi = 0; fi < 7; ++fi)
+    {
+        for (int k = 0; k < 1000; ++k)
+        {
+            const double phase = (double)k / 1000.0;
+            const double got = (double)moog_saw_waveform(phase, fits[fi]);
+            const double want = reference_waveform(phase, fits[fi]);
+            assert(fabs(got - want) < 1e-6);
+        }
+    }
+}
+
 static void test_explicit_event(void)
 {
     MoogSaw *osc = moog_saw_create(48000.0);
@@ -87,6 +137,8 @@ int main(void)
     test_progression();
     test_fractional_sync();
     test_detune();
+    test_semitone_detune();
+    test_waveform_accuracy();
     test_explicit_event();
     puts("all tests passed");
     return 0;

@@ -257,4 +257,37 @@ describe('MoogOscillatorProcessor', () => {
     ).toBe(false);
     expect(keepAlive).toBe(false);
   });
+
+  it('tears down in the port handler when the stop time has already passed', async () => {
+    const createCallsBefore =
+      wasmModule._moog_saw_wasm_create.mock.calls.length;
+    const destroyCallsBefore =
+      wasmModule._moog_saw_wasm_destroy.mock.calls.length;
+    const processor = new MoogOscillatorProcessor({
+      processorOptions: {
+        wasmModule: {} as WebAssembly.Module,
+      },
+    });
+    await vi.waitFor(() => {
+      expect(wasmModule._moog_saw_wasm_create).toHaveBeenCalledTimes(
+        createCallsBefore + 1,
+      );
+    });
+
+    Object.assign(globalThis, { currentTime: 5 });
+    processor.port.onmessage?.({
+      data: { type: 'STOP', when: 3 },
+    } as unknown as MessageEvent);
+
+    expect(processor.port.postMessage).toHaveBeenCalledWith({ type: 'ENDED' });
+    expect(wasmModule._moog_saw_wasm_destroy.mock.calls.length).toBe(
+      destroyCallsBefore + 1,
+    );
+    expect(
+      processor.process([], [[new Float32Array(4)]], {
+        frequency: new Float32Array([1]),
+        detune: new Float32Array([0]),
+      }),
+    ).toBe(false);
+  });
 });
