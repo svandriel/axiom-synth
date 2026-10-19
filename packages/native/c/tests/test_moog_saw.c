@@ -4,7 +4,31 @@
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+#define TEST_RAND_UPPER_MIDPOINT ((RAND_MAX / 2) + (RAND_MAX % 2))
+
+/* Use a zero start phase and a midpoint drift sample rounded to float 1.0. */
+static int next_random_is_initial_phase = 1;
+
+int rand(void)
+{
+    if (next_random_is_initial_phase)
+    {
+        next_random_is_initial_phase = 0;
+        return 0;
+    }
+
+    next_random_is_initial_phase = 1;
+    return TEST_RAND_UPPER_MIDPOINT;
+}
+
+void srand(unsigned int seed)
+{
+    (void)seed;
+    next_random_is_initial_phase = 1;
+}
 
 static uint32_t float_bits(float value)
 {
