@@ -1,17 +1,17 @@
-#ifndef MOOG_SAW_MATH_H
-#define MOOG_SAW_MATH_H
+#ifndef MOOG_OSCILLATOR_MATH_H
+#define MOOG_OSCILLATOR_MATH_H
 
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 
-#define MOOG_SAW_PI 3.141592653589793238462643383279502884
-#define MOOG_SAW_TWO_PI (2.0 * MOOG_SAW_PI)
-#define MOOG_SAW_HALF_PI (0.5 * MOOG_SAW_PI)
-#define MOOG_SAW_TWO_OVER_PI (2.0 / MOOG_SAW_PI)
+#define MOOG_OSC_PI 3.141592653589793238462643383279502884
+#define MOOG_OSC_TWO_PI (2.0 * MOOG_OSC_PI)
+#define MOOG_OSC_HALF_PI (0.5 * MOOG_OSC_PI)
+#define MOOG_OSC_TWO_OVER_PI (2.0 / MOOG_OSC_PI)
 
 /* Detune is expressed in cents; one octave spans this many cents. */
-#define MOOG_SAW_CENTS_PER_OCTAVE 1200.0
+#define MOOG_OSC_CENTS_PER_OCTAVE 1200.0
 
 /*
  * These helpers are pure math and are kept `static inline` so the compiler
@@ -80,9 +80,9 @@ static inline double sin_poly(double r)
  */
 static inline double quadrant_cos(double t)
 {
-    const double x = t * MOOG_SAW_TWO_OVER_PI;
+    const double x = t * MOOG_OSC_TWO_OVER_PI;
     const double n = floor(x + 0.5);
-    const double r = (x - n) * MOOG_SAW_HALF_PI;
+    const double r = (x - n) * MOOG_OSC_HALF_PI;
 
     switch (((int)n) & 3)
     {
@@ -100,7 +100,7 @@ static inline double quadrant_cos(double t)
 /* Frequency ratio for a detune in cents (e.g. +1200 cents -> 2.0). */
 static inline float cents_to_ratio(float cents)
 {
-    return exp2f(cents / (float)MOOG_SAW_CENTS_PER_OCTAVE);
+    return exp2f(cents / (float)MOOG_OSC_CENTS_PER_OCTAVE);
 }
 
 #endif

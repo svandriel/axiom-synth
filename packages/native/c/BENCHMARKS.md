@@ -100,11 +100,11 @@ scale factor, single call, `static inline` helper) paid it. At < 15 ns/sample
 the oscillator uses ~0.07 % of the realtime budget, so the trade favours the
 common uniform-detune path.
 
-### Refactor: `moog_saw_math.h`
+### Refactor: `moog_oscillator_math.h`
 
 The trig (`wrap_phase`, `cos_poly`, `sin_poly`, `quadrant_cos`) and the cents ->
-ratio conversion moved to `src/moog_saw_math.h` as `static inline` functions.
+ratio conversion moved to `src/moog_oscillator_math.h` as `static inline` functions.
 Header-only keeps them inlined into the render loop; a separate `.c` unit would
 not inline across translation units without LTO and would cost realtime
 headroom. This is a pure move — every number above is unchanged to the tenth of
-a nanosecond. `tests/test_moog_saw_math.c` locks the extracted math against libm.
+a nanosecond. `tests/test_moog_oscillator_math.c` locks the extracted math against libm.

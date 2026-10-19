@@ -8,12 +8,15 @@ LDFLAGS := -lm
 INCLUDE := -Iinclude
 MATH_INCLUDE := -Isrc
 
-HEADERS := include/moog_saw.h src/moog_saw_math.h
+HEADERS := include/moog_saw.h include/moog_oscillator.h src/moog_oscillator_math.h \
+	src/moog_oscillator_internal.h src/moog_waveforms.h
 
-SRC     := src/moog_saw.c
+SRC     := src/moog_oscillator.c src/moog_waveforms.c src/moog_saw_compat.c
 WASM_SRC := $(SRC) src/moog_saw_wasm.c
 TEST_SRC := tests/test_moog_saw.c
-TEST_MATH_SRC := tests/test_moog_saw_math.c
+TEST_GENERIC_SRC := tests/test_moog_oscillator.c
+TEST_WAVEFORMS_SRC := tests/test_moog_waveforms.c
+TEST_MATH_SRC := tests/test_moog_oscillator_math.c
 BENCH_SRC := tests/bench_moog_saw.c
 
 BUILD   := dist
@@ -28,19 +31,29 @@ BENCH_FLAGS := -O3
 
 all: native wasm
 
-native: $(NATIVE)/test_moog_saw $(NATIVE)/test_moog_saw_math
+native: $(NATIVE)/test_moog_saw $(NATIVE)/test_moog_oscillator $(NATIVE)/test_moog_waveforms $(NATIVE)/test_moog_oscillator_math
 
 $(NATIVE)/test_moog_saw: Makefile $(SRC) $(TEST_SRC) $(HEADERS)
 	@mkdir -p $(NATIVE)
 	$(CC) $(TEST_CFLAGS) $(INCLUDE) $(SRC) $(TEST_SRC) $(LDFLAGS) -o $@
 
-$(NATIVE)/test_moog_saw_math: Makefile $(TEST_MATH_SRC) $(HEADERS)
+$(NATIVE)/test_moog_oscillator: Makefile $(SRC) $(TEST_GENERIC_SRC) $(HEADERS)
+	@mkdir -p $(NATIVE)
+	$(CC) $(TEST_CFLAGS) $(INCLUDE) $(SRC) $(TEST_GENERIC_SRC) $(LDFLAGS) -o $@
+
+$(NATIVE)/test_moog_waveforms: Makefile src/moog_waveforms.c $(TEST_WAVEFORMS_SRC) $(HEADERS)
+	@mkdir -p $(NATIVE)
+	$(CC) $(CFLAGS) $(INCLUDE) $(MATH_INCLUDE) src/moog_waveforms.c $(TEST_WAVEFORMS_SRC) $(LDFLAGS) -o $@
+
+$(NATIVE)/test_moog_oscillator_math: Makefile $(TEST_MATH_SRC) $(HEADERS)
 	@mkdir -p $(NATIVE)
 	$(CC) $(CFLAGS) $(INCLUDE) $(MATH_INCLUDE) $(TEST_MATH_SRC) $(LDFLAGS) -o $@
 
-test: $(NATIVE)/test_moog_saw $(NATIVE)/test_moog_saw_math
+test: $(NATIVE)/test_moog_saw $(NATIVE)/test_moog_oscillator $(NATIVE)/test_moog_waveforms $(NATIVE)/test_moog_oscillator_math
 	$(NATIVE)/test_moog_saw
-	$(NATIVE)/test_moog_saw_math
+	$(NATIVE)/test_moog_oscillator
+	$(NATIVE)/test_moog_waveforms
+	$(NATIVE)/test_moog_oscillator_math
 
 $(NATIVE)/bench_moog_saw: Makefile $(SRC) $(BENCH_SRC) $(HEADERS)
 	@mkdir -p $(NATIVE)

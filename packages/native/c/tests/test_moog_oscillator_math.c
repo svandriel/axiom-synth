@@ -1,4 +1,4 @@
-#include "moog_saw_math.h"
+#include "moog_oscillator_math.h"
 
 #include <assert.h>
 #include <math.h>
@@ -24,7 +24,7 @@ static void test_cos_poly(void)
 {
     for (int k = 0; k <= 1000; ++k)
     {
-        const double r = MOOG_SAW_PI / 4.0 * ((double)k / 1000.0 * 2.0 - 1.0);
+        const double r = MOOG_OSC_PI / 4.0 * ((double)k / 1000.0 * 2.0 - 1.0);
         assert(fabs(cos_poly(r) - cos(r)) < 1e-7);
     }
 }
@@ -33,7 +33,7 @@ static void test_sin_poly(void)
 {
     for (int k = 0; k <= 1000; ++k)
     {
-        const double r = MOOG_SAW_PI / 4.0 * ((double)k / 1000.0 * 2.0 - 1.0);
+        const double r = MOOG_OSC_PI / 4.0 * ((double)k / 1000.0 * 2.0 - 1.0);
         assert(fabs(sin_poly(r) - sin(r)) < 1e-8);
     }
 }
