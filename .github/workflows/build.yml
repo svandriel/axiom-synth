@@ -28,6 +28,11 @@ jobs:
           runtime: node@24
           install: false
 
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y clang-format
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

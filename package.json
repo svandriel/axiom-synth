@@ -8,8 +8,10 @@
     "build": "pnpm -r --sort build",
     "preview": "pnpm --filter @axiom/app preview",
     "test": "pnpm -r --parallel test",
-    "lint": "prettier --check .",
-    "format": "prettier --write .",
+    "lint": "prettier --check . && pnpm run lint:c",
+    "lint:c": "find packages/native/c -type f \\( -name '*.c' -o -name '*.h' \\) -print0 | xargs -0 clang-format --dry-run --Werror",
+    "format": "prettier --write . && pnpm run format:c",
+    "format:c": "find packages/native/c -type f \\( -name '*.c' -o -name '*.h' \\) -print0 | xargs -0 clang-format -i",
     "prepare": "husky"
   },
   "devDependencies": {

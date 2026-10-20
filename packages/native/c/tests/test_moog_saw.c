@@ -4,142 +4,132 @@
 #include <math.h>
 #include <stdio.h>
 
-static void test_parameter_fit(void)
-{
-    const float expected = 0.9924f - 0.00002151f * 440.0f;
-    assert(fabsf(moog_saw_p(440.0f) - expected) < 1e-6f);
+static void test_parameter_fit(void) {
+  const float expected = 0.9924f - 0.00002151f * 440.0f;
+  assert(fabsf(moog_saw_p(440.0f) - expected) < 1e-6f);
 }
 
-static void test_progression(void)
-{
-    MoogSaw *osc = moog_saw_create(48000.0);
-    assert(osc);
+static void test_progression(void) {
+  MoogSaw *osc = moog_saw_create(48000.0);
+  assert(osc);
 
-    moog_saw_set_frequency(osc, 480.0f);
+  moog_saw_set_frequency(osc, 480.0f);
 
-    float out[4];
-    moog_saw_process(osc, NULL, NULL, NULL, out, 4);
+  float out[4];
+  moog_saw_process(osc, NULL, NULL, NULL, out, 4);
 
-    for (int i = 0; i < 4; ++i) assert(isfinite(out[i]));
+  for (int i = 0; i < 4; ++i)
+    assert(isfinite(out[i]));
 
-    const double expected_phase = 4.0 * 480.0 / 48000.0;
-    assert(fabs(moog_saw_phase(osc) - expected_phase) < 1e-12);
-    moog_saw_destroy(osc);
+  const double expected_phase = 4.0 * 480.0 / 48000.0;
+  assert(fabs(moog_saw_phase(osc) - expected_phase) < 1e-12);
+  moog_saw_destroy(osc);
 }
 
-static void test_fractional_sync(void)
-{
-    MoogSaw *osc = moog_saw_create(48000.0);
-    assert(osc);
+static void test_fractional_sync(void) {
+  MoogSaw *osc = moog_saw_create(48000.0);
+  assert(osc);
 
-    moog_saw_reset(osc, 0.37);
+  moog_saw_reset(osc, 0.37);
 
-    const float sync[] = {-1.0f, 1.0f};
-    const float freq[] = {480.0f, 480.0f};
-    float out[2];
+  const float sync[] = {-1.0f, 1.0f};
+  const float freq[] = {480.0f, 480.0f};
+  float out[2];
 
-    moog_saw_process(osc, freq, NULL, sync, out, 2);
+  moog_saw_process(osc, freq, NULL, sync, out, 2);
 
-    /*
-     * Event is half-way between samples 0 and 1. At sample 1, 0.5 sample has
-     * elapsed since reset; after rendering sample 1, another one sample has
-     * elapsed, hence final phase is 1.5 * increment.
-     */
-    const double expected = 1.5 * 480.0 / 48000.0;
-    assert(fabs(moog_saw_phase(osc) - expected) < 1e-12);
-    moog_saw_destroy(osc);
+  /*
+   * Event is half-way between samples 0 and 1. At sample 1, 0.5 sample has
+   * elapsed since reset; after rendering sample 1, another one sample has
+   * elapsed, hence final phase is 1.5 * increment.
+   */
+  const double expected = 1.5 * 480.0 / 48000.0;
+  assert(fabs(moog_saw_phase(osc) - expected) < 1e-12);
+  moog_saw_destroy(osc);
 }
 
-static void test_detune(void)
-{
-    MoogSaw *osc = moog_saw_create(48000.0);
-    assert(osc);
+static void test_detune(void) {
+  MoogSaw *osc = moog_saw_create(48000.0);
+  assert(osc);
 
-    const float freq[] = {480.0f};
-    const float detune[] = {1200.0f};
-    float out;
+  const float freq[] = {480.0f};
+  const float detune[] = {1200.0f};
+  float out;
 
-    moog_saw_process(osc, freq, detune, NULL, &out, 1);
+  moog_saw_process(osc, freq, detune, NULL, &out, 1);
 
-    const double expected_phase = 2.0 * 480.0 / 48000.0;
-    assert(fabs(moog_saw_phase(osc) - expected_phase) < 1e-12);
-    moog_saw_destroy(osc);
+  const double expected_phase = 2.0 * 480.0 / 48000.0;
+  assert(fabs(moog_saw_phase(osc) - expected_phase) < 1e-12);
+  moog_saw_destroy(osc);
 }
 
-static void test_semitone_detune(void)
-{
-    MoogSaw *osc = moog_saw_create(48000.0);
-    assert(osc);
+static void test_semitone_detune(void) {
+  MoogSaw *osc = moog_saw_create(48000.0);
+  assert(osc);
 
-    const float freq[] = {480.0f};
-    /* +5 semitones (perfect fourth) is 500 cents. */
-    const float detune[] = {500.0f};
-    float out;
+  const float freq[] = {480.0f};
+  /* +5 semitones (perfect fourth) is 500 cents. */
+  const float detune[] = {500.0f};
+  float out;
 
-    moog_saw_process(osc, freq, detune, NULL, &out, 1);
+  moog_saw_process(osc, freq, detune, NULL, &out, 1);
 
-    const double expected_freq = 480.0 * pow(2.0, 5.0 / 12.0);
-    const double expected_phase = expected_freq / 48000.0;
-    assert(fabs(moog_saw_phase(osc) - expected_phase) < 1e-9);
-    moog_saw_destroy(osc);
+  const double expected_freq = 480.0 * pow(2.0, 5.0 / 12.0);
+  const double expected_phase = expected_freq / 48000.0;
+  assert(fabs(moog_saw_phase(osc) - expected_phase) < 1e-9);
+  moog_saw_destroy(osc);
 }
 
 /* The ideal waveform, evaluated with libm cos, to bound any fast-trig error. */
-static double reference_waveform(double phase, float p)
-{
-    const double pi = 3.141592653589793238462643383279502884;
-    double ph = phase - floor(phase);
-    if (p <= 0.0f)
-        p = 1.0e-7f;
-    else if (p >= 1.0f)
-        p = 1.0f - 1.0e-7f;
+static double reference_waveform(double phase, float p) {
+  const double pi = 3.141592653589793238462643383279502884;
+  double ph = phase - floor(phase);
+  if (p <= 0.0f)
+    p = 1.0e-7f;
+  else if (p >= 1.0f)
+    p = 1.0f - 1.0e-7f;
 
-    const double amplitude = pi - 2.0 * pi * (double)p;
-    const double phi_mod =
-        ph < (double)p ? amplitude * ph / (double)p
-                       : amplitude * (1.0 - ph) / (1.0 - (double)p);
-    return -cos(2.0 * pi * ph + phi_mod);
+  const double amplitude = pi - 2.0 * pi * (double)p;
+  const double phi_mod = ph < (double)p
+                           ? amplitude * ph / (double)p
+                           : amplitude * (1.0 - ph) / (1.0 - (double)p);
+  return -cos(2.0 * pi * ph + phi_mod);
 }
 
-static void test_waveform_accuracy(void)
-{
-    const float fits[] = {0.001f, 0.05f, 0.25f, 0.5f, 0.75f, 0.95f, 0.999f};
-    for (int fi = 0; fi < 7; ++fi)
-    {
-        for (int k = 0; k < 1000; ++k)
-        {
-            const double phase = (double)k / 1000.0;
-            const double got = (double)moog_saw_waveform(phase, fits[fi]);
-            const double want = reference_waveform(phase, fits[fi]);
-            assert(fabs(got - want) < 1e-6);
-        }
+static void test_waveform_accuracy(void) {
+  const float fits[] = {0.001f, 0.05f, 0.25f, 0.5f, 0.75f, 0.95f, 0.999f};
+  for (int fi = 0; fi < 7; ++fi) {
+    for (int k = 0; k < 1000; ++k) {
+      const double phase = (double)k / 1000.0;
+      const double got = (double)moog_saw_waveform(phase, fits[fi]);
+      const double want = reference_waveform(phase, fits[fi]);
+      assert(fabs(got - want) < 1e-6);
     }
+  }
 }
 
-static void test_explicit_event(void)
-{
-    MoogSaw *osc = moog_saw_create(48000.0);
-    assert(osc);
+static void test_explicit_event(void) {
+  MoogSaw *osc = moog_saw_create(48000.0);
+  assert(osc);
 
-    float out;
-    moog_saw_process_sample(osc, 480.0f, 1, 0.25, &out);
+  float out;
+  moog_saw_process_sample(osc, 480.0f, 1, 0.25, &out);
 
-    /* 0.75 sample elapsed since the event, then one sample was rendered. */
-    const double expected = 1.75 * 480.0 / 48000.0;
-    assert(fabs(moog_saw_phase(osc) - expected) < 1e-12);
-    assert(isfinite(out));
-    moog_saw_destroy(osc);
+  /* 0.75 sample elapsed since the event, then one sample was rendered. */
+  const double expected = 1.75 * 480.0 / 48000.0;
+  assert(fabs(moog_saw_phase(osc) - expected) < 1e-12);
+  assert(isfinite(out));
+  moog_saw_destroy(osc);
 }
 
-int main(void)
-{
-    test_parameter_fit();
-    test_progression();
-    test_fractional_sync();
-    test_detune();
-    test_semitone_detune();
-    test_waveform_accuracy();
-    test_explicit_event();
-    puts("all tests passed");
-    return 0;
+int main(void) {
+  test_parameter_fit();
+  test_progression();
+  test_fractional_sync();
+  test_detune();
+  test_semitone_detune();
+  test_waveform_accuracy();
+  test_explicit_event();
+  puts("all tests passed");
+  return 0;
 }

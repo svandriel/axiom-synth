@@ -1,45 +1,34 @@
 #include "moog_saw.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-    void moog_saw_wasm_init(void)
-    {
-        moog_saw_init();
-    }
+void moog_saw_wasm_init(void) {
+  moog_saw_init();
+}
 
-    MoogSaw *moog_saw_wasm_create(double sample_rate)
-    {
-        return moog_saw_create(sample_rate);
-    }
+MoogSaw *moog_saw_wasm_create(double sample_rate) {
+  return moog_saw_create(sample_rate);
+}
 
-    void moog_saw_wasm_destroy(MoogSaw *osc)
-    {
-        moog_saw_destroy(osc);
-    }
+void moog_saw_wasm_destroy(MoogSaw *osc) {
+  moog_saw_destroy(osc);
+}
 
-    void moog_saw_wasm_reset(MoogSaw *osc, double phase)
-    {
-        moog_saw_reset(osc, phase);
-    }
+void moog_saw_wasm_reset(MoogSaw *osc, double phase) {
+  moog_saw_reset(osc, phase);
+}
 
-    void moog_saw_wasm_set_frequency(MoogSaw *osc, float frequency_hz)
-    {
-        moog_saw_set_frequency(osc, frequency_hz);
-    }
+void moog_saw_wasm_set_frequency(MoogSaw *osc, float frequency_hz) {
+  moog_saw_set_frequency(osc, frequency_hz);
+}
 
-    void moog_saw_wasm_process(
-        MoogSaw *osc,
-        const float *frequency,
-        const float *detune,
-        const float *sync,
-        float *output,
-        uint32_t frames)
-    {
-        moog_saw_process(osc, frequency, detune, sync, output, frames);
-    }
+void moog_saw_wasm_process(MoogSaw *osc, const float *frequency,
+                           const float *detune, const float *sync,
+                           float *output, uint32_t frames) {
+  moog_saw_process(osc, frequency, detune, sync, output, frames);
+}
 
 #ifdef __cplusplus
 }
