@@ -208,12 +208,15 @@ git commit -m "feat(native): add generic oscillator waveform core"
 - Produces: Measured band-limited new-shape path, with the existing legacy saw output untouched.
 
 The periodic-shape oracle is the converged Fourier reference in the
-implementation note, not the failed 32×/64× FIR procedure. The previously
-proposed one-event-per-`N=65,536`-sample schedule is degenerate: the coherent
-frequency advances an integer number of cycles between events, so the reset
-causes no phase change and the record is equivalent to free-running playback.
-Keep the committed sync tests and benchmark rename unchanged. Do not relax
-any existing RMS, peak, reference-residual, or CPU threshold.
+implementation note, not the failed 32×/64× FIR procedure. Keep periodic
+free-running evaluation unblocked. Evaluate sync-reference and any required
+sync-correction work using the approved `T=3/(2f)` event cadence: the
+free-running phase advances 1.5 oscillator cycles between resets, with
+coherent-cycle bin `m` a multiple of 3 and `J=2m/3` event periods in each
+`N=65,536`-sample record. Use the event-aware Fourier reference and the
+deterministic sub-sample offsets specified in the implementation note. Keep
+the committed sync tests and benchmark rename unchanged. Do not relax any
+existing RMS, peak, reference-residual, or CPU threshold.
 
 - [ ] **Step 1: Add failing signal and sync tests**
 
@@ -221,11 +224,11 @@ Add `test_new_shapes_are_finite_near_nyquist`, `test_sync_phase_reset_for_each_a
 
 - [ ] **Step 2: Compare candidate anti-aliasing methods**
 
-For free-running records, render the approved anchors and selected half-step morphs over the approved pitch/sample-rate matrix and compare PolyBLEP for value jumps and PolyBLAMP for slope jumps against the Fourier oracle. Sync-reference evaluation is blocked until the approval question in the implementation note is resolved with a repeatable event schedule and a defined non-integer phase advance between resets. After approval, compare hard-sync records against the separate event-aware Fourier reference; do not substitute free-running coefficients. Measure the 16 voices × 3 oscillator indices × 16 unison stress topology as well as one oscillator for each evaluation that is authorized.
+For free-running records, render the approved anchors and selected half-step morphs over the approved pitch/sample-rate matrix and compare PolyBLEP for value jumps and PolyBLAMP for slope jumps against the Fourier oracle. Evaluate hard-sync records against the separate event-aware Fourier reference and the `T=3/(2f)` schedule; do not substitute free-running coefficients. Measure the 16 voices × 3 oscillator indices × 16 unison stress topology as well as one oscillator for each evaluation.
 
 - [ ] **Step 3: Select and implement the measured new-shape method**
 
-Compare periodic results against the unchanged thresholds declared in Task 2. Apply corrections only to new shapes; do not alter legacy saw code or golden output. Add waveform-dependent sync correction only after the event schedule is approved and measurements require it. Until then, keep sync-reference evaluation and sync-correction qualification blocked; do not invent a substitute schedule or relax a threshold. Once approved, compare event-aware results against those same unchanged thresholds.
+Compare periodic results against the unchanged thresholds declared in Task 2. Apply corrections only to new shapes; do not alter legacy saw code or golden output. Add waveform-dependent sync correction only if the event-aware measurements on the `T=3/(2f)` schedule require it. Compare event-aware results against those same unchanged thresholds; do not relax a threshold.
 
 - [ ] **Step 4: Verify pulse transitions and legacy sync**
 

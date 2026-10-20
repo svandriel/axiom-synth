@@ -311,50 +311,68 @@ equations, not hardware truth.
 ### Separate hard-sync transient reference
 
 Do not use free-running periodic coefficients to judge hard-sync transients.
-The previously proposed schedule, with one event every `N=65,536` samples,
-is degenerate and must not be used to qualify sync correction. The coherent
-frequency is `f = round(f_nominal*N/Fs)*Fs/N`, so `f*N/Fs` is an integer
-number of cycles. Events at `τ_j = jN + δ` therefore recur at the already
-reset phase for every offset `δ`; the reset makes no phase change. The
-resulting event-aware record is equivalent to free-running playback and
-contains no phase-reset transient.
+Use the approved cadence of `T = 3/(2f)` seconds between hard-sync events.
+The free-running phase advances `fT = 1.5` oscillator cycles between resets,
+so its phase modulo one cycle advances by `0.5` cycle. At event `τ_j`, reset
+phase to zero; between events the exact trajectory is
+`x(t) = wrap(f*(t-τ_j))` for `τ_j ≤ t < τ_(j+1)`. The pre-reset trajectory
+therefore reaches `wrap(1.5) = 0.5` cycle before the next reset. This cadence
+is periodic and includes a nonzero reset transient; do not replace it with
+one event per coherent record.
 
-**Approval question:** specify a repeatable sync-event schedule, including
-the event interval and its phase/frequency relationship to each tested
-coherent frequency. State the phase advance in cycles between consecutive
-resets and require it to be non-integer (equivalently,
-`f*Δt mod 1 != 0` when `Δt` is in seconds, or
-`f*Δn/Fs mod 1 != 0` when `Δn` is in samples). Define the event offset and
-how the complete record repeats. Do not infer a replacement schedule or
-treat the degenerate schedule as sync evidence. Until this schedule is
-approved, sync-reference evaluation and sync-correction qualification remain
-blocked; periodic Fourier-reference work can proceed.
+For each nominal pitch and sample rate, choose the positive oscillator-cycle
+FFT bin `m` that is a multiple of 3 and nearest to `f_nominal*N/Fs`
+(resolve an exact tie by choosing the lower bin). Use `N=65,536` and set
+`f = m*Fs/N`, recording nominal and actual frequency. The record contains
+`m` free-running oscillator cycles and
+`J = (N/Fs)/T = 2m/3` complete sync-event periods; since `m` is divisible by
+3, `J` is an integer. This establishes both record coherence and exact
+period closure. The event period in samples is `T*Fs = 3N/(2m)`, and need
+not be an integer.
 
-After approval, construct the continuous event record from the exact
-analytic pre-reset and post-reset branches. For event `τ_j`, the phase is
-the elapsed time since the preceding reset for `t < τ_j`, and the elapsed
-time since `τ_j` for `t ≥ τ_j`; convert elapsed samples to seconds by
-dividing by `Fs`, then to phase with the fixed actual frequency, and apply
-the existing wrap and waveform equations. Integrate each interval
-`[τ_j, τ_(j+1))`, splitting at both sync boundaries and every shape
-discontinuity, including transformed-phase corners, `x=p`, and pulse edges.
-Hold waveform, actual coherent frequency, its frequency-dependent `p`,
-morph, and phase-reset rule fixed for each record. With normalized
-event-record time `u=t/N`, calculate
+For deterministic fractional-event cases, generate the same periodic sync
+edge train at continuous sample-time positions
+`τ_j*Fs = δ + j*(3N/(2m))`, with `δ ∈ {0, 0.25, 0.5, 0.75, 1}` samples.
+Treat `δ` as one fixed offset of the entire train relative to the record
+boundary, not as a rounded or accumulated change to the interval. Use the
+periodic extension of the train across record boundaries, giving exactly
+`J` events per record for every offset. Deliver event timestamps without
+rounding their fractional positions; use the same timestamps for candidate
+and reference. This preserves exactly `T=3/(2f)` and the 1.5-cycle
+inter-event phase advance in every offset case.
+
+For each fixed waveform, actual frequency, frequency-dependent `p`, morph,
+reset rule, and offset, compute the Fourier series over one event period.
+Using local event time `u=t-τ_j ∈ [0,T)`, calculate
 
 ```text
-C_k = (1/N) ∫_0^N y_sync(t) exp(-i 2π k t/N) dt
-f_k = k*Fs/N
+C_k = (1/T) ∫_0^T y_sync(τ_j + u) exp(-i 2π k u/T) du
 ```
 
-using the same deterministic double-precision Gauss-Kronrod 15/31 method
-and tolerances as the periodic oracle. Retain `C_0` and bins satisfying
-`f_k <= 0.45*Fs`; reconstruct the real reference from the retained positive
-bins at the candidate's sample times. Recompute at `1e-14` and require the
-same RMS `≤1e-7 FS` and peak `≤1e-6 FS` reference-convergence bounds.
-Once the schedule is approved, evaluate hard-sync correction separately
-against this event-aware reference; preserve common sync detection and phase
-reset, and never apply a new correction to the legacy saw.
+in deterministic double precision with adaptive Gauss-Kronrod 15/31
+quadrature. Split integration at each natural phase wrap, sync reset, `x=p`,
+all transformed-waveform edges and corners, pulse edges, morph boundaries,
+and every other active waveform branch boundary. Include the interval
+endpoints. Retain `C_0` and positive harmonics satisfying `k/T <= 0.45*Fs`, i.e.
+`K = floor(0.45*Fs*T)`. Reconstruct the real event-aware reference at each
+candidate sample time `t_n=n/Fs` as
+
+```text
+y_ref(t_n) = C_0 + 2 Re(Σ_{k=1..K} C_k exp(i 2π k (t_n-τ_j)/T))
+```
+
+where `τ_j` is the event preceding that sample (the periodic extension
+makes any equivalent event index produce the same value). Since `J` event
+periods fit the record, event harmonic `k` has frequency `f_k=k/T` and maps
+to coherent record bin `kJ`.
+Integrate once with absolute and relative tolerances `1e-12`, then recompute
+with both tolerances set to `1e-14`. Require the reconstructed sample
+references from the two passes to converge to RMS `≤1e-7 FS` and peak
+`≤1e-6 FS`. This is the deterministic band-limited reference for the
+specified continuous reset trajectory, not hardware truth. Compare sync
+correction against this reference and preserve all predeclared thresholds;
+retain common sync detection and phase reset, and never apply a new
+correction to the legacy saw.
 
 Use a rectangular FFT window on the coherent record. Report complex
 harmonic-bin residuals and off-harmonic residuals separately. Aliased partials
@@ -368,8 +386,8 @@ all alias energy. Define the operational alias/error residual ratio as
 over positive-frequency bins excluding DC, and report the occupied-harmonic
 and off-harmonic parts of the numerator. `Y` is the candidate FFT and `R` is
 the band-limited ideal-waveform spectral reference FFT (the periodic oracle
-for free-running records and, only after schedule approval, the event-aware
-oracle for sync records). Label
+for free-running records and the event-aware oracle above for sync records).
+Label
 this honestly as a reference-residual alias/error estimate, not a pure
 physical alias-energy measurement; the coherent residual captures excess
 aliased harmonics even where they overlap a desired harmonic. Additionally
