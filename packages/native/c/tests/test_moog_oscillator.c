@@ -1,5 +1,6 @@
 #include "moog_oscillator.h"
 #include "moog_saw.h"
+#include "../src/moog_waveforms.h"
 
 #include <assert.h>
 #include <float.h>
@@ -170,7 +171,9 @@ static void test_sync_phase_reset_for_each_anchor(void)
             const double expected_final_phase = phase_at_event_sample + increment;
             assert(fabs(moog_oscillator_phase(osc) - expected_final_phase) < 1e-12);
             assert(isfinite(output[1]));
-            assert(output[1] >= -1.00001f && output[1] <= -0.9f);
+            const float expected_output = moog_waveform_evaluate(
+                phase_at_event_sample, frequency[1], waveform[1]);
+            assert(fabsf(output[1] - expected_output) < 1e-6f);
             moog_oscillator_destroy(osc);
         }
     }
@@ -206,8 +209,26 @@ static void test_generic_saw_sync_matches_legacy_bits(void)
     moog_saw_reset(legacy, 0.125);
     moog_oscillator_process(generic, frequency, NULL, sync, NULL, generic_output, 5);
     moog_saw_process(legacy, frequency, NULL, sync, legacy_output, 5);
+    double expected_phase = 0.125;
+    float previous_sync = 0.0f;
     for (unsigned int i = 0; i < 5; ++i)
+    {
         assert(float_bits(generic_output[i]) == float_bits(legacy_output[i]));
+        const double increment = (double)frequency[i] / 48000.0;
+        if (previous_sync <= 0.0f && sync[i] > 0.0f)
+        {
+            const double crossing =
+                -(double)previous_sync / ((double)sync[i] - (double)previous_sync);
+            expected_phase = (1.0 - crossing) * increment;
+        }
+        const float expected_output =
+            moog_waveform_evaluate(expected_phase, frequency[i], 2.0f);
+        assert(fabsf(generic_output[i] - expected_output) < 1e-6f);
+        previous_sync = sync[i];
+        expected_phase += increment;
+        if (expected_phase >= 1.0)
+            expected_phase -= 1.0;
+    }
     assert(moog_oscillator_phase(generic) == moog_saw_phase(legacy));
     moog_oscillator_destroy(generic);
     moog_saw_destroy(legacy);
