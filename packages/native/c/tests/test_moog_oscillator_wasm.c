@@ -125,6 +125,10 @@ static void test_generic_wasm_init_preserves_saw_initial_state(void)
 {
     // Arrange
     const double sample_rate = 48000.0;
+    const float frequency[] = {440.0f, 441.0f, 442.0f, 443.0f};
+    const float saw_waveform[] = {2.0f, 2.0f, 2.0f, 2.0f};
+    float generic_output[4];
+    float legacy_output[4];
     moog_saw_wasm_init();
     MoogSaw *legacy = moog_saw_wasm_create(sample_rate);
     assert(legacy);
@@ -134,9 +138,16 @@ static void test_generic_wasm_init_preserves_saw_initial_state(void)
     moog_oscillator_wasm_init();
     MoogOscillator *generic = moog_oscillator_wasm_create(sample_rate);
     assert(generic);
+    const double actual_phase = moog_oscillator_phase(generic);
+    moog_oscillator_wasm_process(
+        generic, frequency, NULL, NULL, saw_waveform, generic_output, 4);
+    moog_saw_wasm_process(
+        legacy, frequency, NULL, NULL, legacy_output, 4);
 
     // Assert
-    assert(moog_oscillator_phase(generic) == expected_phase);
+    assert(actual_phase == expected_phase);
+    for (unsigned int i = 0; i < 4; ++i)
+        assert(float_bits(generic_output[i]) == float_bits(legacy_output[i]));
     moog_oscillator_wasm_destroy(generic);
     moog_saw_wasm_destroy(legacy);
 }
