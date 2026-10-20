@@ -30,6 +30,13 @@ run `pnpm build` before `pnpm test` on a clean checkout. GitHub Actions runs
   intent is self-documenting (e.g. `1 / OSCILLATOR_COUNT` in `axiom-voice.ts`).
 - Never commit files under `.superpowers/`; treat them as local agent artifacts.
 
+## Markdown math
+
+- Write mathematical notation in Markdown with KaTeX delimiters: `$...$` inline
+  and `$$...$$` for display equations.
+- Use backticks and fenced blocks for code, identifiers, and literal output,
+  not for mathematical expressions.
+
 ## Repo structure
 
 pnpm workspaces monorepo on branch-based workflow (PRs to `main`):
