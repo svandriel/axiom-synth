@@ -453,6 +453,70 @@ quantum; compare total elapsed time with the budget in the table above.
 Existing 48 kHz baseline results in `packages/native/c/BENCHMARKS.md` are
 context only (they are not substitutes for same-build baseline measurements).
 
+## Task 4 qualification checkpoint (2026-10-20)
+
+These exploratory results used base commit
+`c665137cc3ea1b4d7f265ab9c56dafd09067c74c` plus **uncommitted native
+changes**. They are not benchmark records for a committed implementation.
+No gates above changed.
+
+- The periodic Fourier matrix passed 231/231 cases before the latest sync
+  changes. The native C suite passes after the changes.
+- The event-aware sync matrix passed 817/1,155 cases before correcting
+  integer-aligned zero crossings for new shapes. Detecting the event at the
+  zero sample, while retaining the legacy saw crossing rule, raised the
+  result to 1,045/1,155. The remaining 110 failures comprise 50 each for
+  morphs `1.5` and `2.5`, plus 10 for narrow pulse `5.0`. Each event offset
+  has 22 failures. Reference convergence remains below
+  $7.12\times10^{-14}$ RMS and $2.96\times10^{-13}$ peak.
+- A numerical, event-split sinc convolution with radius $84$ samples
+  matched representative failing cases. Against the same event-aware
+  reference, the 256-sample probes had RMS $0.00106$–$0.00150$ and peak
+  $0.00231$–$0.00433$. This establishes a possible filter target, **not**
+  realtime feasibility or full-matrix qualification. Direct quadrature
+  requires too many waveform evaluations per output sample.
+- Native stress measurements used an Apple M1 Max, arm64, Apple clang 21,
+  `-O3`, 20 measured 128-frame blocks per repeat, and best of five repeats.
+  The 768-oscillator generic API with `waveform=2.0` (the unchanged legacy
+  saw signal) took 4.483/4.422/4.419 ms per block at 44.1/48/96 kHz:
+  154.5%/165.8%/331.4% of the respective budgets. The candidate
+  mixed-waveform topology took
+  3.159/3.301/2.767 ms: 108.8%/123.8%/207.5%. Thus even the unchanged
+  saw baseline exceeds the $\le90\%$ stress gate on this machine.
+- A varying-frequency regression exposed a false natural-edge correction:
+  the candidate reconstructed the preceding phase with the **current**
+  increment, rather than the increment traversed since the preceding
+  sample. Tracking that previous increment across blocks removes the
+  false edge without changing the legacy saw's output. The C suite passes;
+  full spectral qualification is still pending.
+- The 84-sample sync correction delay also affected new shapes when sync
+  was absent, so an unsynced phase-alignment regression failed at the
+  first output sample. Free-running shapes now render without that delay;
+  the correction ring remains reserved for synced new shapes. Recheck
+  transitions into and out of sync before integration.
+- An apparent regression to 688/1,155 came from building the scratch
+  renderer without `MOOG_SAW_TEST_RNG`. Its random oscillator drift made
+  the rendered frequency disagree with the deterministic Fourier oracle.
+  This run is **invalid qualification evidence**. With deterministic
+  drift restored, the eight-case smoke matrix again passes 8/8; a full
+  rerun of the current source reproduces 1,045/1,155 passes and the
+  same 110 failures by waveform and event offset listed above.
+- A fresh periodic Fourier run still passed 231/231 cases, with reference
+  convergence below $2.5\times10^{-14}$ RMS and
+  $9.46\times10^{-14}$ peak. A separate deterministic render through
+  `moog_oscillator_process`, rather than just the waveform evaluator,
+  also passed all 231 periodic cases after removing the unsynced delay.
+- After removing the free-running delay, a new native stress run measured
+  154.0%/168.0%/335.2% of the 44.1/48/96 kHz budgets for the saw
+  signal and 104.4%/120.0%/198.8% for the mixed topology. This is
+  still uncommitted exploratory source based on the same commit,
+  machine, compiler, flags, and measurement date noted above.
+
+Next, derive a bounded-cost implementation of the event-split filter and
+measure the same spectral and stress gates. Keep generic sync timing and
+legacy saw output unchanged. If the fixed deadline remains unattainable,
+present measured tradeoffs for approval rather than changing the gates.
+
 ## Approval gate
 
 Before Task 3 begins, approve or revise: use of `q(x,p)` and its derivative

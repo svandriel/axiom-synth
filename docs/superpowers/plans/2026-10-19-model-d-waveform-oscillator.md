@@ -219,6 +219,39 @@ implementation note. Keep the committed sync tests and benchmark rename
 unchanged. Do not relax any existing RMS, peak, reference-residual, or CPU
 threshold.
 
+**Qualification checkpoint (2026-10-20):** The generic zero-sample sync
+fix improved the full event-aware matrix from 817/1,155 to 1,045/1,155.
+Only saw morphs `1.5`/`2.5` and narrow pulse `5.0` still fail. A numerical
+event-split sinc filter at the approved 84-sample latency clears selected
+failing cases, but is not yet realtime-capable. The 768-oscillator stress
+measurement also exceeds the fixed $\le90\%$ deadline for the unchanged
+legacy saw baseline. Measurements, machine, date, and the base commit
+appear in the implementation note; the source remains uncommitted. A
+subsequent 688/1,155 result used a renderer accidentally built without
+the deterministic RNG flag; its oscillator drift invalidates that run.
+With deterministic drift, the smoke matrix passes 8/8 and the full
+matrix reproduces 1,045/1,155; the remaining 110 cases still block Task 4.
+The generic WASM bridge and worklet parameter were committed together
+in `6f8219a` because the module rename and worklet consumer share a build
+boundary. A follow-up saw startup parity test is in `6bebca2`. Their
+release still depends on Task 4.
+
+Before treating Tasks 5–7 as complete:
+
+1. Retain the generic zero-crossing regression and legacy saw bit parity.
+   Add a varying-frequency regression for natural-edge detection: the
+   preceding phase interval must use the increment actually traversed,
+   including around sync. Recheck the full periodic and event-aware
+   matrices after each DSP change.
+2. Prototype a bounded-cost filter that reproduces the event-split sinc
+   result for arbitrary fractional resets and changing sync cadence. Do
+   not ship a fixed-cadence Fourier shortcut or direct quadrature in the
+   audio render loop.
+3. Measure worst-case native and WASM costs for all shapes and the specified
+   stress topology. Reject candidates that miss any unchanged spectral
+   gate or deadline; document a measured tradeoff for approval if no
+   candidate can meet the existing deadline.
+
 - [ ] **Step 1: Add failing signal and sync tests**
 
 Add `test_new_shapes_are_finite_near_nyquist`, `test_sync_phase_reset_for_each_anchor`, and `test_sync_fractional_event_output`. Verify finite output, identical common phase-reset timing for every shape, and shape-appropriate output around the reset.
@@ -263,25 +296,25 @@ git commit -m "feat(native): band-limit new oscillator shapes"
 - Consumes: Generic C API from Task 3 and selected shape behavior from Task 4.
 - Produces: `moog_oscillator_wasm_*` wrappers and `moog_oscillator.js`, `.wasm`, `.d.ts`; old `moog_saw_wasm_*` exports continue to call only the compatibility API.
 
-- [ ] **Step 1: Add failing bridge tests**
+- [x] **Step 1: Add failing bridge tests**
 
 Test generic create/destroy/reset/frequency/process calls, null waveform behavior, clamping and non-finite sanitization through the WASM wrappers. Verify the compatibility WASM process still matches legacy golden output.
 
-- [ ] **Step 2: Add generic and compatibility wrappers**
+- [x] **Step 2: Add generic and compatibility wrappers**
 
 Implement `moog_oscillator_wasm_*` wrappers around the generic API and retain `moog_saw_wasm_*` wrappers around the saw-only compatibility API. Export both symbol sets from the build.
 
-- [ ] **Step 3: Rename generated module and TypeScript imports**
+- [x] **Step 3: Rename generated module and TypeScript imports**
 
 Generate `c/dist/wasm/moog_oscillator.js`, `.wasm`, and `.d.ts`; update module imports and the WASM URL. Remove obsolete generated `moog_saw` artifacts only after all consumers use the generic module.
 
-- [ ] **Step 4: Run WASM build and bridge tests**
+- [x] **Step 4: Run WASM build and bridge tests**
 
 Run: `pnpm --filter @axiom/native build`
 
 Expected: PASS; generated types expose the generic wrappers and the compatibility exports remain present.
 
-- [ ] **Step 5: Commit the WASM bridge**
+- [x] **Step 5: Commit the WASM bridge**
 
 ```bash
 git add packages/native/c packages/native/src
@@ -303,25 +336,25 @@ git commit -m "feat(native): expose generic oscillator through wasm"
 - Consumes: Generic WASM exports from Task 5.
 - Produces: Worklet registration `moog-oscillator-processor`, a waveform AudioParam, and `MoogOscillatorWorkletNode.waveform: AudioParam`. Do not add waveform state to app/synth configuration.
 
-- [ ] **Step 1: Add failing processor descriptor and buffer tests**
+- [x] **Step 1: Add failing processor descriptor and buffer tests**
 
 Assert descriptor `name: 'waveform'`, `minValue: 0`, `maxValue: 5`, `defaultValue: 2`, `automationRate: 'a-rate'`. Test scalar-length and per-sample waveform arrays at both normal 128-frame and shorter output lengths; verify the heap buffer uses its non-zero pointer offset and only current output frames are copied.
 
-- [ ] **Step 2: Add waveform WASM buffer lifecycle**
+- [x] **Step 2: Add waveform WASM buffer lifecycle**
 
 Allocate one reusable waveform heap buffer during WASM initialization, populate only the current output frame count, pass its pointer to `moog_oscillator_wasm_process`, and free it through the existing idempotent teardown path. Do not add sync AudioParam exposure in this feature.
 
-- [ ] **Step 3: Rename processor registration and expose the AudioParam**
+- [x] **Step 3: Rename processor registration and expose the AudioParam**
 
 Register and construct the worklet as `moog-oscillator-processor`. Add the `waveform` getter to `MoogOscillatorWorkletNode`; leave its existing lifecycle behavior unchanged.
 
-- [ ] **Step 4: Verify real-time and lifecycle tests**
+- [x] **Step 4: Verify real-time and lifecycle tests**
 
 Run: `pnpm --filter @axiom/native test:js`
 
 Expected: PASS for registration, descriptors, scalar/per-sample array copying, pointer argument order and offsets, output copying, no malloc calls during `process()`, destroy-before-init, cleanup, and no use-after-destroy.
 
-- [ ] **Step 5: Commit worklet integration**
+- [x] **Step 5: Commit worklet integration**
 
 ```bash
 git add packages/native/src
@@ -342,7 +375,7 @@ git commit -m "feat(native): add waveform AudioParam to oscillator worklet"
 - Consumes: Implemented generic native/WASM/AudioWorklet API and recorded measurements from Tasks 3–6.
 - Produces: Package documentation, completed measurements, and a plan annotated with actual deviations.
 
-- [ ] **Step 1: Update package documentation**
+- [x] **Step 1: Update package documentation**
 
 Describe the generic oscillator and waveform module as the package's current native primitive. Document the saw-only compatibility API and generic WASM module names.
 
