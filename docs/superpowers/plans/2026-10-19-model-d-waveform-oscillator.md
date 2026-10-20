@@ -15,7 +15,7 @@
 - Use the same six anchors for all three Axiom oscillators: 0 triangle, 1 sharktooth, 2 legacy saw, 3 square (50%), 4 wide pulse (75%), 5 narrow pulse (25%).
 - The AudioParam is `waveform`, range `0.0` through `5.0`, default `2.0`, and automation rate `a-rate`; do not add smoothing.
 - Clamp finite values to `[0, 5]`; map NaN to `2`, negative infinity to `0`, and positive infinity to `5`.
-- Keep five equal parameter intervals, but choose a transition law per interval. Pulse duty is `d = 0.5 + 0.25t` for square→wide and `d = 0.75 - 0.5t` for wide→narrow; the latter passes through 50% at its midpoint.
+- Keep five equal parameter intervals, but choose a transition law per interval. Pulse duty is $d=0.5+0.25t$ for square→wide and $d=0.75-0.5t$ for wide→narrow; the latter passes through 50% at its midpoint.
 - At waveform `2.0`, render the existing Pekonen saw bit-for-bit, including frequency changes and hard sync. Never apply new BLEP/BLAMP corrections to the legacy saw path.
 - Preserve all existing `moog_saw_*` and `moog_saw_wasm_*` signatures and saw-only behavior. The generic and compatibility C APIs use distinct opaque handle types.
 - A null waveform pointer means legacy saw for the whole block. A non-null waveform pointer addresses at least `frames` values; never treat a one-value pointer as a constant buffer.
@@ -100,7 +100,7 @@ git commit -m "test(native): capture legacy saw output"
 
 - [ ] **Step 1: Analyze the existing saw phase transform**
 
-Document the exact legacy `P(f)` and waveform operation order. Evaluate the candidate `theta` representation for periodicity, monotonicity, phase alignment, and behavior at `x = P`; reject it as a shared phase coordinate if it fails those checks.
+Document the exact legacy $P(f)$ and waveform operation order. Evaluate the candidate $\theta$ representation for periodicity, monotonicity, phase alignment, and behavior at $x=P$; reject it as a shared phase coordinate if it fails those checks.
 
 - [ ] **Step 2: Define every anchor and interval transition**
 
@@ -208,15 +208,16 @@ git commit -m "feat(native): add generic oscillator waveform core"
 - Produces: Measured band-limited new-shape path, with the existing legacy saw output untouched.
 
 The periodic-shape oracle is the converged Fourier reference in the
-implementation note, not the failed 32×/64× FIR procedure. Keep periodic
+implementation note, not the failed $32\times/64\times$ FIR procedure. Keep periodic
 free-running evaluation unblocked. Evaluate sync-reference and any required
-sync-correction work using the approved `T=3/(2f)` event cadence: the
-free-running phase advances 1.5 oscillator cycles between resets, with
-coherent-cycle bin `m` a multiple of 3 and `J=2m/3` event periods in each
-`N=65,536`-sample record. Use the event-aware Fourier reference and the
-deterministic sub-sample offsets specified in the implementation note. Keep
-the committed sync tests and benchmark rename unchanged. Do not relax any
-existing RMS, peak, reference-residual, or CPU threshold.
+sync-correction work using the approved $T=3/(2f)$ event cadence: the
+free-running phase advances $1.5$ oscillator cycles between resets, with
+coherent-cycle bin $m$ a multiple of $3$ and $J=2m/3$ event periods in each
+$N=65{,}536$-sample record. Use the event-aware Fourier reference and the
+fractional-sample phases plus integer-alignment controls specified in the
+implementation note. Keep the committed sync tests and benchmark rename
+unchanged. Do not relax any existing RMS, peak, reference-residual, or CPU
+threshold.
 
 - [ ] **Step 1: Add failing signal and sync tests**
 
@@ -224,11 +225,11 @@ Add `test_new_shapes_are_finite_near_nyquist`, `test_sync_phase_reset_for_each_a
 
 - [ ] **Step 2: Compare candidate anti-aliasing methods**
 
-For free-running records, render the approved anchors and selected half-step morphs over the approved pitch/sample-rate matrix and compare PolyBLEP for value jumps and PolyBLAMP for slope jumps against the Fourier oracle. Evaluate hard-sync records against the separate event-aware Fourier reference and the `T=3/(2f)` schedule; do not substitute free-running coefficients. Measure the 16 voices × 3 oscillator indices × 16 unison stress topology as well as one oscillator for each evaluation.
+For free-running records, render the approved anchors and selected half-step morphs over the approved pitch/sample-rate matrix and compare PolyBLEP for value jumps and PolyBLAMP for slope jumps against the Fourier oracle. Evaluate hard-sync records against the separate event-aware Fourier reference and the $T=3/(2f)$ schedule; do not substitute free-running coefficients. Measure the $16\times3\times16$ stress topology as well as one oscillator for each evaluation.
 
 - [ ] **Step 3: Select and implement the measured new-shape method**
 
-Compare periodic results against the unchanged thresholds declared in Task 2. Apply corrections only to new shapes; do not alter legacy saw code or golden output. Add waveform-dependent sync correction only if the event-aware measurements on the `T=3/(2f)` schedule require it. Compare event-aware results against those same unchanged thresholds; do not relax a threshold.
+Compare periodic results against the unchanged thresholds declared in Task 2. Apply corrections only to new shapes; do not alter legacy saw code or golden output. Add waveform-dependent sync correction only if the event-aware measurements on the $T=3/(2f)$ schedule require it. Compare event-aware results against those same unchanged thresholds; do not relax a threshold.
 
 - [ ] **Step 4: Verify pulse transitions and legacy sync**
 
