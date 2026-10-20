@@ -17,7 +17,7 @@ TEST_SRC := tests/test_moog_saw.c
 TEST_GENERIC_SRC := tests/test_moog_oscillator.c
 TEST_WAVEFORMS_SRC := tests/test_moog_waveforms.c
 TEST_MATH_SRC := tests/test_moog_oscillator_math.c
-BENCH_SRC := tests/bench_moog_saw.c
+BENCH_SRC := tests/bench_moog_oscillator.c
 
 BUILD   := dist
 NATIVE  := $(BUILD)/native
@@ -55,14 +55,14 @@ test: $(NATIVE)/test_moog_saw $(NATIVE)/test_moog_oscillator $(NATIVE)/test_moog
 	$(NATIVE)/test_moog_waveforms
 	$(NATIVE)/test_moog_oscillator_math
 
-$(NATIVE)/bench_moog_saw: Makefile $(SRC) $(BENCH_SRC) $(HEADERS)
+$(NATIVE)/bench_moog_oscillator: Makefile $(SRC) $(BENCH_SRC) $(HEADERS)
 	@mkdir -p $(NATIVE)
 	$(CC) $(CFLAGS) $(BENCH_FLAGS) $(INCLUDE) $(SRC) $(BENCH_SRC) $(LDFLAGS) -o $@
 
-bench: $(NATIVE)/bench_moog_saw
-	$(NATIVE)/bench_moog_saw
+bench: $(NATIVE)/bench_moog_oscillator
+	$(NATIVE)/bench_moog_oscillator
 
-$(BENCH_DIR)/bench_moog_saw.cjs: Makefile $(SRC) $(BENCH_SRC) $(HEADERS)
+$(BENCH_DIR)/bench_moog_oscillator.cjs: Makefile $(SRC) $(BENCH_SRC) $(HEADERS)
 	@mkdir -p $(BENCH_DIR)
 	$(EMCC) \
 		$(BENCH_FLAGS) \
@@ -73,7 +73,7 @@ $(BENCH_DIR)/bench_moog_saw.cjs: Makefile $(SRC) $(BENCH_SRC) $(HEADERS)
 		-sEXIT_RUNTIME=1 \
 		-o $@
 
-bench-wasm: $(BENCH_DIR)/bench_moog_saw.cjs
+bench-wasm: $(BENCH_DIR)/bench_moog_oscillator.cjs
 	node $<
 
 wasm: $(WASM)/moog_saw.js

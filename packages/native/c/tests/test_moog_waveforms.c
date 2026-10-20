@@ -168,6 +168,32 @@ static void test_morph_endpoints_and_pulse_midpoints(void)
     assert(narrow_midpoint_positive == TEST_SAMPLE_COUNT / 2);
 }
 
+static void test_new_shapes_are_finite_near_nyquist(void)
+{
+    const float frequencies[] = {19845.0f, 21600.0f, 43200.0f};
+    const float waveforms[] = {0.0f, 0.5f, 1.0f, 1.5f, 2.5f,
+                               3.0f, 3.5f, 4.0f, 4.5f, 5.0f};
+
+    for (unsigned int frequency_index = 0;
+         frequency_index < sizeof(frequencies) / sizeof(frequencies[0]);
+         ++frequency_index)
+    {
+        for (unsigned int waveform_index = 0;
+             waveform_index < sizeof(waveforms) / sizeof(waveforms[0]);
+             ++waveform_index)
+        {
+            for (unsigned int sample = 0; sample < TEST_SAMPLE_COUNT; ++sample)
+            {
+                const double phase = (double)sample / TEST_SAMPLE_COUNT;
+                const float output = moog_waveform_evaluate(
+                    phase, frequencies[frequency_index], waveforms[waveform_index]);
+                assert(isfinite(output));
+                assert(output >= -1.000002f && output <= 1.000002f);
+            }
+        }
+    }
+}
+
 int main(void)
 {
     test_waveform_anchor_values();
@@ -175,6 +201,7 @@ int main(void)
     test_pulse_duty_cycles();
     test_waveform_value_sanitization();
     test_morph_endpoints_and_pulse_midpoints();
+    test_new_shapes_are_finite_near_nyquist();
     puts("all waveform tests passed");
     return 0;
 }

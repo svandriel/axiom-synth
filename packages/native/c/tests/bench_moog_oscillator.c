@@ -129,7 +129,7 @@ static void run(const char *label)
 
 int main(void)
 {
-    printf("moog_saw_process benchmark (%d-frame blocks, %.0f Hz)\n",
+    printf("legacy moog_saw_process baseline (%d-frame blocks, %.0f Hz)\n",
            BLOCK_FRAMES, SAMPLE_RATE);
     fill_static();
     run("static");

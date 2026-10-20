@@ -1,7 +1,8 @@
-# moog_saw_process benchmarks
+# moog_oscillator_process benchmarks
 
-Running log of `moog_saw_process` performance work. Every number below was
-printed by the harness in `tests/bench_moog_saw.c`; nothing here is estimated.
+Running log of oscillator performance work. Historical numbers below were
+printed by the harness in `tests/bench_moog_oscillator.c`; nothing here is
+estimated.
 
 ## Harness
 
