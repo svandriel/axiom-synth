@@ -207,21 +207,29 @@ git commit -m "feat(native): add generic oscillator waveform core"
 - Consumes: Approved anti-aliasing procedure and thresholds from Task 2; generic oscillator and waveform APIs from Task 3.
 - Produces: Measured band-limited new-shape path, with the existing legacy saw output untouched.
 
+The periodic-shape oracle is the converged Fourier reference in the
+implementation note, not the failed 32×/64× FIR procedure. Evaluate hard-sync
+transients against the separate event-aware reference. Keep the committed
+sync tests and benchmark rename unchanged. The proposed sync oracle uses one
+event per `N=65,536`-sample record; its cadence requires approval before
+sync-correction qualification. Do not relax any existing RMS, peak,
+reference-residual, or CPU threshold.
+
 - [ ] **Step 1: Add failing signal and sync tests**
 
 Add `test_new_shapes_are_finite_near_nyquist`, `test_sync_phase_reset_for_each_anchor`, and `test_sync_fractional_event_output`. Verify finite output, identical common phase-reset timing for every shape, and shape-appropriate output around the reset.
 
 - [ ] **Step 2: Compare candidate anti-aliasing methods**
 
-Render the approved anchors and selected half-step morphs over the approved pitch/sample-rate matrix. Compare PolyBLEP for value jumps and PolyBLAMP for slope jumps with any approved table/reference candidates. Measure the 16 voices × 3 oscillator indices × 16 unison stress topology as well as one oscillator.
+For free-running records, render the approved anchors and selected half-step morphs over the approved pitch/sample-rate matrix and compare PolyBLEP for value jumps and PolyBLAMP for slope jumps against the Fourier oracle. For hard-sync records, use the separate event-aware Fourier reference; do not substitute free-running coefficients. Measure the 16 voices × 3 oscillator indices × 16 unison stress topology as well as one oscillator.
 
 - [ ] **Step 3: Select and implement the measured new-shape method**
 
-Compare results against the thresholds declared in Task 2. Apply corrections only to new shapes; do not alter legacy saw code or golden output. Add waveform-dependent sync correction only if the approved method and measurements require it.
+Compare periodic and event-aware results against the unchanged thresholds declared in Task 2. Apply corrections only to new shapes; do not alter legacy saw code or golden output. Add waveform-dependent sync correction only if the approved method and measurements require it. If the proposed one-event-per-record cadence is not approved, stop sync-correction qualification until the event interval and its phase/frequency relationship are specified; do not invent a substitute schedule or relax a threshold.
 
 - [ ] **Step 4: Verify pulse transitions and legacy sync**
 
-Run native tests and benchmark. Expected: pulse duty follows the approved curves, all new shapes pass sync tests, legacy golden sync vectors remain bit-exact, and measured results meet or document deviations from the predeclared thresholds.
+Run native tests and benchmark. Expected: pulse duty follows the approved curves, all new shapes pass the committed sync tests, legacy golden sync vectors remain bit-exact, and measured results meet or document deviations from the predeclared thresholds. Do not change or recapture the committed sync tests or repeat the benchmark rename as part of this reference-method revision.
 
 Run: `make test -C packages/native/c && make bench -C packages/native/c`
 
