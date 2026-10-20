@@ -1,4 +1,4 @@
-import wasmUrl from '../c/dist/wasm/moog_saw.wasm?url';
+import wasmUrl from '../c/dist/wasm/moog_oscillator.wasm?url';
 
 export type LoadingState = 'idle' | 'pending' | 'success' | 'error';
 

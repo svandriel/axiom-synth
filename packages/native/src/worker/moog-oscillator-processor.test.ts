@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 const wasmModule = vi.hoisted(() => {
   const DEFAULT_RENDER_QUANTUM_SIZE = 128;
-  const WASM_HEAP_FLOAT_COUNT = DEFAULT_RENDER_QUANTUM_SIZE * 3 + 1;
+  const WASM_HEAP_FLOAT_COUNT = DEFAULT_RENDER_QUANTUM_SIZE * 4 + 1;
   const heap = new Float32Array(
     new SharedArrayBuffer(
       WASM_HEAP_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT,
@@ -22,14 +22,16 @@ const wasmModule = vi.hoisted(() => {
       nextPointer += bytes;
       return pointer;
     }),
-    _moog_saw_wasm_create: vi.fn(() => 1),
-    _moog_saw_wasm_destroy: vi.fn(),
-    _moog_saw_wasm_process: vi.fn(
+    _moog_oscillator_wasm_init: vi.fn(),
+    _moog_oscillator_wasm_create: vi.fn(() => 1),
+    _moog_oscillator_wasm_destroy: vi.fn(),
+    _moog_oscillator_wasm_process: vi.fn(
       (
         _handle: number,
         frequencyPointer: number,
         _detunePointer: number,
         _syncPointer: number,
+        _waveformPointer: number,
         outputPointer: number,
         frames: number,
       ) => {
@@ -45,7 +47,7 @@ const wasmModule = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../c/dist/wasm/moog_saw', () => ({
+vi.mock('../../c/dist/wasm/moog_oscillator', () => ({
   default: vi.fn(() => Promise.resolve(wasmModule)),
 }));
 
@@ -69,7 +71,7 @@ await import('./worker');
 describe('MoogOscillatorProcessor', () => {
   it('registers the processor', () => {
     expect(globalThis.registerProcessor).toHaveBeenCalledWith(
-      'saw-processor',
+      'moog-oscillator-processor',
       expect.any(Function),
     );
   });
@@ -88,17 +90,24 @@ describe('MoogOscillatorProcessor', () => {
         maxValue: 12000,
         name: 'detune',
       },
+      {
+        automationRate: 'a-rate',
+        defaultValue: 2,
+        minValue: 0,
+        maxValue: 5,
+        name: 'waveform',
+      },
     ]);
   });
 
-  it('processes per-sample frequency and detune through the native WASM saw', async () => {
+  it('processes per-sample frequency, detune, and waveform through WASM', async () => {
     const processor = new MoogOscillatorProcessor({
       processorOptions: {
         wasmModule: {} as WebAssembly.Module,
       },
     });
     await vi.waitFor(() => {
-      expect(wasmModule._moog_saw_wasm_create).toHaveBeenCalled();
+      expect(wasmModule._moog_oscillator_wasm_create).toHaveBeenCalled();
     });
     processor.port.onmessage?.({
       data: { type: 'START', when: 0 },
@@ -112,40 +121,103 @@ describe('MoogOscillatorProcessor', () => {
     const keepAlive = process([], [[output]], {
       frequency: new Float32Array([1, 1, 1, 1]),
       detune: new Float32Array([100, 200, 300, 400]),
+      waveform: new Float32Array([0, 1, 2, 5]),
     });
 
     expect(wasmModule.HEAPF32.buffer).toBeInstanceOf(SharedArrayBuffer);
-    expect(wasmModule._moog_saw_wasm_process).toHaveBeenCalledWith(
+    expect(wasmModule._moog_oscillator_wasm_process).toHaveBeenCalledWith(
       1,
       expect.any(Number),
       expect.any(Number),
       0,
       expect.any(Number),
+      expect.any(Number),
       4,
     );
-    const detunePointer = wasmModule._moog_saw_wasm_process.mock.calls[0]![2];
+    const detunePointer =
+      wasmModule._moog_oscillator_wasm_process.mock.calls[0]![2];
     const detuneIndex = detunePointer / Float32Array.BYTES_PER_ELEMENT;
     expect(
       Array.from(wasmModule.HEAPF32.slice(detuneIndex, detuneIndex + 4)),
     ).toEqual([100, 200, 300, 400]);
+    const waveformPointer =
+      wasmModule._moog_oscillator_wasm_process.mock.calls[0]![4];
+    const waveformIndex = waveformPointer / Float32Array.BYTES_PER_ELEMENT;
+    expect(
+      Array.from(wasmModule.HEAPF32.slice(waveformIndex, waveformIndex + 4)),
+    ).toEqual([0, 1, 2, 5]);
     expect(Array.from(output)).toEqual([2, 2, 2, 2]);
     expect(keepAlive).toBe(true);
 
     processor.port.onmessage?.({ data: { type: 'DESTROY' } } as MessageEvent);
 
-    expect(wasmModule._moog_saw_wasm_destroy).toHaveBeenCalledWith(1);
-    expect(wasmModule._free).toHaveBeenCalledTimes(3);
+    expect(wasmModule._moog_oscillator_wasm_destroy).toHaveBeenCalledWith(1);
+    expect(wasmModule._free).toHaveBeenCalledTimes(4);
     expect(
       process([], [[output]], {
         frequency: new Float32Array([1]),
         detune: new Float32Array([0]),
+        waveform: new Float32Array([2]),
       }),
     ).toBe(false);
   });
 
+  it('reuses a waveform heap buffer for scalar and per-sample render blocks', async () => {
+    const processor = new MoogOscillatorProcessor({
+      processorOptions: { wasmModule: {} as WebAssembly.Module },
+    });
+    const priorCreateCalls =
+      wasmModule._moog_oscillator_wasm_create.mock.calls.length;
+    await vi.waitFor(() => {
+      expect(wasmModule._moog_oscillator_wasm_create).toHaveBeenCalledTimes(
+        priorCreateCalls + 1,
+      );
+    });
+    processor.port.onmessage?.({
+      data: { type: 'START', when: 0 },
+    } as MessageEvent);
+    Object.assign(globalThis, { currentTime: 0 });
+    const output = new Float32Array(128);
+    const mallocCalls = wasmModule._malloc.mock.calls.length;
+    const longBlock = {
+      frequency: new Float32Array([1]),
+      detune: new Float32Array([0]),
+      waveform: new Float32Array([4]),
+    };
+
+    processor.process([], [[output]], longBlock);
+    const waveformPointer =
+      wasmModule._moog_oscillator_wasm_process.mock.lastCall?.[4];
+    expect(waveformPointer).toBeGreaterThan(0);
+    const waveformIndex = waveformPointer! / Float32Array.BYTES_PER_ELEMENT;
+    expect(
+      Array.from(wasmModule.HEAPF32.slice(waveformIndex, waveformIndex + 128)),
+    ).toEqual(Array(128).fill(4));
+
+    const shortOutput = new Float32Array(4);
+    processor.process([], [[shortOutput]], {
+      frequency: new Float32Array([1]),
+      detune: new Float32Array([0]),
+      waveform: new Float32Array([5, 4, 3, 2]),
+    });
+
+    expect(wasmModule._moog_oscillator_wasm_process.mock.lastCall?.[4]).toBe(
+      waveformPointer,
+    );
+    expect(wasmModule._moog_oscillator_wasm_process.mock.lastCall?.[6]).toBe(4);
+    expect(
+      Array.from(wasmModule.HEAPF32.slice(waveformIndex, waveformIndex + 8)),
+    ).toEqual([5, 4, 3, 2, 4, 4, 4, 4]);
+    expect(Array.from(shortOutput)).toEqual([2, 2, 2, 2]);
+    expect(wasmModule._malloc).toHaveBeenCalledTimes(mallocCalls);
+    processor.port.onmessage?.({ data: { type: 'DESTROY' } } as MessageEvent);
+  });
+
   it('does not initialize WASM when destroyed before initialization', async () => {
-    const createCalls = wasmModule._moog_saw_wasm_create.mock.calls.length;
-    const destroyCalls = wasmModule._moog_saw_wasm_destroy.mock.calls.length;
+    const createCalls =
+      wasmModule._moog_oscillator_wasm_create.mock.calls.length;
+    const destroyCalls =
+      wasmModule._moog_oscillator_wasm_destroy.mock.calls.length;
     const mallocCalls = wasmModule._malloc.mock.calls.length;
     const processor = new MoogOscillatorProcessor({
       processorOptions: {
@@ -156,23 +228,25 @@ describe('MoogOscillatorProcessor', () => {
     processor.port.onmessage?.({ data: { type: 'DESTROY' } } as MessageEvent);
     await new Promise(resolve => setTimeout(resolve, 0));
 
-    expect(wasmModule._moog_saw_wasm_create).toHaveBeenCalledTimes(createCalls);
+    expect(wasmModule._moog_oscillator_wasm_create).toHaveBeenCalledTimes(
+      createCalls,
+    );
     expect(wasmModule._malloc).toHaveBeenCalledTimes(mallocCalls);
-    expect(wasmModule._moog_saw_wasm_destroy).toHaveBeenCalledTimes(
+    expect(wasmModule._moog_oscillator_wasm_destroy).toHaveBeenCalledTimes(
       destroyCalls,
     );
   });
 
   it('emits silence until START and until its start time, then renders', async () => {
     const createCallsBefore =
-      wasmModule._moog_saw_wasm_create.mock.calls.length;
+      wasmModule._moog_oscillator_wasm_create.mock.calls.length;
     const processor = new MoogOscillatorProcessor({
       processorOptions: {
         wasmModule: {} as WebAssembly.Module,
       },
     });
     await vi.waitFor(() => {
-      expect(wasmModule._moog_saw_wasm_create).toHaveBeenCalledTimes(
+      expect(wasmModule._moog_oscillator_wasm_create).toHaveBeenCalledTimes(
         createCallsBefore + 1,
       );
     });
@@ -180,6 +254,7 @@ describe('MoogOscillatorProcessor', () => {
     const parameters = {
       frequency: new Float32Array([1, 1, 1, 1]),
       detune: new Float32Array([0, 0, 0, 0]),
+      waveform: new Float32Array([4]),
     };
     const process = processor.process.bind(processor) as (
       inputs: Float32Array[][],
@@ -207,16 +282,16 @@ describe('MoogOscillatorProcessor', () => {
   it('tears down, confirms ENDED, and stops processing at the stop time', async () => {
     const freeCallsBefore = wasmModule._free.mock.calls.length;
     const destroyCallsBefore =
-      wasmModule._moog_saw_wasm_destroy.mock.calls.length;
+      wasmModule._moog_oscillator_wasm_destroy.mock.calls.length;
     const createCallsBefore =
-      wasmModule._moog_saw_wasm_create.mock.calls.length;
+      wasmModule._moog_oscillator_wasm_create.mock.calls.length;
     const processor = new MoogOscillatorProcessor({
       processorOptions: {
         wasmModule: {} as WebAssembly.Module,
       },
     });
     await vi.waitFor(() => {
-      expect(wasmModule._moog_saw_wasm_create).toHaveBeenCalledTimes(
+      expect(wasmModule._moog_oscillator_wasm_create).toHaveBeenCalledTimes(
         createCallsBefore + 1,
       );
     });
@@ -235,6 +310,7 @@ describe('MoogOscillatorProcessor', () => {
       process([], [[output]], {
         frequency: new Float32Array([1]),
         detune: new Float32Array([0]),
+        waveform: new Float32Array([2]),
       }),
     ).toBe(true);
 
@@ -242,17 +318,19 @@ describe('MoogOscillatorProcessor', () => {
     const keepAlive = process([], [[output]], {
       frequency: new Float32Array([1]),
       detune: new Float32Array([0]),
+      waveform: new Float32Array([2]),
     });
 
     expect(processor.port.postMessage).toHaveBeenCalledWith({ type: 'ENDED' });
-    expect(wasmModule._moog_saw_wasm_destroy.mock.calls.length).toBe(
+    expect(wasmModule._moog_oscillator_wasm_destroy.mock.calls.length).toBe(
       destroyCallsBefore + 1,
     );
-    expect(wasmModule._free.mock.calls.length).toBe(freeCallsBefore + 3);
+    expect(wasmModule._free.mock.calls.length).toBe(freeCallsBefore + 4);
     expect(
       process([], [[output]], {
         frequency: new Float32Array([1]),
         detune: new Float32Array([0]),
+        waveform: new Float32Array([2]),
       }),
     ).toBe(false);
     expect(keepAlive).toBe(false);
@@ -260,16 +338,16 @@ describe('MoogOscillatorProcessor', () => {
 
   it('tears down in the port handler when the stop time has already passed', async () => {
     const createCallsBefore =
-      wasmModule._moog_saw_wasm_create.mock.calls.length;
+      wasmModule._moog_oscillator_wasm_create.mock.calls.length;
     const destroyCallsBefore =
-      wasmModule._moog_saw_wasm_destroy.mock.calls.length;
+      wasmModule._moog_oscillator_wasm_destroy.mock.calls.length;
     const processor = new MoogOscillatorProcessor({
       processorOptions: {
         wasmModule: {} as WebAssembly.Module,
       },
     });
     await vi.waitFor(() => {
-      expect(wasmModule._moog_saw_wasm_create).toHaveBeenCalledTimes(
+      expect(wasmModule._moog_oscillator_wasm_create).toHaveBeenCalledTimes(
         createCallsBefore + 1,
       );
     });
@@ -280,7 +358,7 @@ describe('MoogOscillatorProcessor', () => {
     } as unknown as MessageEvent);
 
     expect(processor.port.postMessage).toHaveBeenCalledWith({ type: 'ENDED' });
-    expect(wasmModule._moog_saw_wasm_destroy.mock.calls.length).toBe(
+    expect(wasmModule._moog_oscillator_wasm_destroy.mock.calls.length).toBe(
       destroyCallsBefore + 1,
     );
     expect(

@@ -11,15 +11,34 @@ Web Audio graph.
 
 ## Current scope
 
-At the moment, the package contains the native implementation of a Moog-like saw
-oscillator based on Pekonen's phase-distortion model. The code lives under
-`c/` and is compiled to WebAssembly for use by the synth runtime.
+The package contains a six-anchor waveform oscillator with triangle,
+sharktooth, legacy saw, square, 75% pulse, and 25% pulse shapes. The
+native C core lives under `c/` and compiles to WebAssembly for the
+AudioWorklet. The new-shape anti-alias and sync path is still under
+[qualification](../../docs/superpowers/specs/2026-10-19-model-d-waveform-oscillator-implementation-notes.md);
+the native and WASM APIs should not be treated as a finished release.
 
-## Moog saw implementation
+## Oscillator interfaces
 
-The current oscillator is a native implementation of the discrete-time Moog
+`c/include/moog_oscillator.h` declares the generic phase, detune, sync,
+and waveform renderer. A null waveform buffer selects the legacy saw for
+the entire block. Otherwise, the renderer reads one waveform value per
+sample, clamps it to $[0, 5]$, and maps NaN to saw. The AudioWorklet
+registers `moog-oscillator-processor` with an a-rate `waveform` parameter
+from $0$ to $5$, default $2$. Its wrapper exposes that AudioParam as
+`MoogOscillatorWorkletNode.waveform`. The app does not yet expose waveform
+selection in its UI or configuration.
+
+Emscripten generates `c/dist/wasm/moog_oscillator.js`, `.wasm`, and
+`.d.ts`. The module exports `moog_oscillator_wasm_*` functions. The
+existing `moog_saw_*` C interface and `moog_saw_wasm_*` exports remain
+saw-only compatibility APIs.
+
+## Legacy Moog saw
+
+The saw anchor is a native implementation of the discrete-time Moog
 sawtooth model described by Pekonen et al. It uses a fitted phase distortion
-parameter `P(f0)` and evaluates the waveform from the normalized phase signal.
+parameter $P(f_0)$ and evaluates the waveform from the normalized phase signal.
 
 This is the reference implementation used here:
 
@@ -57,5 +76,5 @@ Axiom:
 - phase-distortion and waveshaping algorithms
 - any native-only synthesis primitive needed by the synth engine
 
-For now, the Moog saw implementation is the first native primitive and the
-foundation for future additions in this space.
+The saw model remains the bit-exact compatibility baseline for the generic
+oscillator.

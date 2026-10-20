@@ -12,18 +12,19 @@ HEADERS := include/moog_saw.h include/moog_oscillator.h src/moog_oscillator_math
 	src/moog_oscillator_internal.h src/moog_waveforms.h
 
 SRC     := src/moog_oscillator.c src/moog_waveforms.c src/moog_saw_compat.c
-WASM_SRC := $(SRC) src/moog_saw_wasm.c
+WASM_SRC := $(SRC) src/moog_oscillator_wasm.c
 TEST_SRC := tests/test_moog_saw.c
 TEST_GENERIC_SRC := tests/test_moog_oscillator.c
 TEST_WAVEFORMS_SRC := tests/test_moog_waveforms.c
 TEST_MATH_SRC := tests/test_moog_oscillator_math.c
+TEST_WASM_SRC := tests/test_moog_oscillator_wasm.c
 BENCH_SRC := tests/bench_moog_oscillator.c
 
 BUILD   := dist
 NATIVE  := $(BUILD)/native
 WASM    := $(BUILD)/wasm
 BENCH_DIR := $(BUILD)/bench
-WASM_TSD := moog_saw.d.ts
+WASM_TSD := moog_oscillator.d.ts
 
 BENCH_FLAGS := -O3
 
@@ -31,7 +32,7 @@ BENCH_FLAGS := -O3
 
 all: native wasm
 
-native: $(NATIVE)/test_moog_saw $(NATIVE)/test_moog_oscillator $(NATIVE)/test_moog_waveforms $(NATIVE)/test_moog_oscillator_math
+native: $(NATIVE)/test_moog_saw $(NATIVE)/test_moog_oscillator $(NATIVE)/test_moog_waveforms $(NATIVE)/test_moog_oscillator_math $(NATIVE)/test_moog_oscillator_wasm
 
 $(NATIVE)/test_moog_saw: Makefile $(SRC) $(TEST_SRC) $(HEADERS)
 	@mkdir -p $(NATIVE)
@@ -49,11 +50,16 @@ $(NATIVE)/test_moog_oscillator_math: Makefile $(TEST_MATH_SRC) $(HEADERS)
 	@mkdir -p $(NATIVE)
 	$(CC) $(CFLAGS) $(INCLUDE) $(MATH_INCLUDE) $(TEST_MATH_SRC) $(LDFLAGS) -o $@
 
-test: $(NATIVE)/test_moog_saw $(NATIVE)/test_moog_oscillator $(NATIVE)/test_moog_waveforms $(NATIVE)/test_moog_oscillator_math
+$(NATIVE)/test_moog_oscillator_wasm: Makefile $(WASM_SRC) $(TEST_WASM_SRC) $(HEADERS)
+	@mkdir -p $(NATIVE)
+	$(CC) $(CFLAGS) $(INCLUDE) $(MATH_INCLUDE) $(WASM_SRC) $(TEST_WASM_SRC) $(LDFLAGS) -o $@
+
+test: native
 	$(NATIVE)/test_moog_saw
 	$(NATIVE)/test_moog_oscillator
 	$(NATIVE)/test_moog_waveforms
 	$(NATIVE)/test_moog_oscillator_math
+	$(NATIVE)/test_moog_oscillator_wasm
 
 $(NATIVE)/bench_moog_oscillator: Makefile $(SRC) $(BENCH_SRC) $(HEADERS)
 	@mkdir -p $(NATIVE)
@@ -76,9 +82,9 @@ $(BENCH_DIR)/bench_moog_oscillator.cjs: Makefile $(SRC) $(BENCH_SRC) $(HEADERS)
 bench-wasm: $(BENCH_DIR)/bench_moog_oscillator.cjs
 	node $<
 
-wasm: $(WASM)/moog_saw.js
+wasm: $(WASM)/moog_oscillator.js
 
-$(WASM)/moog_saw.js: Makefile $(WASM_SRC) $(HEADERS)
+$(WASM)/moog_oscillator.js: Makefile $(WASM_SRC) $(HEADERS)
 	@mkdir -p $(WASM)
 	$(EMCC) \
 		-O3 \
@@ -90,7 +96,7 @@ $(WASM)/moog_saw.js: Makefile $(WASM_SRC) $(HEADERS)
 		-sENVIRONMENT=worklet \
 		-sSHARED_MEMORY=1 \
 		--emit-tsd $(WASM_TSD) \
-		-sEXPORTED_FUNCTIONS='["_moog_saw_wasm_init", "_moog_saw_wasm_create","_moog_saw_wasm_destroy","_moog_saw_wasm_reset","_moog_saw_wasm_set_frequency","_moog_saw_wasm_process","_malloc","_free"]' \
+		-sEXPORTED_FUNCTIONS='["_moog_oscillator_wasm_init","_moog_oscillator_wasm_create","_moog_oscillator_wasm_destroy","_moog_oscillator_wasm_reset","_moog_oscillator_wasm_set_frequency","_moog_oscillator_wasm_process","_moog_saw_wasm_init","_moog_saw_wasm_create","_moog_saw_wasm_destroy","_moog_saw_wasm_reset","_moog_saw_wasm_set_frequency","_moog_saw_wasm_process","_malloc","_free"]' \
 		-sEXPORTED_RUNTIME_METHODS='["HEAPF32"]' \
 		-o $@
 

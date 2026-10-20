@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 class FakeAudioWorkletNode {
-  readonly parameters = new Map([['frequency', {}]]);
+  readonly parameters = new Map([
+    ['frequency', {}],
+    ['waveform', {}],
+  ]);
   readonly connect = vi.fn();
   readonly disconnect = vi.fn();
   readonly port = {
@@ -36,7 +39,7 @@ describe('MoogOscillatorWorkletNode', () => {
     );
     const workletNode = node as unknown as { node: FakeAudioWorkletNode };
 
-    expect(workletNode.node.name).toBe('saw-processor');
+    expect(workletNode.node.name).toBe('moog-oscillator-processor');
     expect(workletNode.node.options).toEqual({
       numberOfInputs: 0,
       numberOfOutputs: 1,
@@ -61,6 +64,7 @@ describe('MoogOscillatorWorkletNode', () => {
 
     expect(workletNode.node.options.parameterData).toEqual({});
     expect(node.frequency).toBe(workletNode.node.parameters.get('frequency'));
+    expect(node.waveform).toBe(workletNode.node.parameters.get('waveform'));
   });
 
   it('connects to both audio nodes and audio parameters', () => {

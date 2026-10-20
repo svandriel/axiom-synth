@@ -21,7 +21,7 @@ export class MoogOscillatorWorkletNode {
     wasmModule: WebAssembly.Module,
     _options: Partial<MoogOscillatorOptions> = {},
   ) {
-    this.node = new AudioWorkletNode(ctxt, 'saw-processor', {
+    this.node = new AudioWorkletNode(ctxt, 'moog-oscillator-processor', {
       numberOfInputs: 0,
       numberOfOutputs: 1,
       outputChannelCount: [1],
@@ -61,6 +61,10 @@ export class MoogOscillatorWorkletNode {
 
   get detune(): AudioParam {
     return this.node.parameters.get('detune')!;
+  }
+
+  get waveform(): AudioParam {
+    return this.node.parameters.get('waveform')!;
   }
 
   connect(destination: AudioNode): void;

@@ -1,27 +1,25 @@
 export class Statistics {
-  private samples: number[] = [];
+  private total = 0;
+  private sampleCount = 0;
 
   public addSample(sample: number): void {
-    this.samples.push(sample);
-  }
-
-  public getSamples(): number[] {
-    return this.samples;
+    this.total += sample;
+    this.sampleCount++;
   }
 
   get count(): number {
-    return this.samples.length;
+    return this.sampleCount;
   }
 
   public clear() {
-    this.samples = [];
+    this.total = 0;
+    this.sampleCount = 0;
   }
 
   get average(): number {
-    if (this.samples.length === 0) {
+    if (this.sampleCount === 0) {
       return 0;
     }
-    const sum = this.samples.reduce((acc, val) => acc + val, 0);
-    return sum / this.samples.length;
+    return this.total / this.sampleCount;
   }
 }
