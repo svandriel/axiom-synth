@@ -311,24 +311,36 @@ equations, not hardware truth.
 ### Separate hard-sync transient reference
 
 Do not use free-running periodic coefficients to judge hard-sync transients.
-For each offset `δ ∈ {0, 0.25, 0.5, 0.75, 1}` samples, define a distinct
-repeatable event record of `N=65,536` samples. Its sync zero-crossing occurs
-at `τ_j = jN + δ` samples for every integer `j`; repeat the complete
-`N`-sample candidate record exactly, including its sync input and oscillator
-state. The common sync detector must receive crossings whose interpolation
-places the reset at each stated `τ_j`. Reset phase to the shared `q=0`
-origin at each event. Hold waveform, actual coherent frequency, its
-frequency-dependent `p`, morph, and phase-reset rule fixed for the record.
+The previously proposed schedule, with one event every `N=65,536` samples,
+is degenerate and must not be used to qualify sync correction. The coherent
+frequency is `f = round(f_nominal*N/Fs)*Fs/N`, so `f*N/Fs` is an integer
+number of cycles. Events at `τ_j = jN + δ` therefore recur at the already
+reset phase for every offset `δ`; the reset makes no phase change. The
+resulting event-aware record is equivalent to free-running playback and
+contains no phase-reset transient.
 
-Construct the continuous event record from the exact analytic pre-reset and
-post-reset branches. For event `τ_j`, the phase is the elapsed time since
-the preceding reset for `t < τ_j`, and the elapsed time since `τ_j` for
-`t ≥ τ_j`; convert elapsed samples to seconds by dividing by `Fs`, then to
-phase with the fixed actual frequency, and apply the existing wrap and
-waveform equations. Integrate each sync
-period over `[τ_j, τ_(j+1))`, splitting at both sync boundaries and every
-shape discontinuity, including transformed-phase corners, `x=p`, and pulse
-edges. With normalized event-record time `u=t/N`, calculate
+**Approval question:** specify a repeatable sync-event schedule, including
+the event interval and its phase/frequency relationship to each tested
+coherent frequency. State the phase advance in cycles between consecutive
+resets and require it to be non-integer (equivalently,
+`f*Δt mod 1 != 0` when `Δt` is in seconds, or
+`f*Δn/Fs mod 1 != 0` when `Δn` is in samples). Define the event offset and
+how the complete record repeats. Do not infer a replacement schedule or
+treat the degenerate schedule as sync evidence. Until this schedule is
+approved, sync-reference evaluation and sync-correction qualification remain
+blocked; periodic Fourier-reference work can proceed.
+
+After approval, construct the continuous event record from the exact
+analytic pre-reset and post-reset branches. For event `τ_j`, the phase is
+the elapsed time since the preceding reset for `t < τ_j`, and the elapsed
+time since `τ_j` for `t ≥ τ_j`; convert elapsed samples to seconds by
+dividing by `Fs`, then to phase with the fixed actual frequency, and apply
+the existing wrap and waveform equations. Integrate each interval
+`[τ_j, τ_(j+1))`, splitting at both sync boundaries and every shape
+discontinuity, including transformed-phase corners, `x=p`, and pulse edges.
+Hold waveform, actual coherent frequency, its frequency-dependent `p`,
+morph, and phase-reset rule fixed for each record. With normalized
+event-record time `u=t/N`, calculate
 
 ```text
 C_k = (1/N) ∫_0^N y_sync(t) exp(-i 2π k t/N) dt
@@ -340,18 +352,9 @@ and tolerances as the periodic oracle. Retain `C_0` and bins satisfying
 `f_k <= 0.45*Fs`; reconstruct the real reference from the retained positive
 bins at the candidate's sample times. Recompute at `1e-14` and require the
 same RMS `≤1e-7 FS` and peak `≤1e-6 FS` reference-convergence bounds.
-Evaluate hard-sync correction separately against this event-aware reference;
-preserve common sync detection and phase reset, and never apply a new
-correction to the legacy saw.
-
-**Approval question:** this record defines one sync event per `N`-sample
-period so it is deterministic and coherent, but it does not establish that
-this sparse event cadence represents the intended sync-transient workload.
-Approve this event cadence or specify the intended event interval and its
-phase/frequency relationship before treating the sync oracle as qualified.
-Do not relax any predeclared acceptance threshold to compensate for this
-open choice. Until resolved, periodic-shape reference work can proceed, but
-sync-correction qualification remains blocked.
+Once the schedule is approved, evaluate hard-sync correction separately
+against this event-aware reference; preserve common sync detection and phase
+reset, and never apply a new correction to the legacy saw.
 
 Use a rectangular FFT window on the coherent record. Report complex
 harmonic-bin residuals and off-harmonic residuals separately. Aliased partials
@@ -365,7 +368,8 @@ all alias energy. Define the operational alias/error residual ratio as
 over positive-frequency bins excluding DC, and report the occupied-harmonic
 and off-harmonic parts of the numerator. `Y` is the candidate FFT and `R` is
 the band-limited ideal-waveform spectral reference FFT (the periodic oracle
-for free-running records and the event-aware oracle for sync records). Label
+for free-running records and, only after schedule approval, the event-aware
+oracle for sync records). Label
 this honestly as a reference-residual alias/error estimate, not a pure
 physical alias-energy measurement; the coherent residual captures excess
 aliased harmonics even where they overlap a desired harmonic. Additionally
