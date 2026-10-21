@@ -207,6 +207,48 @@ static void test_out_of_band_sync_does_not_enumerate_unbounded_edges(void) {
   moog_oscillator_destroy(osc);
 }
 
+static double expected_waveform_slope_one_sided(double phase,
+                                                float frequency_hz,
+                                                float waveform, double step) {
+  const double first_value =
+    moog_waveform_evaluate(phase + step, frequency_hz, waveform);
+  const double second_value =
+    moog_waveform_evaluate(phase + 2.0 * step, frequency_hz, waveform);
+  return (second_value - first_value) / step;
+}
+
+static double
+expected_post_sync_natural_edge_correction(double phase, double phase_increment,
+                                           const MoogWaveformCache *cache) {
+  double correction = 0.0;
+  const double correction_phase_radius =
+    phase_increment * MOOG_WAVEFORM_SYNC_CORRECTION_RADIUS_SAMPLES;
+  for (unsigned int edge_index = 0; edge_index < cache->edge_count;
+       ++edge_index) {
+    const MoogWaveformFourierEdge *edge = &cache->edges[edge_index];
+    int first_cycle = (int)ceil(phase - correction_phase_radius - edge->phase);
+    const int last_cycle =
+      (int)floor(phase + correction_phase_radius - edge->phase);
+    if (first_cycle < 0)
+      first_cycle = 0;
+    for (int cycle = first_cycle; cycle <= last_cycle; ++cycle) {
+      const double edge_phase = edge->phase + cycle;
+      if (edge_phase == 0.0)
+        continue;
+      const double distance_samples = (phase - edge_phase) / phase_increment;
+      const double curvature_jump =
+        cache->saw_weight != 0.0 && !cache->harmonic_count_fallback &&
+            cache->harmonic_count <= MOOG_WAVEFORM_CACHE_HARMONIC_COUNT
+          ? 0.0
+          : edge->curvature_jump;
+      correction += moog_waveform_sync_edge_correction(
+        distance_samples, phase_increment, edge->value_jump, edge->slope_jump,
+        curvature_jump);
+    }
+  }
+  return correction;
+}
+
 /*
  * Verify fractional phase-reset timing and delayed edge output for every
  * waveform anchor.
@@ -281,22 +323,18 @@ static void test_sync_phase_reset_for_each_anchor(void) {
         moog_waveform_evaluate(phase_at_event_sample, frequency[1],
                                waveform[1]) +
         moog_waveform_sync_saw_bandlimit_correction(phase_at_event_sample,
-                                                    &expected_cache);
+                                                    &expected_cache) +
+        expected_post_sync_natural_edge_correction(phase_at_event_sample,
+                                                   increment, &expected_cache);
       const double value_before_sync =
         moog_waveform_evaluate(phase_before_sync, frequency[1], waveform[1]);
       const double value_after_sync =
         moog_waveform_evaluate(0.0, frequency[1], waveform[1]);
-      const double slope_before_sync =
-        (value_before_sync -
-         moog_waveform_evaluate(phase_before_sync -
-                                  MOOG_WAVEFORM_SYNC_SLOPE_FIT_DELTA,
-                                frequency[1], waveform[1])) /
-        MOOG_WAVEFORM_SYNC_SLOPE_FIT_DELTA;
-      const double slope_after_sync =
-        (moog_waveform_evaluate(MOOG_WAVEFORM_SYNC_SLOPE_FIT_DELTA,
-                                frequency[1], waveform[1]) -
-         value_after_sync) /
-        MOOG_WAVEFORM_SYNC_SLOPE_FIT_DELTA;
+      const double slope_before_sync = expected_waveform_slope_one_sided(
+        phase_before_sync, frequency[1], waveform[1],
+        -MOOG_WAVEFORM_SYNC_SLOPE_FIT_DELTA);
+      const double slope_after_sync = expected_waveform_slope_one_sided(
+        0.0, frequency[1], waveform[1], MOOG_WAVEFORM_SYNC_SLOPE_FIT_DELTA);
       const float expected_sync_correction =
         waveform[1] == 2.0f
           ? 0.0f
@@ -306,6 +344,10 @@ static void test_sync_phase_reset_for_each_anchor(void) {
       const float expected_before_sync =
         moog_waveform_evaluate(0.375, frequency[0], waveform[0]) +
         moog_waveform_sync_saw_bandlimit_correction(0.375, &expected_cache) +
+        (waveform[0] == 2.0f
+           ? 0.0
+           : expected_post_sync_natural_edge_correction(
+               -crossing * increment, increment, &expected_cache)) +
         (waveform[0] == 2.0f
            ? 0.0f
            : moog_waveform_sync_edge_correction(
@@ -332,8 +374,8 @@ static void test_integer_aligned_pulse_sync_has_no_double_step(void) {
   enum {
     TEST_SYNC_EVENT_INDEX = 1,
     TEST_EXTRA_FRAMES = 4,
-    TEST_FRAME_COUNT =
-      MOOG_WAVEFORM_SYNC_CORRECTION_RADIUS_SAMPLES + TEST_EXTRA_FRAMES,
+    TEST_FRAME_COUNT = MOOG_WAVEFORM_SYNC_CORRECTION_RADIUS_SAMPLES +
+      TEST_EXTRA_FRAMES,
   };
   const double sample_rate = 44100.0;
   const float frequency_hz = 55.0f;
@@ -583,6 +625,29 @@ static void test_generic_saw_sync_matches_legacy_bits(void) {
   test_rng_enabled = 0;
 }
 
+static void expected_periodic_sync_coefficients(
+  float frequency_hz, float waveform, double phase_increment,
+  double period_samples, double *dc, double *cosine_coefficient,
+  double *sine_coefficient) {
+  enum { INTEGRATION_STEPS = 16384 };
+  const double two_pi = 2.0 * acos(-1.0);
+  double dc_sum = 0.0;
+  double cosine_sum = 0.0;
+  double sine_sum = 0.0;
+  for (unsigned int i = 0; i < INTEGRATION_STEPS; ++i) {
+    const double time = period_samples * ((double)i + 0.5) / INTEGRATION_STEPS;
+    const double angle = two_pi * time / period_samples;
+    const double value =
+      moog_waveform_evaluate(time * phase_increment, frequency_hz, waveform);
+    dc_sum += value;
+    cosine_sum += value * cos(angle);
+    sine_sum += value * sin(angle);
+  }
+  *dc = dc_sum / INTEGRATION_STEPS;
+  *cosine_coefficient = cosine_sum / INTEGRATION_STEPS;
+  *sine_coefficient = sine_sum / INTEGRATION_STEPS;
+}
+
 static void test_periodic_fractional_sync_morph_rejects_folded_harmonics(void) {
   // Arrange
   enum {
@@ -594,9 +659,6 @@ static void test_periodic_fractional_sync_morph_rejects_folded_harmonics(void) {
   const float pitch = 43200.0f;
   const double period_samples = 1.5 * sample_rate / pitch;
   const double offset_samples = 0.25;
-  const double dc = 0.51462005;
-  const double cosine_coefficient = 0.14704821;
-  const double sine_coefficient = 0.05687087;
   const double maximum_rms_error = 0.01;
   const double maximum_peak_error = 0.05;
   float frequency[FRAMES], sync[FRAMES], waveform[FRAMES], output[FRAMES];
@@ -620,12 +682,18 @@ static void test_periodic_fractional_sync_morph_rejects_folded_harmonics(void) {
   moog_oscillator_process(osc, frequency, NULL, sync, waveform, output, FRAMES);
 
   // Assert
+  double dc;
+  double cosine_coefficient;
+  double sine_coefficient;
+  expected_periodic_sync_coefficients(pitch, 2.5f, pitch / sample_rate,
+                                      period_samples, &dc, &cosine_coefficient,
+                                      &sine_coefficient);
   double sum_squared_error = 0.0;
   double peak_error = 0.0;
   for (unsigned int i = FRAMES / 2; i < FRAMES; ++i) {
     const double position = (double)FIRST_SAMPLE + i - SYNC_DELAY;
-    const double angle = 2.0 * 3.14159265358979323846 *
-                         (position - offset_samples) / period_samples;
+    const double angle =
+      2.0 * acos(-1.0) * (position - offset_samples) / period_samples;
     const double expected = dc + 2.0 * (cosine_coefficient * cos(angle) +
                                         sine_coefficient * sin(angle));
     const double error = fabs(output[i] - expected);

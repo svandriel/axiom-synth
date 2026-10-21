@@ -18,7 +18,9 @@ enum {
     MOOG_WAVEFORM_SYNC_CORRECTION_RADIUS_SAMPLES,
   MOOG_OSC_SYNC_OUTPUT_BUFFER_LENGTH = MOOG_OSC_SYNC_OUTPUT_DELAY_SAMPLES + 1,
   MOOG_OSC_SYNC_CORRECTION_BUFFER_LENGTH =
-    MOOG_WAVEFORM_SYNC_CORRECTION_RADIUS_SAMPLES * 2 + 1,
+        MOOG_WAVEFORM_SYNC_CORRECTION_RADIUS_SAMPLES *
+      2 +
+    1,
 };
 
 struct MoogOscillator {
@@ -255,6 +257,15 @@ static void enqueue_natural_edges(MoogOscillator *osc, double phase_start,
   }
 }
 
+static double waveform_slope_one_sided(double phase, float frequency_hz,
+                                       float waveform, double step) {
+  const double first_value =
+    moog_waveform_evaluate(phase + step, frequency_hz, waveform);
+  const double second_value =
+    moog_waveform_evaluate(phase + 2.0 * step, frequency_hz, waveform);
+  return (second_value - first_value) / step;
+}
+
 static int render_uniform_block(MoogOscillator *osc, const float *frequency,
                                 const float *detune, float uniform_ratio,
                                 const float *waveform, float *output,
@@ -384,16 +395,10 @@ static void render_block(MoogOscillator *osc, const float *frequency,
           const double after_value =
             moog_waveform_evaluate(0.0, f, waveform_value);
           const double before_slope =
-            (before_value -
-             moog_waveform_evaluate(wrapped_phase_at_sync -
-                                      MOOG_WAVEFORM_SYNC_SLOPE_FIT_DELTA,
-                                    f, waveform_value)) /
-            MOOG_WAVEFORM_SYNC_SLOPE_FIT_DELTA;
-          const double after_slope =
-            (moog_waveform_evaluate(MOOG_WAVEFORM_SYNC_SLOPE_FIT_DELTA, f,
-                                    waveform_value) -
-             after_value) /
-            MOOG_WAVEFORM_SYNC_SLOPE_FIT_DELTA;
+            waveform_slope_one_sided(wrapped_phase_at_sync, f, waveform_value,
+                                     -MOOG_WAVEFORM_SYNC_SLOPE_FIT_DELTA);
+          const double after_slope = waveform_slope_one_sided(
+            0.0, f, waveform_value, MOOG_WAVEFORM_SYNC_SLOPE_FIT_DELTA);
           enqueue_edge_correction(osc, -samples_after_sync, inc,
                                   after_value - before_value,
                                   after_slope - before_slope, 0.0);

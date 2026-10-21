@@ -41,7 +41,7 @@ describe('MoogOscillatorWorkletNode', () => {
 
     expect(workletNode.node.name).toBe('moog-oscillator-processor');
     expect(workletNode.node.options).toEqual({
-      numberOfInputs: 0,
+      numberOfInputs: 1,
       numberOfOutputs: 1,
       outputChannelCount: [1],
       parameterData: {},
@@ -56,9 +56,6 @@ describe('MoogOscillatorWorkletNode', () => {
     const node = new MoogOscillatorWorkletNode(
       {} as AudioContext,
       new ArrayBuffer(0),
-      {
-        frequency: 220,
-      },
     );
     const workletNode = node as unknown as { node: FakeAudioWorkletNode };
 

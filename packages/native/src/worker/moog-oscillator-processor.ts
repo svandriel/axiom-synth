@@ -8,12 +8,12 @@ import { initializeMainModule } from './initiate-module';
 import { Statistics } from './stats';
 
 const WASM_POINTER_SHIFT = 2;
-const SYNC_POINTER = 0;
 const DEFAULT_RENDER_QUANTUM_SIZE = 128;
 const WEBAUDIO_BLOCK_SIZE =
   globalThis.renderQuantumSize ?? DEFAULT_RENDER_QUANTUM_SIZE;
 const STATS_SAMPLE_INTERVAL = 5_000;
-const DEFAULT_WAVEFORM = 2;
+const OUTPUT_AND_SYNC_BUFFER_COUNT = 2;
+const DEFAULT_WAVEFORM = 0;
 const MAX_WAVEFORM = 5;
 const MIN_WAVEFORM = 0;
 
@@ -29,9 +29,10 @@ function copyAudioParam(
   if (values.length < frames) {
     throw new RangeError('AudioParam buffer is shorter than the output block');
   }
-  for (let i = 0; i < frames; i++) {
-    buffer[i] = values[i]!;
+  if (values.length > frames) {
+    throw new RangeError('AudioParam buffer is longer than the output block');
   }
+  buffer.set(values, 0);
 }
 
 export class MoogOscillatorProcessor extends AudioWorkletProcessor {
@@ -45,10 +46,12 @@ export class MoogOscillatorProcessor extends AudioWorkletProcessor {
   private detunePointer: number | undefined;
   private waveformPointer: number | undefined;
   private outputPointer: number | undefined;
+  private syncPointer: number | undefined;
   private frequencyBuffer: Float32Array | undefined;
   private detuneBuffer: Float32Array | undefined;
   private waveformBuffer: Float32Array | undefined;
   private outputBuffer: Float32Array | undefined;
+  private syncBuffer: Float32Array | undefined;
 
   private renderTimes: Statistics = new Statistics();
 
@@ -116,7 +119,10 @@ export class MoogOscillatorProcessor extends AudioWorkletProcessor {
       this.frequencyPointer = mainModule._malloc(blockSizeBytes);
       this.detunePointer = mainModule._malloc(blockSizeBytes);
       this.waveformPointer = mainModule._malloc(blockSizeBytes);
-      this.outputPointer = mainModule._malloc(blockSizeBytes);
+      this.outputPointer = mainModule._malloc(
+        blockSizeBytes * OUTPUT_AND_SYNC_BUFFER_COUNT,
+      );
+      this.syncPointer = this.outputPointer + blockSizeBytes;
       this.frequencyBuffer = mainModule.HEAPF32.subarray(
         this.frequencyPointer >>> WASM_POINTER_SHIFT,
         (this.frequencyPointer >>> WASM_POINTER_SHIFT) + WEBAUDIO_BLOCK_SIZE,
@@ -133,13 +139,19 @@ export class MoogOscillatorProcessor extends AudioWorkletProcessor {
         this.outputPointer >>> WASM_POINTER_SHIFT,
         (this.outputPointer >>> WASM_POINTER_SHIFT) + WEBAUDIO_BLOCK_SIZE,
       );
+      if (this.syncPointer !== undefined) {
+        this.syncBuffer = mainModule.HEAPF32.subarray(
+          this.syncPointer >>> WASM_POINTER_SHIFT,
+          (this.syncPointer >>> WASM_POINTER_SHIFT) + WEBAUDIO_BLOCK_SIZE,
+        );
+      }
 
       console.log('MoogOscillator created');
     });
   }
 
   process(
-    _inputs: Float32Array[][],
+    inputs: Float32Array[][],
     outputs: Float32Array[][],
     parameters: Record<string, Float32Array>,
   ): boolean {
@@ -173,6 +185,8 @@ export class MoogOscillatorProcessor extends AudioWorkletProcessor {
     const detunePointer = this.detunePointer;
     const waveformPointer = this.waveformPointer;
     const outputPointer = this.outputPointer;
+    const syncPointer = this.syncPointer;
+    const syncBuffer = this.syncBuffer;
 
     if (
       frequencyPointer === undefined ||
@@ -196,11 +210,18 @@ export class MoogOscillatorProcessor extends AudioWorkletProcessor {
     copyAudioParam(detuneValues, detuneBuffer, output.length);
     copyAudioParam(waveformValues, waveformBuffer, output.length);
 
+    const syncInput = inputs[0]?.[0];
+    let syncInputPointer = 0;
+    if (syncInput && syncBuffer && syncPointer !== undefined) {
+      copyAudioParam(syncInput, syncBuffer, output.length);
+      syncInputPointer = syncPointer;
+    }
+
     mainModule._moog_oscillator_wasm_process(
       oscillatorHandle,
       frequencyPointer,
       detunePointer,
-      SYNC_POINTER,
+      syncInputPointer,
       waveformPointer,
       outputPointer,
       output.length,
@@ -267,16 +288,17 @@ export class MoogOscillatorProcessor extends AudioWorkletProcessor {
     if (this.outputPointer !== undefined) {
       mainModule._free(this.outputPointer);
     }
-
     this.oscillatorHandle = undefined;
     this.frequencyPointer = undefined;
     this.detunePointer = undefined;
     this.waveformPointer = undefined;
     this.outputPointer = undefined;
+    this.syncPointer = undefined;
     this.frequencyBuffer = undefined;
     this.detuneBuffer = undefined;
     this.waveformBuffer = undefined;
     this.outputBuffer = undefined;
+    this.syncBuffer = undefined;
     this.mainModule = undefined;
   }
 }

@@ -46,6 +46,15 @@ static void test_waveform_anchor_values(void) {
          moog_waveform_pulse(0.37, evaluator_fit, 0.25f));
 }
 
+static void test_saw_clamps_p_away_from_zero(void) {
+  const float near_zero_p = 0.5e-7f;
+  const float minimum_p = 1.0e-7f;
+  const double phase = 0.5e-7;
+
+  assert(moog_waveform_saw_unwrapped(phase, near_zero_p) ==
+         moog_waveform_saw_unwrapped(phase, minimum_p));
+}
+
 static void test_waveform_periodicity_and_level(void) {
   float minimum[4] = {INFINITY, INFINITY, INFINITY, INFINITY};
   float maximum[4] = {-INFINITY, -INFINITY, -INFINITY, -INFINITY};
@@ -255,6 +264,7 @@ static void test_sync_curvature_correction_symmetry_and_scaling(void) {
 
 int main(void) {
   test_waveform_anchor_values();
+  test_saw_clamps_p_away_from_zero();
   test_waveform_periodicity_and_level();
   test_pulse_duty_cycles();
   test_waveform_value_sanitization();

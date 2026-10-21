@@ -92,7 +92,7 @@ describe('MoogOscillatorProcessor', () => {
       },
       {
         automationRate: 'a-rate',
-        defaultValue: 2,
+        defaultValue: 0,
         minValue: 0,
         maxValue: 5,
         name: 'waveform',

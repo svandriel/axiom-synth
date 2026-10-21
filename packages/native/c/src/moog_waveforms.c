@@ -46,7 +46,7 @@
 enum {
   MOOG_WAVEFORM_EDGE_CORRECTION_TABLE_RESOLUTION = 16,
   MOOG_WAVEFORM_EDGE_CORRECTION_TABLE_LENGTH =
-    MOOG_WAVEFORM_EDGE_CORRECTION_RADIUS_SAMPLES *
+        MOOG_WAVEFORM_EDGE_CORRECTION_RADIUS_SAMPLES *
       MOOG_WAVEFORM_EDGE_CORRECTION_TABLE_RESOLUTION +
     1,
 };
@@ -70,17 +70,10 @@ enum {
   MOOG_WAVEFORM_NARROW_PULSE_INDEX = 5,
 };
 
-static float clamp_p(float p) {
-  if (p <= 0.0f)
-    return MOOG_WAVEFORM_P_EPSILON;
-  if (p >= 1.0f)
-    return 1.0f - MOOG_WAVEFORM_P_EPSILON;
-  return p;
-}
-
+/* Bend phase according to p to create the saw waveform's phase distortion. */
 static double waveform_coordinate(double phase, float p) {
   phase = wrap_phase(phase);
-  p = clamp_p(p);
+  p = clamp(p, MOOG_WAVEFORM_P_EPSILON, 1.0f - MOOG_WAVEFORM_P_EPSILON);
 
   const double pd_amplitude = MOOG_OSC_PI - MOOG_OSC_TWO_PI * (double)p;
   double phi_mod;
@@ -97,21 +90,19 @@ static double waveform_coordinate(double phase, float p) {
   return q;
 }
 
+/* Estimate the phase-distortion amount for a given oscillator frequency. */
 float moog_waveform_p(float frequency_hz) {
   if (!isfinite((double)frequency_hz))
     return 0.9924f;
 
   float p =
     MOOG_WAVEFORM_P_FIT_OFFSET - MOOG_WAVEFORM_P_FIT_SLOPE * frequency_hz;
-  if (p < 0.0f)
-    p = 0.0f;
-  if (p > 1.0f)
-    p = 1.0f;
-  return p;
+  return clamp(p, 0.0f, 1.0f);
 }
 
+/* Evaluate the phase-distorted saw; phase must already be in one cycle. */
 float moog_waveform_saw_unwrapped(double phase, float p) {
-  p = clamp_p(p);
+  p = clamp(p, MOOG_WAVEFORM_P_EPSILON, 1.0f - MOOG_WAVEFORM_P_EPSILON);
 
   const double pd_amplitude = MOOG_OSC_PI - MOOG_OSC_TWO_PI * (double)p;
   double phi_mod;
@@ -125,36 +116,45 @@ float moog_waveform_saw_unwrapped(double phase, float p) {
   return (float)(-quadrant_cos(MOOG_OSC_TWO_PI * phase + phi_mod));
 }
 
+/* Wrap phase, then evaluate the phase-distorted saw. */
 float moog_waveform_saw(double phase, float p) {
   return moog_waveform_saw_unwrapped(wrap_phase(phase), p);
 }
 
+/* Evaluate a triangle that rises and falls linearly over one cycle. */
 float moog_waveform_triangle(double phase, float p) {
-  const double q = waveform_coordinate(phase, p);
-  return (float)(q < MOOG_WAVEFORM_TRIANGLE_MIDPOINT
-                   ? -1.0 + MOOG_WAVEFORM_TRIANGLE_SLOPE * q
+  (void)p;
+  const double x = wrap_phase(phase);
+  return (float)(x < MOOG_WAVEFORM_TRIANGLE_MIDPOINT
+                   ? -1.0 + MOOG_WAVEFORM_TRIANGLE_SLOPE * x
                    : MOOG_WAVEFORM_TRIANGLE_DESCENDING_INTERCEPT -
-                       MOOG_WAVEFORM_TRIANGLE_SLOPE * q);
+                       MOOG_WAVEFORM_TRIANGLE_SLOPE * x);
 }
 
+/* Evaluate a ramp with a peak three-quarters of the way through its cycle. */
 float moog_waveform_sharktooth(double phase, float p) {
-  const double q = waveform_coordinate(phase, p);
+  (void)p;
+  const double x = wrap_phase(phase);
   const double peak_position = MOOG_WAVEFORM_SHARKTOOTH_PEAK;
-  return (float)(q < peak_position
-                   ? -1.0 + MOOG_WAVEFORM_SHAPE_AMPLITUDE * q / peak_position
-                   : 1.0 - MOOG_WAVEFORM_SHAPE_AMPLITUDE * (q - peak_position) /
+  return (float)(x < peak_position
+                   ? -1.0 + MOOG_WAVEFORM_SHAPE_AMPLITUDE * x / peak_position
+                   : 1.0 - MOOG_WAVEFORM_SHAPE_AMPLITUDE * (x - peak_position) /
                              (MOOG_WAVEFORM_CYCLE_LENGTH - peak_position));
 }
 
+/* Evaluate a two-level waveform whose high portion is set by duty. */
 float moog_waveform_pulse(double phase, float p, float duty) {
-  const double q = waveform_coordinate(phase, p);
-  return q < MOOG_WAVEFORM_CYCLE_LENGTH - (double)duty ? -1.0f : 1.0f;
+  (void)p;
+  const double x = wrap_phase(phase);
+  return x < MOOG_WAVEFORM_CYCLE_LENGTH - (double)duty ? -1.0f : 1.0f;
 }
 
+/* Linearly blend two sample values, with t moving from start to end. */
 static float crossfade(float start, float end, float t) {
   return (1.0f - t) * start + t * end;
 }
 
+/* Morph from triangle at t = 0 to sharktooth at t = 1. */
 float moog_waveform_morph_triangle_shark(double phase, float p, float t) {
   if (t == 0.0f)
     return moog_waveform_triangle(phase, p);
@@ -164,6 +164,7 @@ float moog_waveform_morph_triangle_shark(double phase, float p, float t) {
                    moog_waveform_sharktooth(phase, p), t);
 }
 
+/* Morph from sharktooth at t = 0 to phase-distorted saw at t = 1. */
 float moog_waveform_morph_shark_saw(double phase, float p, float t) {
   if (t == 0.0f)
     return moog_waveform_sharktooth(phase, p);
@@ -173,6 +174,7 @@ float moog_waveform_morph_shark_saw(double phase, float p, float t) {
                    moog_waveform_saw(phase, p), t);
 }
 
+/* Morph from phase-distorted saw at t = 0 to square pulse at t = 1. */
 float moog_waveform_morph_saw_square(double phase, float p, float t) {
   if (t == 0.0f)
     return moog_waveform_saw(phase, p);
@@ -182,6 +184,7 @@ float moog_waveform_morph_saw_square(double phase, float p, float t) {
                    moog_waveform_pulse(phase, p, MOOG_WAVEFORM_SQUARE_DUTY), t);
 }
 
+/* Widen a square pulse by increasing its duty cycle from 50% to 75%. */
 float moog_waveform_morph_square_wide(double phase, float p, float t) {
   if (t == 0.0f)
     return moog_waveform_pulse(phase, p, MOOG_WAVEFORM_SQUARE_DUTY);
@@ -192,6 +195,7 @@ float moog_waveform_morph_square_wide(double phase, float p, float t) {
   return moog_waveform_pulse(phase, p, duty);
 }
 
+/* Narrow a wide pulse by decreasing its duty cycle from 75% to 25%. */
 float moog_waveform_morph_wide_narrow(double phase, float p, float t) {
   if (t == 0.0f)
     return moog_waveform_pulse(phase, p, MOOG_WAVEFORM_WIDE_PULSE_DUTY);
@@ -202,6 +206,7 @@ float moog_waveform_morph_wide_narrow(double phase, float p, float t) {
   return moog_waveform_pulse(phase, p, duty);
 }
 
+/* Evaluate the exact waveform selected by an integer waveform value. */
 static float evaluate_anchor(double phase, float p, float waveform) {
   switch ((int)waveform) {
   case MOOG_WAVEFORM_TRIANGLE_INDEX:
@@ -219,6 +224,7 @@ static float evaluate_anchor(double phase, float p, float waveform) {
   }
 }
 
+/* Evaluate a shape or morph before adding its band-limiting edge correction. */
 static float evaluate_bandlimited_raw(double phase, float p, float waveform) {
   if (phase < 0.0 || phase >= MOOG_WAVEFORM_CYCLE_LENGTH)
     phase = wrap_phase(phase);
@@ -237,47 +243,52 @@ static float evaluate_bandlimited_raw(double phase, float p, float waveform) {
 
   switch (interval) {
   case MOOG_WAVEFORM_TRIANGLE_INDEX: {
-    const double triangle = q < MOOG_WAVEFORM_TRIANGLE_MIDPOINT
-                              ? -1.0 + MOOG_WAVEFORM_TRIANGLE_SLOPE * q
+    const double triangle = phase < MOOG_WAVEFORM_TRIANGLE_MIDPOINT
+                              ? -1.0 + MOOG_WAVEFORM_TRIANGLE_SLOPE * phase
                               : MOOG_WAVEFORM_TRIANGLE_DESCENDING_INTERCEPT -
-                                  MOOG_WAVEFORM_TRIANGLE_SLOPE * q;
-    const double sharktooth = q < MOOG_WAVEFORM_SHARKTOOTH_PEAK
-                                ? -1.0 + MOOG_WAVEFORM_SHAPE_AMPLITUDE * q /
-                                           MOOG_WAVEFORM_SHARKTOOTH_PEAK
-                                : 1.0 - MOOG_WAVEFORM_SHAPE_AMPLITUDE *
-                                          (q - MOOG_WAVEFORM_SHARKTOOTH_PEAK) /
-                                          MOOG_WAVEFORM_SHARKTOOTH_FALL_LENGTH;
+                                  MOOG_WAVEFORM_TRIANGLE_SLOPE * phase;
+    const double sharktooth =
+      phase < MOOG_WAVEFORM_SHARKTOOTH_PEAK
+        ? -1.0 + MOOG_WAVEFORM_SHAPE_AMPLITUDE * phase /
+                   MOOG_WAVEFORM_SHARKTOOTH_PEAK
+        : 1.0 - MOOG_WAVEFORM_SHAPE_AMPLITUDE *
+                  (phase - MOOG_WAVEFORM_SHARKTOOTH_PEAK) /
+                  MOOG_WAVEFORM_SHARKTOOTH_FALL_LENGTH;
     return crossfade((float)triangle, (float)sharktooth, t);
   }
   case MOOG_WAVEFORM_SHARKTOOTH_INDEX: {
-    const double sharktooth = q < MOOG_WAVEFORM_SHARKTOOTH_PEAK
-                                ? -1.0 + MOOG_WAVEFORM_SHAPE_AMPLITUDE * q /
-                                           MOOG_WAVEFORM_SHARKTOOTH_PEAK
-                                : 1.0 - MOOG_WAVEFORM_SHAPE_AMPLITUDE *
-                                          (q - MOOG_WAVEFORM_SHARKTOOTH_PEAK) /
-                                          MOOG_WAVEFORM_SHARKTOOTH_FALL_LENGTH;
+    const double sharktooth =
+      phase < MOOG_WAVEFORM_SHARKTOOTH_PEAK
+        ? -1.0 + MOOG_WAVEFORM_SHAPE_AMPLITUDE * phase /
+                   MOOG_WAVEFORM_SHARKTOOTH_PEAK
+        : 1.0 - MOOG_WAVEFORM_SHAPE_AMPLITUDE *
+                  (phase - MOOG_WAVEFORM_SHARKTOOTH_PEAK) /
+                  MOOG_WAVEFORM_SHARKTOOTH_FALL_LENGTH;
     const float saw = (float)-quadrant_cos(MOOG_OSC_TWO_PI * q);
     return crossfade((float)sharktooth, saw, t);
   }
   case MOOG_WAVEFORM_SAW_INDEX: {
     const float saw = (float)-quadrant_cos(MOOG_OSC_TWO_PI * q);
     const float square =
-      q < MOOG_WAVEFORM_CYCLE_LENGTH - MOOG_WAVEFORM_SQUARE_DUTY ? -1.0f : 1.0f;
+      phase < MOOG_WAVEFORM_CYCLE_LENGTH - MOOG_WAVEFORM_SQUARE_DUTY ? -1.0f
+                                                                     : 1.0f;
     return crossfade(saw, square, t);
   }
   case MOOG_WAVEFORM_SQUARE_INDEX: {
     const float duty =
       MOOG_WAVEFORM_SQUARE_DUTY + MOOG_WAVEFORM_DUTY_INCREMENT * t;
-    return q < MOOG_WAVEFORM_CYCLE_LENGTH - (double)duty ? -1.0f : 1.0f;
+    return phase < MOOG_WAVEFORM_CYCLE_LENGTH - (double)duty ? -1.0f : 1.0f;
   }
   default: {
     const float duty =
       MOOG_WAVEFORM_WIDE_PULSE_DUTY - MOOG_WAVEFORM_DUTY_RANGE * t;
-    return q < MOOG_WAVEFORM_CYCLE_LENGTH - (double)duty ? -1.0f : 1.0f;
+    return phase < MOOG_WAVEFORM_CYCLE_LENGTH - (double)duty ? -1.0f : 1.0f;
   }
   }
 }
 
+/* Clamp the selector, then evaluate its anchor shape or the morph between
+ * anchors. */
 float moog_waveform_evaluate(double phase, float frequency_hz, float waveform) {
   if (isnan(waveform))
     waveform = MOOG_WAVEFORM_SAW;
@@ -314,12 +325,7 @@ float moog_waveform_evaluate(double phase, float frequency_hz, float waveform) {
   }
 }
 
-static double waveform_phase_for_coordinate(double q, float p) {
-  if (q < MOOG_WAVEFORM_TRIANGLE_MIDPOINT)
-    return 2.0 * (double)p * q;
-  return 2.0 * (1.0 - (double)p) * q + 2.0 * (double)p - 1.0;
-}
-
+/* Record or combine a waveform value jump and slope change at one phase. */
 static void add_fourier_edge(MoogWaveformCache *shape, double phase,
                              double slope_jump, double value_jump) {
   for (unsigned int i = 0; i < shape->edge_count; ++i) {
@@ -339,6 +345,7 @@ static void add_fourier_edge(MoogWaveformCache *shape, double phase,
   }
 }
 
+/* Record or combine a second-derivative change at one waveform edge. */
 static void add_fourier_curvature_jump(MoogWaveformCache *shape, double phase,
                                        double curvature_jump) {
   for (unsigned int i = 0; i < shape->edge_count; ++i) {
@@ -357,37 +364,29 @@ static void add_fourier_curvature_jump(MoogWaveformCache *shape, double phase,
   }
 }
 
-static void add_triangle_edges(MoogWaveformCache *shape, float p,
-                               double weight) {
-  const double slope_jump = MOOG_WAVEFORM_TRIANGLE_SLOPE *
-                            (1.0 / (double)p + 1.0 / (1.0 - (double)p)) *
-                            MOOG_WAVEFORM_HALF;
+/* Add the triangle's slope changes, scaled by its morph weight. */
+static void add_triangle_edges(MoogWaveformCache *shape, double weight) {
+  const double slope_jump = MOOG_WAVEFORM_TRIANGLE_SLOPE * 2.0;
   add_fourier_edge(shape, 0.0, weight * slope_jump, 0.0);
-  add_fourier_edge(shape, (double)p, -weight * slope_jump, 0.0);
+  add_fourier_edge(shape, MOOG_WAVEFORM_TRIANGLE_MIDPOINT, -weight * slope_jump,
+                   0.0);
 }
 
-static void add_sharktooth_edges(MoogWaveformCache *shape, float p,
-                                 double weight) {
-  const double first_slope = MOOG_WAVEFORM_SHAPE_AMPLITUDE /
-                             (MOOG_WAVEFORM_SHARKTOOTH_PEAK * 2.0 * (double)p);
-  const double second_slope =
-    MOOG_WAVEFORM_SHAPE_AMPLITUDE /
-    (MOOG_WAVEFORM_SHARKTOOTH_PEAK * 2.0 * (1.0 - (double)p));
+/* Add the sharktooth's slope changes at its peak and cycle wrap. */
+static void add_sharktooth_edges(MoogWaveformCache *shape, double weight) {
+  const double first_slope =
+    MOOG_WAVEFORM_SHAPE_AMPLITUDE / MOOG_WAVEFORM_SHARKTOOTH_PEAK;
   const double last_slope =
-    -MOOG_WAVEFORM_SHAPE_AMPLITUDE /
-    (MOOG_WAVEFORM_SHARKTOOTH_FALL_LENGTH * 2.0 * (1.0 - (double)p));
-  const double peak_phase =
-    waveform_phase_for_coordinate(MOOG_WAVEFORM_SHARKTOOTH_PEAK, p);
+    -MOOG_WAVEFORM_SHAPE_AMPLITUDE / MOOG_WAVEFORM_SHARKTOOTH_FALL_LENGTH;
   const double wrap_jump = first_slope - last_slope;
-  const double phase_fit_jump = second_slope - first_slope;
-  const double peak_jump = last_slope - second_slope;
+  const double peak_jump = last_slope - first_slope;
 
-  shape->dc += weight * (1.0 - 2.0 * (double)p) / 3.0;
   add_fourier_edge(shape, 0.0, weight * wrap_jump, 0.0);
-  add_fourier_edge(shape, (double)p, weight * phase_fit_jump, 0.0);
-  add_fourier_edge(shape, peak_phase, weight * peak_jump, 0.0);
+  add_fourier_edge(shape, MOOG_WAVEFORM_SHARKTOOTH_PEAK, weight * peak_jump,
+                   0.0);
 }
 
+/* Describe the selected morph as weighted Fourier components and edge jumps. */
 static void build_fourier_shape(MoogWaveformCache *shape, float p,
                                 float waveform) {
   double triangle_weight = 0.0;
@@ -420,9 +419,9 @@ static void build_fourier_shape(MoogWaveformCache *shape, float p,
   }
 
   if (triangle_weight != 0.0)
-    add_triangle_edges(shape, p, triangle_weight);
+    add_triangle_edges(shape, triangle_weight);
   if (sharktooth_weight != 0.0)
-    add_sharktooth_edges(shape, p, sharktooth_weight);
+    add_sharktooth_edges(shape, sharktooth_weight);
 
   if (shape->saw_weight != 0.0) {
     const double second_coordinate_slope =
@@ -438,13 +437,14 @@ static void build_fourier_shape(MoogWaveformCache *shape, float p,
   }
 
   if (pulse_weight != 0.0) {
-    const double edge_phase = waveform_phase_for_coordinate(1.0 - duty, p);
-    shape->dc += pulse_weight * (1.0 - 2.0 * edge_phase);
+    const double edge_phase = 1.0 - duty;
+    shape->dc += pulse_weight * (2.0 * duty - 1.0);
     add_fourier_edge(shape, 0.0, 0.0, -2.0 * pulse_weight);
     add_fourier_edge(shape, edge_phase, 0.0, 2.0 * pulse_weight);
   }
 }
 
+/* Calculate sine and cosine weights for each harmonic from the edge jumps. */
 static void build_fourier_coefficients(MoogWaveformCache *shape) {
   for (unsigned int harmonic = 1; harmonic <= shape->harmonic_count;
        ++harmonic) {
@@ -470,12 +470,14 @@ static void build_fourier_coefficients(MoogWaveformCache *shape) {
   }
 }
 
+/* Precompute half-angle values used by the saw's harmonic formula. */
 static void build_saw_half_angle(MoogWaveformCache *shape, float p) {
   const double angle = MOOG_OSC_PI * (double)p;
   shape->saw_half_cosine = quadrant_cos(angle);
   shape->saw_half_sine = quadrant_cos(angle - MOOG_OSC_HALF_PI);
 }
 
+/* Identify selector positions that need a larger direct Fourier sum. */
 static int requires_high_accuracy_fourier(float waveform) {
   return waveform == MOOG_WAVEFORM_MORPH_TRIANGLE_SHARKTOOTH ||
          waveform == MOOG_WAVEFORM_MORPH_SHARK_SAW_MIDPOINT ||
@@ -487,6 +489,7 @@ static int requires_high_accuracy_fourier(float waveform) {
          waveform == MOOG_WAVEFORM_MAX;
 }
 
+/* Choose direct harmonic summation when its cost and accuracy are suitable. */
 static int uses_direct_fourier(const MoogWaveformCache *cache) {
   return cache->harmonic_count <= MOOG_WAVEFORM_DIRECT_HARMONIC_LIMIT ||
          (cache->harmonic_count <=
@@ -494,6 +497,7 @@ static int uses_direct_fourier(const MoogWaveformCache *cache) {
           requires_high_accuracy_fourier(cache->waveform));
 }
 
+/* Calculate one Fourier harmonic of the phase-distorted saw. */
 static double saw_harmonic(float p, unsigned int harmonic, double phase_sine,
                            double half_phase_cosine) {
   const double k = (double)harmonic;
@@ -522,6 +526,8 @@ static double saw_harmonic(float p, unsigned int harmonic, double phase_sine,
   return (2.0 * k / MOOG_OSC_PI) * phase_sine * (first_ratio - second_ratio);
 }
 
+/* Return the band-limited saw minus its raw value for oscillator-sync repair.
+ */
 float moog_waveform_sync_saw_bandlimit_correction(
   double phase, const MoogWaveformCache *cache) {
   if (cache == NULL || !cache->initialized ||
@@ -573,6 +579,7 @@ float moog_waveform_sync_saw_bandlimit_correction(
   return (float)(cache->saw_weight * (bandlimited_saw - raw_saw));
 }
 
+/* Approximate the sine integral used to build edge-correction profiles. */
 static double sine_integral(double value) {
   const double sign = value < 0.0 ? -1.0 : 1.0;
   const double z = fabs(value);
@@ -620,6 +627,7 @@ static double sine_integral(double value) {
                  sin(z) * odd_sum * inverse_square);
 }
 
+/* Calculate the order-zero modified Bessel function for the Kaiser window. */
 static double modified_bessel_i0(double value) {
   const double quarter_square = value * value * 0.25;
   double term = 1.0;
@@ -634,6 +642,7 @@ static double modified_bessel_i0(double value) {
   return sum;
 }
 
+/* Weight an edge correction by its distance inside the configured window. */
 static double edge_correction_window(double distance_samples) {
   const double normalized_distance =
     distance_samples / MOOG_WAVEFORM_EDGE_CORRECTION_RADIUS_SAMPLES;
@@ -644,6 +653,7 @@ static double edge_correction_window(double distance_samples) {
          modified_bessel_i0(MOOG_WAVEFORM_EDGE_WINDOW_KAISER_BETA);
 }
 
+/* Calculate the band-limiting residual for a sudden waveform value jump. */
 static double calculate_step_residual(double distance_samples) {
   const double angular_cutoff = MOOG_OSC_TWO_PI * MOOG_WAVEFORM_FOURIER_CUTOFF;
   const double residual =
@@ -652,6 +662,7 @@ static double calculate_step_residual(double distance_samples) {
   return residual * edge_correction_window(distance_samples);
 }
 
+/* Calculate the band-limiting residual for a sharp corner in the waveform. */
 static double calculate_slope_residual(double distance_samples) {
   const double angular_cutoff = MOOG_OSC_TWO_PI * MOOG_WAVEFORM_FOURIER_CUTOFF;
   const double sine_integral_value =
@@ -664,6 +675,7 @@ static double calculate_slope_residual(double distance_samples) {
   return primitive * edge_correction_window(distance_samples);
 }
 
+/* Build shared correction lookup tables once, safely across audio threads. */
 void moog_waveform_initialize(void) {
   if (atomic_load_explicit(&edge_tables_initialized, memory_order_acquire))
     return;
@@ -699,6 +711,7 @@ void moog_waveform_initialize(void) {
                              memory_order_release);
 }
 
+/* Interpolate a correction profile, returning zero beyond its radius. */
 static double interpolate_residual(double distance_samples,
                                    const double *table) {
   const double distance = fabs(distance_samples);
@@ -712,22 +725,26 @@ static double interpolate_residual(double distance_samples,
   return table[index] + fraction * (table[index + 1] - table[index]);
 }
 
+/* Read the signed correction profile for a value jump. */
 static double bandlimit_step_residual(double distance_samples) {
   const double residual =
     interpolate_residual(distance_samples, step_residual_table);
   return distance_samples < 0.0 ? -residual : residual;
 }
 
+/* Read the symmetric correction profile for a slope change. */
 static double bandlimit_slope_residual(double distance_samples) {
   return interpolate_residual(distance_samples, slope_residual_table);
 }
 
+/* Read the signed correction profile for a curvature change. */
 static double bandlimit_curvature_residual(double distance_samples) {
   const double residual =
     interpolate_residual(distance_samples, curvature_residual_table);
   return distance_samples < 0.0 ? -residual : residual;
 }
 
+/* Combine edge profiles to correct a sync discontinuity in the waveform. */
 float moog_waveform_sync_edge_correction(double distance_samples,
                                          double phase_increment,
                                          double value_jump, double slope_jump,
@@ -739,6 +756,7 @@ float moog_waveform_sync_edge_correction(double distance_samples,
                    bandlimit_curvature_residual(distance_samples));
 }
 
+/* Sum band-limiting corrections from each nearby edge and repeated cycle. */
 static double edge_bandlimit_correction(double phase,
                                         const MoogWaveformCache *shape) {
   double correction = 0.0;
@@ -775,6 +793,7 @@ static double edge_bandlimit_correction(double phase,
   return correction;
 }
 
+/* Refresh cached shape and harmonic data only when inputs have changed. */
 void moog_waveform_cache_prepare(MoogWaveformCache *cache, float frequency_hz,
                                  float waveform, double phase_increment) {
   if (cache == NULL || isnan(waveform) || waveform == MOOG_WAVEFORM_SAW ||
@@ -791,7 +810,9 @@ void moog_waveform_cache_prepare(MoogWaveformCache *cache, float frequency_hz,
                             cache->frequency_hz != frequency_hz ||
                             cache->waveform != waveform;
   if (shape_changed) {
-    const float p = clamp_p(moog_waveform_p(frequency_hz));
+    const float p =
+      clamp(moog_waveform_p(frequency_hz), MOOG_WAVEFORM_P_EPSILON,
+            1.0f - MOOG_WAVEFORM_P_EPSILON);
     cache->dc = 0.0;
     cache->saw_weight = 0.0;
     cache->edge_count = 0;
@@ -828,6 +849,8 @@ void moog_waveform_cache_prepare(MoogWaveformCache *cache, float frequency_hz,
   }
 }
 
+/* Evaluate a prepared cache using Fourier harmonics or local edge corrections.
+ */
 float moog_waveform_evaluate_prepared(double phase,
                                       const MoogWaveformCache *cache) {
   if (cache == NULL || !cache->initialized ||
@@ -907,6 +930,7 @@ float moog_waveform_evaluate_prepared(double phase,
   return (float)output;
 }
 
+/* Prepare a reusable cache if needed, then evaluate the band-limited shape. */
 float moog_waveform_evaluate_bandlimited_cached(double phase,
                                                 float frequency_hz,
                                                 float waveform,
@@ -929,6 +953,7 @@ float moog_waveform_evaluate_bandlimited_cached(double phase,
   return moog_waveform_evaluate_prepared(phase, cache);
 }
 
+/* Initialize shared tables and evaluate once with a temporary cache. */
 float moog_waveform_evaluate_bandlimited(double phase, float frequency_hz,
                                          float waveform,
                                          double phase_increment) {

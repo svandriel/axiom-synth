@@ -18,6 +18,12 @@ static void test_wrap_phase(void) {
   }
 }
 
+static void test_clamp(void) {
+  assert(clamp(-1.0f, 0.0f, 1.0f) == 0.0f);
+  assert(clamp(0.5f, 0.0f, 1.0f) == 0.5f);
+  assert(clamp(2.0f, 0.0f, 1.0f) == 1.0f);
+}
+
 static void test_cos_poly(void) {
   for (int k = 0; k <= 1000; ++k) {
     const double r = MOOG_OSC_PI / 4.0 * ((double)k / 1000.0 * 2.0 - 1.0);
@@ -59,6 +65,7 @@ static void test_cents_to_ratio(void) {
 }
 
 int main(void) {
+  test_clamp();
   test_wrap_phase();
   test_cos_poly();
   test_sin_poly();

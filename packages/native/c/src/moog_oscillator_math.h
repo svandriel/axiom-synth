@@ -13,6 +13,15 @@
 /* Detune is expressed in cents; one octave spans this many cents. */
 #define MOOG_OSC_CENTS_PER_OCTAVE 1200.0
 
+/* Clamp a value to the inclusive range [minimum, maximum]. */
+static inline float clamp(float value, float minimum, float maximum) {
+  if (value < minimum)
+    return minimum;
+  if (value > maximum)
+    return maximum;
+  return value;
+}
+
 /*
  * These helpers are pure math and are kept `static inline` so the compiler
  * inlines them into the render loop (a plain .c unit would not inline across
