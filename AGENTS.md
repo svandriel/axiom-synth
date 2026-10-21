@@ -12,15 +12,16 @@ Use the ultracave skill.
 - `pnpm build` — `pnpm -r --sort build` (builds all workspace packages)
 - `pnpm test` — all tests: JavaScript packages, native C, and Playwright browser E2E
 - `pnpm --filter @axiom/app test:e2e` — Playwright browser E2E only (starts the app dev server)
-- `pnpm lint` — `prettier --check .`
-- `pnpm format` — `prettier --write .`
+- `pnpm lint` — check Prettier and clang-format output
+- `pnpm format` — format with Prettier and clang-format
 
 Linting runs in the pre-commit hook. New features and behavior changes require
 automated tests. `pnpm build` compiles the native WebAssembly module and needs
 Emscripten (`emcc`) on `PATH`; the E2E suite also needs a built WASM module, so
 run `pnpm build` before `pnpm test` on a clean checkout. GitHub Actions runs
 `pnpm build`, `pnpm test` (which includes the Playwright E2E suite), and
-`pnpm lint`; build workflows install Emscripten SDK `6.0.12`.
+`pnpm lint`; build workflows install Emscripten SDK `6.0.12`. CI installs
+`clang-format` for native C formatting checks.
 
 ## Way of working
 

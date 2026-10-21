@@ -45,9 +45,19 @@ jobs:
           runtime: node@24
           install: false
 
+      - name: Install clang-format
+        if: github.event.action != 'closed'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y clang-format
+
       - name: Install dependencies
         if: github.event.action != 'closed'
         run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        if: github.event.action != 'closed'
+        run: pnpm lint
 
       - name: Build
         if: github.event.action != 'closed'
