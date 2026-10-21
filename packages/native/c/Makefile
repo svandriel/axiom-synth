@@ -9,9 +9,9 @@ INCLUDE := -Iinclude
 MATH_INCLUDE := -Isrc
 
 HEADERS := include/moog_saw.h include/moog_oscillator.h src/moog_oscillator_math.h \
-	src/moog_oscillator_internal.h src/moog_waveforms.h
+	src/moog_oscillator_internal.h src/moog_waveforms.h src/moog_sync_series.h
 
-SRC     := src/moog_oscillator.c src/moog_waveforms.c src/moog_saw_compat.c
+SRC     := src/moog_oscillator.c src/moog_waveforms.c src/moog_sync_series.c src/moog_saw_compat.c
 WASM_SRC := $(SRC) src/moog_oscillator_wasm.c
 TEST_SRC := tests/test_moog_saw.c
 TEST_GENERIC_SRC := tests/test_moog_oscillator.c

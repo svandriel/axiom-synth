@@ -48,6 +48,19 @@ static void test_quadrant_cos(void)
     }
 }
 
+static void test_quadrant_sincos(void)
+{
+    for (int k = -20000; k <= 20000; ++k)
+    {
+        const double angle = (double)k / 1000.0;
+        double cosine;
+        double sine;
+        quadrant_sincos(angle, &cosine, &sine);
+        assert(fabs(cosine - cos(angle)) < 1e-6);
+        assert(fabs(sine - sin(angle)) < 1e-6);
+    }
+}
+
 static void test_cents_to_ratio(void)
 {
     assert(fabsf(cents_to_ratio(0.0f) - 1.0f) < 1e-6f);
@@ -62,6 +75,7 @@ int main(void)
     test_cos_poly();
     test_sin_poly();
     test_quadrant_cos();
+    test_quadrant_sincos();
     test_cents_to_ratio();
     puts("all tests passed");
     return 0;

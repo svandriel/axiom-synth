@@ -8,6 +8,11 @@ static const float TEST_FREQUENCY_HZ = 440.0f;
 static const float TEST_PHASE_FIT = 0.5f;
 static const unsigned int TEST_SAMPLE_COUNT = 4096;
 static const float TEST_TOLERANCE = 2e-6f;
+static const float TEST_FOURIER_FREQUENCY_HZ =
+    (0.9924f - 0.5f) / 0.00002151f;
+static const double TEST_FOURIER_PHASE_INCREMENT = 0.2;
+static const double TEST_FOURIER_TWO_PI = 6.28318530717958647692;
+static const double TEST_FOURIER_PI = 3.14159265358979323846;
 
 static void test_waveform_anchor_values(void)
 {
@@ -171,6 +176,7 @@ static void test_morph_endpoints_and_pulse_midpoints(void)
 static void test_new_shapes_are_finite_near_nyquist(void)
 {
     const float frequencies[] = {19845.0f, 21600.0f, 43200.0f};
+    const float sample_rates[] = {44100.0f, 48000.0f, 96000.0f};
     const float waveforms[] = {0.0f, 0.5f, 1.0f, 1.5f, 2.5f,
                                3.0f, 3.5f, 4.0f, 4.5f, 5.0f};
 
@@ -187,11 +193,101 @@ static void test_new_shapes_are_finite_near_nyquist(void)
                 const double phase = (double)sample / TEST_SAMPLE_COUNT;
                 const float output = moog_waveform_evaluate(
                     phase, frequencies[frequency_index], waveforms[waveform_index]);
+                const float bandlimited_output =
+                    moog_waveform_evaluate_bandlimited(
+                        phase,
+                        frequencies[frequency_index],
+                        waveforms[waveform_index],
+                        frequencies[frequency_index] /
+                            sample_rates[frequency_index]);
                 assert(isfinite(output));
                 assert(output >= -1.000002f && output <= 1.000002f);
+                assert(isfinite(bandlimited_output));
+                if (waveforms[waveform_index] == 2.0f)
+                    assert(bandlimited_output == output);
             }
         }
     }
+}
+
+static double expected_bandlimited_pulse(double phase, double duty)
+{
+    const double edge_phase = 1.0 - duty;
+    double expected = 2.0 * duty - 1.0;
+
+    for (unsigned int harmonic = 1; harmonic <= 2; ++harmonic)
+    {
+        const double omega = TEST_FOURIER_TWO_PI * harmonic;
+        expected += 2.0 / omega *
+                    (-2.0 * sin(omega * phase) +
+                     2.0 * sin(omega * (phase - edge_phase)));
+    }
+    return expected;
+}
+
+static void test_bandlimited_fourier_coefficients(void)
+{
+    const double phases[] = {0.0, 0.071, 0.25, 0.371, 0.5, 0.75, 0.937};
+    const float waveforms[] = {0.0f, 3.0f, 4.0f, 5.0f};
+    const double duties[] = {0.0, 0.5, 0.75, 0.25};
+    const float phase_fit = moog_waveform_p(TEST_FOURIER_FREQUENCY_HZ);
+    assert(fabsf(phase_fit - 0.5f) < 1e-6f);
+
+    for (unsigned int phase_index = 0;
+         phase_index < sizeof(phases) / sizeof(phases[0]);
+         ++phase_index)
+    {
+        const double phase = phases[phase_index];
+        const double expected_triangle =
+            -8.0 / (TEST_FOURIER_PI * TEST_FOURIER_PI) *
+            cos(TEST_FOURIER_TWO_PI * phase);
+        const float triangle = moog_waveform_evaluate_bandlimited(
+            phase,
+            TEST_FOURIER_FREQUENCY_HZ,
+            waveforms[0],
+            TEST_FOURIER_PHASE_INCREMENT);
+        assert(fabs((double)triangle - expected_triangle) < 2e-5);
+
+        for (unsigned int waveform_index = 1;
+             waveform_index < sizeof(waveforms) / sizeof(waveforms[0]);
+             ++waveform_index)
+        {
+            const float actual = moog_waveform_evaluate_bandlimited(
+                phase,
+                TEST_FOURIER_FREQUENCY_HZ,
+                waveforms[waveform_index],
+                TEST_FOURIER_PHASE_INCREMENT);
+            const double expected =
+                expected_bandlimited_pulse(phase, duties[waveform_index]);
+            assert(fabs((double)actual - expected) < 2e-5);
+        }
+    }
+}
+
+static void test_sync_curvature_correction_symmetry_and_scaling(void)
+{
+    // Arrange
+    const double distance_samples = 0.5;
+    const double phase_increment = 0.01;
+    const double curvature_jump = -100.0;
+    moog_waveform_initialize();
+
+    // Act
+    const float positive_distance = moog_waveform_sync_edge_correction(
+        distance_samples, phase_increment, 0.0, 0.0, curvature_jump);
+    const float negative_distance = moog_waveform_sync_edge_correction(
+        -distance_samples, phase_increment, 0.0, 0.0, curvature_jump);
+    const float doubled_jump = moog_waveform_sync_edge_correction(
+        distance_samples,
+        phase_increment,
+        0.0,
+        0.0,
+        2.0 * curvature_jump);
+
+    // Assert
+    assert(isfinite(positive_distance));
+    assert(fabsf(positive_distance + negative_distance) < 1e-6f);
+    assert(fabsf(doubled_jump - 2.0f * positive_distance) < 1e-6f);
 }
 
 int main(void)
@@ -202,6 +298,8 @@ int main(void)
     test_waveform_value_sanitization();
     test_morph_endpoints_and_pulse_midpoints();
     test_new_shapes_are_finite_near_nyquist();
+    test_bandlimited_fourier_coefficients();
+    test_sync_curvature_correction_symmetry_and_scaling();
     puts("all waveform tests passed");
     return 0;
 }

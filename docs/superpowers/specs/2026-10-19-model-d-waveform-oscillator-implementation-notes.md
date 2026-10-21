@@ -1,7 +1,7 @@
 # Model D-Inspired Waveform Oscillator — Implementation Notes
 
 Date: 2026-10-19
-Status: **Task 2 proposal; implementation approval required**
+Status: **Approved equations; Task 4 spectral gates pass, CPU gates fail**
 
 This note resolves the equation and measurement questions for Tasks 3–4. It
 does not authorize DSP, API, test, or benchmark implementation. The waveform
@@ -511,11 +511,171 @@ No gates above changed.
   signal and 104.4%/120.0%/198.8% for the mixed topology. This is
   still uncommitted exploratory source based on the same commit,
   machine, compiler, flags, and measurement date noted above.
+- A native stress run now fails explicitly above the predeclared $90\%$
+  budget. Avoiding a redundant 254-entry buffer clear on every saw
+  sample, then hoisting constant saw work for uniform blocks, reduced
+  saw utilization to 29.8%/31.8%/64.7%. The same mixed topology still
+  used 91.6%/108.6%/172.6%. Uniform morph 1.5 alone used
+  181.2%/212.2%/332.7%; morph 2.5 used
+  179.2%/210.6%/324.0%. These exploratory Apple M1 Max measurements
+  used the same 2026-10-20 date, base commit
+  `c665137cc3ea1b4d7f265ab9c56dafd09067c74c`, and uncommitted
+  native source. A bit-for-bit regression checks uniform saw against
+  its per-sample path across multiple blocks. Optimizing saw cannot
+  alone qualify the more expensive morph shapes; the unchanged
+  $25\%$ same-build cost and $90\%$ absolute deadline both still fail.
+- Disabling the high-accuracy Fourier morph path experimentally lowered
+  mixed utilization to 52.0%/55.7%/106.1%, but the periodic oracle then
+  failed 8 of 231 cases, including both saw morphs at 1 kHz. The
+  experiment was reverted. Changing reset-jump estimates to use the
+  periodic band-limited saw improved only one of 22 focused sync
+  failures and broke an existing sync test; that experiment was also
+  reverted. The waveform's periodic filtering cannot by itself
+  band-limit the trajectory after arbitrary resets.
+- A focused 63-case sync run reproduced 22 failures, including about
+  $0.159$ FS RMS for the saw morphs near $0.45F_s$. Separately, a
+  failing native regression exposed unbounded edge enumeration for
+  finite pitches above $F_s$; corrections now skip these out-of-band
+  natural edges. Native tests and the WASM build pass after this guard.
+  All exploratory measurements remain dated 2026-10-20 and refer to
+  base commit `c665137cc3ea1b4d7f265ab9c56dafd09067c74c` plus
+  uncommitted source.
+- A repeat of the native stress run after the out-of-band sync guard,
+  with the same date and source status, measured saw
+  30.0%/33.0%/66.6% and mixed 96.9%/111.8%/182.6% at
+  44.1/48/96 kHz. The stress input has no sync, so the guard cannot
+  explain this variation. Full workspace build, native/JavaScript
+  tests, Playwright E2E, and lint all pass, but the unchanged CPU and
+  sync acceptance gates do not.
+- An experimental 1,024-entry per-oscillator phase table retained
+  231/231 periodic passes and cut warmed mixed stress to
+  23.4%/24.9%/59.2% at 44.1/48/96 kHz. Building tables in the
+  first render block took 19.1/20.7/14.7 ms, far above the respective
+  deadlines; this approach also left per-sample frequency automation
+  and the 110 hard-sync failures unresolved. The table was reverted,
+  not accepted as a realtime solution. The experimental numbers were
+  measured 2026-10-20 from base commit
+  `c665137cc3ea1b4d7f265ab9c56dafd09067c74c` plus uncommitted
+  native source.
+- Per-sample frequency changes previously rebuilt 64 Fourier
+  coefficients even when the selected renderer did not use any.
+  Preparing only coefficients actually consumed cut the exploratory
+  varying-input mixed stress from 71.4/72.4/70.9 ms to
+  13.9/14.9/11.5 ms per 128-frame block. This still misses both CPU
+  gates. Full spectral requalification after this change passed
+  231/231 periodic cases, while hard sync stayed at 1,045/1,155.
+  Full workspace build, native/JavaScript tests, Playwright E2E, and
+  lint pass. This is still not a Task 4 pass.
+- On 2026-10-21 the native scratch stress harness checked both the
+  $\le90\%$ deadline (including the first block) and the separate
+  $\le1.25\times$ same-build saw cost limit. Mixed shapes used
+  93.6%/108.9%/177.4% of the 44.1/48/96 kHz budgets, and
+  $3.159/3.391/2.745\times$ saw cost. At 96 kHz, even uniform
+  triangle used $1.351\times$ saw cost and 88.2% of the budget;
+  uniform morph 1.5 used $5.322\times$ and 341.3%. These
+  exploratory Apple M1 Max, arm64, Apple clang `-O3`, 128-frame,
+  best-of-five measurements used base commit
+  `c665137cc3ea1b4d7f265ab9c56dafd09067c74c` plus uncommitted
+  native changes. Passing only the absolute deadline would not
+  qualify the candidate.
+- A 2026-10-21 deterministic spectral diagnostic isolated the
+  near-Nyquist sync failure: at 96 kHz, $f\approx43.2$ kHz and
+  $\delta=0.25$, morphs 1.5 and 2.5 have approximately $0.159$
+  FS RMS error. Their aliased second **sync-event** harmonic,
+  folded to FFT bin 26,216, has magnitude about $0.103$ FS,
+  whereas narrow pulse 5.0 has about $0.0012$ FS at the same bin.
+  The current Fourier correction filters the freely running saw
+  component at the oscillator frequency but does not eliminate
+  harmonics introduced when that component is reset every
+  $T=3/(2f)$. At 48 kHz/1 kHz the morphs' RMS errors are smaller
+  (about $0.006$ FS), but peak errors still exceed $0.05$ FS.
+  A generic sync filter must target the _reset trajectory_ before
+  sampling; another post-sampling filter cannot remove an alias
+  already folded below the cutoff. These exploratory measurements
+  use base commit
+  `c665137cc3ea1b4d7f265ab9c56dafd09067c74c`
+  plus uncommitted native source.
+- The same 768-oscillator scratch stress harness, built with local
+  Emscripten and run in Node on the Apple M1 Max on 2026-10-21,
+  measured mixed-WASM block utilization
+  114.3%/131.5%/216.5% at 44.1/48/96 kHz, against
+  35.6%/38.3%/75.9% for same-build saw. Mixed costs were
+  $3.208/3.435/2.851\times$ saw. This is Node-hosted WASM,
+  **not** an AudioWorklet deadline measurement, and still uses
+  base commit `c665137cc3ea1b4d7f265ab9c56dafd09067c74c`
+  plus uncommitted native source. Both fixed CPU gates fail
+  without depending on a native-only benchmark.
+- The 2026-10-21 sync diagnostic also localized a failing narrow-pulse
+  case at 96 kHz/$f\approx5$ kHz: its 13th sync-event harmonic folds
+  to FFT bin 29,588 with magnitude about $0.0127$ FS, while the
+  approved reference retains only harmonics 1 through 12 below
+  $0.45F_s$. The 13th sits near the cutoff: an 84-sample
+  finite-support edge correction does not suppress it enough to
+  satisfy the $0.01$ FS RMS limit (measured $0.0181$ FS).
+  Thus both saw-morph and narrow-pulse failures involve **event**
+  harmonics missing from the event-aware reference, not just wrong
+  free-running phase or a post-render EQ problem.
+- A separate 2026-10-21 scratch CPU prototype compiled residual
+  correction tables into constants and reused shape coefficients across
+  frequency changes up to $0.13\%$ when the harmonic count remained
+  constant. It matched the original renderer byte-for-byte for all
+  231 static periodic records; **this is not** a fresh independent
+  oracle result, and varying-frequency spectral accuracy is
+  unqualified. On Apple arm64 with Clang `-O3` and best-of-five
+  768-oscillator native 128-frame runs, steady static mixed rendering
+  still used 97.5%/110.0%/180.7% of the 44.1/48/96 kHz budgets
+  (3.208/3.368/2.745 times saw); varying-input mixed rendering
+  used 137.7%/154.3%/264.0% (3.148/3.351/2.798 times saw).
+  First blocks were slower. The prototype stayed in ignored scratch
+  files; none of its approximate behavior entered the DSP candidate.
+  Its measurements refer to base commit
+  `c665137cc3ea1b4d7f265ab9c56dafd09067c74c`
+  plus uncommitted native source.
 
-Next, derive a bounded-cost implementation of the event-split filter and
-measure the same spectral and stress gates. Keep generic sync timing and
-legacy saw output unchanged. If the fixed deadline remains unattainable,
-present measured tradeoffs for approval rather than changing the gates.
+- On 2026-10-21, the actual candidate passed **231/231 periodic** and
+  **1,155/1,155 hard-sync** Fourier-reference cases. For stable repeating
+  sync, the candidate integrates the complete between-reset waveform
+  before sampling and reconstructs only event harmonics below $0.45F_s$.
+  It selects this result at the existing 84-sample output delay; the
+  original raw-output and edge-correction buffers remain available if
+  the event cadence stops or changes. Native regressions cover both
+  folded-harmonic suppression and the transition after sync stops.
+  Native tests, the full workspace build/test (including Playwright),
+  and lint pass. This is spectral evidence, **not** a CPU or release pass.
+- The same 2026-10-21 768-oscillator, 128-frame exploratory workload
+  measured native mixed stress at
+  **97.3%/112.1%/189.7%** of the 44.1/48/96 kHz deadlines and
+  **$3.135/3.277/2.744\times$** same-build saw cost. Node-hosted WASM
+  measured **120.4%/136.7%/216.9%** and
+  **$3.311/3.401/2.747\times$** saw cost. These measurements include
+  cold first-block checks, use committed base
+  `fea272c4bf8f9f229d38e1748e5ed16177748268` **plus uncommitted
+  source**, and are not final release benchmarks or AudioWorklet timing
+  results. Both unchanged CPU gates ($\le90\%$ deadline and
+  $\le1.25\times$ same-build saw) still fail. Event-series coefficients
+  are also prepared within native processing when periodicity is
+  recognized; the approved worklet design forbids expensive
+  initialization in its process callback. This path needs real-time
+  qualification or a different preparation boundary before release.
+- A 2026-10-21 **unqualified lookup feasibility probe** compared
+  2,048-point phase tables interpolated between adjacent
+  64-rows-per-octave frequencies against the current exact renderer at
+  the seven test pitches, three sample rates, and ten non-saw test
+  waveforms. Keeping both frequency rows within the same harmonic-count
+  band and falling back to the exact renderer above 64 harmonics yielded
+  maximum $0.000819$ FS RMS and $0.00157$ FS peak **relative to that
+  renderer**, not to the independent Fourier oracle. With no high-count
+  fallback, interpolation peaked at $0.184$ FS for a 55 Hz waveform at
+  96 kHz. This tests approximation error only: it says nothing yet
+  about first-block cost, varying-input CPU, memory/startup cost, or
+  arbitrary pulse-width automation. Source is committed base
+  `fea272c4bf8f9f229d38e1748e5ed16177748268` plus uncommitted
+  native code; the probe remains in ignored scratch files.
+
+Next, redesign free-running new-shape rendering for both fixed CPU gates
+and resolve event-series preparation without worklet-time stalls. Keep
+generic hard-sync timing and legacy saw output unchanged. Do not publish
+release benchmarks or change any gate without explicit approval.
 
 ## Approval gate
 

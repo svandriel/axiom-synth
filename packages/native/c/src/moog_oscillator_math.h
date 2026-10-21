@@ -97,6 +97,33 @@ static inline double quadrant_cos(double t)
     }
 }
 
+static inline void quadrant_sincos(double t, double *cosine, double *sine)
+{
+    const double x = t * MOOG_OSC_TWO_OVER_PI;
+    const double n = floor(x + 0.5);
+    const double r = (x - n) * MOOG_OSC_HALF_PI;
+
+    switch (((int)n) & 3)
+    {
+    case 0:
+        *cosine = cos_poly(r);
+        *sine = sin_poly(r);
+        break;
+    case 1:
+        *cosine = -sin_poly(r);
+        *sine = cos_poly(r);
+        break;
+    case 2:
+        *cosine = -cos_poly(r);
+        *sine = -sin_poly(r);
+        break;
+    default:
+        *cosine = sin_poly(r);
+        *sine = -cos_poly(r);
+        break;
+    }
+}
+
 /* Frequency ratio for a detune in cents (e.g. +1200 cents -> 2.0). */
 static inline float cents_to_ratio(float cents)
 {
