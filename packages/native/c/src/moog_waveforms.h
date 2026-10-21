@@ -5,7 +5,6 @@
 #define MOOG_WAVEFORM_FOURIER_CUTOFF 0.45
 
 enum {
-  MOOG_WAVEFORM_DIRECT_HARMONIC_LIMIT = 8,
   MOOG_WAVEFORM_CACHE_HARMONIC_COUNT = 64,
   MOOG_WAVEFORM_SYNC_CORRECTION_RADIUS_SAMPLES = 84,
 };
@@ -22,8 +21,6 @@ typedef struct {
   double saw_weight;
   MoogWaveformFourierEdge edges[3];
   unsigned int edge_count;
-  double cosine_coefficients[MOOG_WAVEFORM_CACHE_HARMONIC_COUNT];
-  double sine_coefficients[MOOG_WAVEFORM_CACHE_HARMONIC_COUNT];
   double saw_half_cosine;
   double saw_half_sine;
   float p;

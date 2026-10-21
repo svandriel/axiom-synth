@@ -27,7 +27,6 @@
 #define MOOG_WAVEFORM_CYCLE_LENGTH 1.0
 #define MOOG_WAVEFORM_HALF 0.5
 #define MOOG_WAVEFORM_DUTY_INCREMENT 0.25f
-#define MOOG_WAVEFORM_HIGH_ACCURACY_DIRECT_MAX_HARMONICS 64U
 #define MOOG_WAVEFORM_MORPH_TRIANGLE_SHARKTOOTH 1.0f
 #define MOOG_WAVEFORM_MORPH_SHARK_SAW_MIDPOINT 1.5f
 #define MOOG_WAVEFORM_MORPH_SAW_SQUARE_MIDPOINT 2.5f
@@ -444,57 +443,11 @@ static void build_fourier_shape(MoogWaveformCache *shape, float p,
   }
 }
 
-/* Calculate sine and cosine weights for each harmonic from the edge jumps. */
-static void build_fourier_coefficients(MoogWaveformCache *shape) {
-  for (unsigned int harmonic = 1; harmonic <= shape->harmonic_count;
-       ++harmonic) {
-    const double omega = MOOG_OSC_TWO_PI * (double)harmonic;
-    double cosine_coefficient = 0.0;
-    double sine_coefficient = 0.0;
-
-    for (unsigned int edge_index = 0; edge_index < shape->edge_count;
-         ++edge_index) {
-      const MoogWaveformFourierEdge *edge = &shape->edges[edge_index];
-      const double angle = omega * edge->phase;
-      const double edge_cosine = cos(angle);
-      const double edge_sine = sin(angle);
-      cosine_coefficient -=
-        2.0 * edge->slope_jump * edge_cosine / (omega * omega);
-      sine_coefficient -= 2.0 * edge->slope_jump * edge_sine / (omega * omega);
-      cosine_coefficient -= 2.0 * edge->value_jump * edge_sine / omega;
-      sine_coefficient += 2.0 * edge->value_jump * edge_cosine / omega;
-    }
-
-    shape->cosine_coefficients[harmonic - 1] = cosine_coefficient;
-    shape->sine_coefficients[harmonic - 1] = sine_coefficient;
-  }
-}
-
 /* Precompute half-angle values used by the saw's harmonic formula. */
 static void build_saw_half_angle(MoogWaveformCache *shape, float p) {
   const double angle = MOOG_OSC_PI * (double)p;
   shape->saw_half_cosine = quadrant_cos(angle);
   shape->saw_half_sine = quadrant_cos(angle - MOOG_OSC_HALF_PI);
-}
-
-/* Identify selector positions that need a larger direct Fourier sum. */
-static int requires_high_accuracy_fourier(float waveform) {
-  return waveform == MOOG_WAVEFORM_MORPH_TRIANGLE_SHARKTOOTH ||
-         waveform == MOOG_WAVEFORM_MORPH_SHARK_SAW_MIDPOINT ||
-         waveform == MOOG_WAVEFORM_MORPH_SAW_SQUARE_MIDPOINT ||
-         waveform == MOOG_WAVEFORM_MORPH_SQUARE_WIDE_MIDPOINT ||
-         waveform == MOOG_WAVEFORM_ANCHOR_SQUARE ||
-         waveform == MOOG_WAVEFORM_MORPH_SQUARE_WIDE_END ||
-         waveform == MOOG_WAVEFORM_MORPH_WIDE_NARROW_MIDPOINT ||
-         waveform == MOOG_WAVEFORM_MAX;
-}
-
-/* Choose direct harmonic summation when its cost and accuracy are suitable. */
-static int uses_direct_fourier(const MoogWaveformCache *cache) {
-  return cache->harmonic_count <= MOOG_WAVEFORM_DIRECT_HARMONIC_LIMIT ||
-         (cache->harmonic_count <=
-            MOOG_WAVEFORM_HIGH_ACCURACY_DIRECT_MAX_HARMONICS &&
-          requires_high_accuracy_fourier(cache->waveform));
 }
 
 /* Calculate one Fourier harmonic of the phase-distorted saw. */
@@ -842,15 +795,9 @@ void moog_waveform_cache_prepare(MoogWaveformCache *cache, float frequency_hz,
       MOOG_WAVEFORM_EDGE_CORRECTION_RADIUS_SAMPLES * phase_increment;
     cache->harmonic_count_initialized = 1;
   }
-  if ((shape_changed || increment_changed) && !cache->harmonic_count_fallback &&
-      cache->harmonic_count <= MOOG_WAVEFORM_CACHE_HARMONIC_COUNT &&
-      uses_direct_fourier(cache)) {
-    build_fourier_coefficients(cache);
-  }
 }
 
-/* Evaluate a prepared cache using Fourier harmonics or local edge corrections.
- */
+/* Evaluate a prepared waveform with local edge corrections. */
 float moog_waveform_evaluate_prepared(double phase,
                                       const MoogWaveformCache *cache) {
   if (cache == NULL || !cache->initialized ||
@@ -867,67 +814,8 @@ float moog_waveform_evaluate_prepared(double phase,
   if (harmonic_count == 0)
     return (float)cache->dc;
 
-  const int use_fourier = uses_direct_fourier(cache);
-  if (!use_fourier || harmonic_count > MOOG_WAVEFORM_CACHE_HARMONIC_COUNT) {
-    return evaluate_bandlimited_raw(phase, p, waveform) +
-           (float)edge_bandlimit_correction(phase, cache);
-  }
-
-  const double normalized_phase =
-    phase < 0.0 || phase >= MOOG_WAVEFORM_CYCLE_LENGTH ? wrap_phase(phase)
-                                                       : phase;
-  const double phase_angle = MOOG_OSC_TWO_PI * normalized_phase;
-  double phase_cosine_step;
-  double phase_sine_step;
-  quadrant_sincos(phase_angle, &phase_cosine_step, &phase_sine_step);
-  double phase_cosine = 1.0;
-  double phase_sine = 0.0;
-
-  double saw_phase_cosine_step = 0.0;
-  double saw_phase_sine_step = 0.0;
-  double saw_half_cosine_step = 0.0;
-  double saw_half_sine_step = 0.0;
-  if (cache->saw_weight != 0.0) {
-    const double saw_phase_angle = phase_angle - MOOG_OSC_PI * (double)p;
-    quadrant_sincos(saw_phase_angle, &saw_phase_cosine_step,
-                    &saw_phase_sine_step);
-    saw_half_cosine_step = cache->saw_half_cosine;
-    saw_half_sine_step = cache->saw_half_sine;
-  }
-  double saw_phase_cosine = 1.0;
-  double saw_phase_sine = 0.0;
-  double saw_half_cosine = 1.0;
-  double saw_half_sine = 0.0;
-  double output = cache->dc;
-
-  for (unsigned int harmonic = 1; harmonic <= harmonic_count; ++harmonic) {
-    const double previous_phase_cosine = phase_cosine;
-    const double previous_phase_sine = phase_sine;
-    phase_cosine = previous_phase_cosine * phase_cosine_step -
-                   previous_phase_sine * phase_sine_step;
-    phase_sine = previous_phase_sine * phase_cosine_step +
-                 previous_phase_cosine * phase_sine_step;
-    output += cache->cosine_coefficients[harmonic - 1] * phase_cosine +
-              cache->sine_coefficients[harmonic - 1] * phase_sine;
-
-    if (cache->saw_weight != 0.0) {
-      const double previous_saw_phase_cosine = saw_phase_cosine;
-      const double previous_saw_phase_sine = saw_phase_sine;
-      const double previous_saw_half_cosine = saw_half_cosine;
-      const double previous_saw_half_sine = saw_half_sine;
-      saw_phase_cosine = previous_saw_phase_cosine * saw_phase_cosine_step -
-                         previous_saw_phase_sine * saw_phase_sine_step;
-      saw_phase_sine = previous_saw_phase_sine * saw_phase_cosine_step +
-                       previous_saw_phase_cosine * saw_phase_sine_step;
-      saw_half_cosine = previous_saw_half_cosine * saw_half_cosine_step -
-                        previous_saw_half_sine * saw_half_sine_step;
-      saw_half_sine = previous_saw_half_sine * saw_half_cosine_step +
-                      previous_saw_half_cosine * saw_half_sine_step;
-      output += cache->saw_weight *
-                saw_harmonic(p, harmonic, saw_phase_sine, saw_half_cosine);
-    }
-  }
-  return (float)output;
+  return evaluate_bandlimited_raw(phase, p, waveform) +
+         (float)edge_bandlimit_correction(phase, cache);
 }
 
 /* Prepare a reusable cache if needed, then evaluate the band-limited shape. */

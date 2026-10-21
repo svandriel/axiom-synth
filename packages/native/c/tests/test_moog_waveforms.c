@@ -12,6 +12,7 @@ static const float TEST_FOURIER_FREQUENCY_HZ = (0.9924f - 0.5f) / 0.00002151f;
 static const double TEST_FOURIER_PHASE_INCREMENT = 0.2;
 static const double TEST_FOURIER_TWO_PI = 6.28318530717958647692;
 static const double TEST_FOURIER_PI = 3.14159265358979323846;
+static const double TEST_EDGE_CORRECTION_FOURIER_TOLERANCE = 0.01;
 
 static void test_waveform_anchor_values(void) {
   assert(moog_waveform_triangle(0.0, TEST_PHASE_FIT) == -1.0f);
@@ -210,7 +211,7 @@ static double expected_bandlimited_pulse(double phase, double duty) {
   return expected;
 }
 
-static void test_bandlimited_fourier_coefficients(void) {
+static void test_edge_correction_approximates_low_harmonic_waveforms(void) {
   const double phases[] = {0.0, 0.071, 0.25, 0.371, 0.5, 0.75, 0.937};
   const float waveforms[] = {0.0f, 3.0f, 4.0f, 5.0f};
   const double duties[] = {0.0, 0.5, 0.75, 0.25};
@@ -226,7 +227,8 @@ static void test_bandlimited_fourier_coefficients(void) {
     const float triangle = moog_waveform_evaluate_bandlimited(
       phase, TEST_FOURIER_FREQUENCY_HZ, waveforms[0],
       TEST_FOURIER_PHASE_INCREMENT);
-    assert(fabs((double)triangle - expected_triangle) < 2e-5);
+    assert(fabs((double)triangle - expected_triangle) <
+           TEST_EDGE_CORRECTION_FOURIER_TOLERANCE);
 
     for (unsigned int waveform_index = 1;
          waveform_index < sizeof(waveforms) / sizeof(waveforms[0]);
@@ -236,7 +238,8 @@ static void test_bandlimited_fourier_coefficients(void) {
         TEST_FOURIER_PHASE_INCREMENT);
       const double expected =
         expected_bandlimited_pulse(phase, duties[waveform_index]);
-      assert(fabs((double)actual - expected) < 2e-5);
+      assert(fabs((double)actual - expected) <
+             TEST_EDGE_CORRECTION_FOURIER_TOLERANCE);
     }
   }
 }
@@ -270,7 +273,7 @@ int main(void) {
   test_waveform_value_sanitization();
   test_morph_endpoints_and_pulse_midpoints();
   test_new_shapes_are_finite_near_nyquist();
-  test_bandlimited_fourier_coefficients();
+  test_edge_correction_approximates_low_harmonic_waveforms();
   test_sync_curvature_correction_symmetry_and_scaling();
   puts("all waveform tests passed");
   return 0;
