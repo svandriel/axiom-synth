@@ -746,7 +746,7 @@ static double edge_bandlimit_correction(double phase,
   return correction;
 }
 
-/* Refresh cached shape and harmonic data only when inputs have changed. */
+/* Rebuild frequency-dependent shape data only for saw-bearing waveforms. */
 void moog_waveform_cache_prepare(MoogWaveformCache *cache, float frequency_hz,
                                  float waveform, double phase_increment) {
   if (cache == NULL || isnan(waveform) || waveform == MOOG_WAVEFORM_SAW ||
@@ -759,9 +759,9 @@ void moog_waveform_cache_prepare(MoogWaveformCache *cache, float frequency_hz,
   else if (waveform > MOOG_WAVEFORM_MAX)
     waveform = MOOG_WAVEFORM_MAX;
 
-  const int shape_changed = !cache->initialized ||
-                            cache->frequency_hz != frequency_hz ||
-                            cache->waveform != waveform;
+  const int shape_changed =
+    !cache->initialized || cache->waveform != waveform ||
+    (cache->saw_weight != 0.0 && cache->frequency_hz != frequency_hz);
   if (shape_changed) {
     const float p =
       clamp(moog_waveform_p(frequency_hz), MOOG_WAVEFORM_P_EPSILON,

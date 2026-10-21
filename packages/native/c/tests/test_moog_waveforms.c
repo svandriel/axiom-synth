@@ -198,6 +198,56 @@ static void test_new_shapes_are_finite_near_nyquist(void) {
   }
 }
 
+static void test_frequency_sweep_rebuilds_only_saw_dependent_shape_data(void) {
+  const float start_frequency = 440.0f;
+  const float next_frequency = 880.0f;
+  const double phase_increment = 0.01;
+  const float frequency_independent_waveforms[] = {
+    0.0f, 0.5f, 1.0f, 3.0f, 3.5f, 4.0f, 4.5f, 5.0f,
+  };
+  const double phases[] = {0.01, 0.17, 0.5, 0.73};
+
+  for (unsigned int waveform_index = 0;
+       waveform_index < sizeof(frequency_independent_waveforms) /
+                          sizeof(frequency_independent_waveforms[0]);
+       ++waveform_index) {
+    const float waveform = frequency_independent_waveforms[waveform_index];
+    MoogWaveformCache cache = {0};
+    MoogWaveformCache reference = {0};
+    moog_waveform_cache_prepare(&cache, start_frequency, waveform,
+                                phase_increment);
+
+    const float cached_p = cache.p;
+    const double cached_half_cosine = cache.saw_half_cosine;
+    const double cached_half_sine = cache.saw_half_sine;
+    moog_waveform_cache_prepare(&cache, next_frequency, waveform,
+                                phase_increment);
+
+    assert(cache.p == cached_p);
+    assert(cache.saw_half_cosine == cached_half_cosine);
+    assert(cache.saw_half_sine == cached_half_sine);
+    moog_waveform_cache_prepare(&reference, next_frequency, waveform,
+                                phase_increment);
+    for (unsigned int phase_index = 0;
+         phase_index < sizeof(phases) / sizeof(phases[0]); ++phase_index) {
+      const float actual =
+        moog_waveform_evaluate_prepared(phases[phase_index], &cache);
+      const float expected =
+        moog_waveform_evaluate_prepared(phases[phase_index], &reference);
+      assert(fabsf(actual - expected) < TEST_TOLERANCE);
+    }
+  }
+
+  MoogWaveformCache saw_cache = {0};
+  moog_waveform_cache_prepare(&saw_cache, start_frequency, 1.5f,
+                              phase_increment);
+  const float start_p = saw_cache.p;
+  moog_waveform_cache_prepare(&saw_cache, next_frequency, 1.5f,
+                              phase_increment);
+  assert(saw_cache.p == moog_waveform_p(next_frequency));
+  assert(saw_cache.p != start_p);
+}
+
 static double expected_bandlimited_pulse(double phase, double duty) {
   const double edge_phase = 1.0 - duty;
   double expected = 2.0 * duty - 1.0;
@@ -273,6 +323,7 @@ int main(void) {
   test_waveform_value_sanitization();
   test_morph_endpoints_and_pulse_midpoints();
   test_new_shapes_are_finite_near_nyquist();
+  test_frequency_sweep_rebuilds_only_saw_dependent_shape_data();
   test_edge_correction_approximates_low_harmonic_waveforms();
   test_sync_curvature_correction_symmetry_and_scaling();
   puts("all waveform tests passed");

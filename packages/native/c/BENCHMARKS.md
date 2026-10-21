@@ -179,9 +179,10 @@ Each experiment changed only its target logic, ran `make -C packages/native/c
 test`, and measured focused cases against the baseline above. Native C tests
 passed for all three variants. Simplification 1 has since been applied more
 broadly: prepared-waveform evaluation no longer uses direct Fourier at any
-harmonic count. The cap-8 measurements below match the current edge-correction
-path at 440 Hz, but do not measure the newly affected high-frequency cases.
-Simplifications 2 and 3 remain experiments and are not in the current code.
+harmonic count. Simplification 2 is now applied. Its updated measurements
+compare the committed code before this optimization with the current build,
+using the same focused benchmark command. Simplification 3 remains an
+experiment and is not in the current code.
 
 **1. Cap direct Fourier sums at eight harmonics.** Removed the selector-specific
 high-accuracy exception, which previously allowed up to 64 harmonics. For
@@ -201,21 +202,21 @@ and 2.5.
 |  2.5, sweep, sync off |            47.4 |         50.0 |          54.1 |       54.8 |
 
 **2. Skip frequency-driven shape rebuilds when the cached shape has no saw
-component.** Harmonic limit and correction scaling still update per sample;
-frequency-independent edge data no longer rebuilds. Under pitch sweep without
-sync, eight non-saw selectors improved 31–38% native and 21–27% WASM.
-Representative best ns/sample:
+component (applied).** Harmonic limit and correction scaling still update per
+sample; frequency-independent edge data and saw-fit values are not rebuilt.
+Under pitch sweep without sync, eight non-saw selectors improved 32–38% native
+and 21–27% WASM. Values are best ns/sample:
 
-| Selector | Native baseline | Native optimized | WASM baseline | WASM optimized |
-| -------: | --------------: | ---------------: | ------------: | -------------: |
-|      0.0 |            34.9 |             24.1 |          38.6 |           30.4 |
-|      0.5 |            39.4 |             26.1 |          44.2 |           33.6 |
-|      1.0 |            43.2 |             29.3 |          46.5 |           35.0 |
-|      3.0 |            36.0 |             22.5 |          39.6 |           29.4 |
-|      3.5 |            35.9 |             22.4 |          40.2 |           29.3 |
-|      4.0 |            35.9 |             22.6 |          40.1 |           29.2 |
-|      4.5 |            36.3 |             22.6 |          39.5 |           29.3 |
-|      5.0 |            35.8 |             22.6 |          39.6 |           29.3 |
+| Selector | Native before | Native applied | WASM before | WASM applied |
+| -------: | ------------: | -------------: | ----------: | -----------: |
+|      0.0 |          33.7 |           22.8 |        36.9 |         29.1 |
+|      0.5 |          38.1 |           24.9 |        43.2 |         32.3 |
+|      1.0 |          41.0 |           27.8 |        45.6 |         34.5 |
+|      3.0 |          34.2 |           21.7 |        38.3 |         28.4 |
+|      3.5 |          34.2 |           21.7 |        38.8 |         28.5 |
+|      4.0 |          34.5 |           21.7 |        38.6 |         28.5 |
+|      4.5 |          34.8 |           21.6 |        38.5 |         28.5 |
+|      5.0 |          34.4 |           21.7 |        38.3 |         28.6 |
 
 This change is semantics-preserving for those waveforms because their cached
 edge shape does not depend on the saw phase-fit parameter. It does not apply to
