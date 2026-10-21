@@ -181,8 +181,8 @@ passed for all three variants. Simplification 1 has since been applied more
 broadly: prepared-waveform evaluation no longer uses direct Fourier at any
 harmonic count. Simplification 2 is now applied. Its updated measurements
 compare the committed code before this optimization with the current build,
-using the same focused benchmark command. Simplification 3 remains an
-experiment and is not in the current code.
+using the same focused benchmark command. Simplification 3 is now applied too;
+its updated measurements compare matching pre-cap and capped builds.
 
 **1. Cap direct Fourier sums at eight harmonics.** Removed the selector-specific
 high-accuracy exception, which previously allowed up to 64 harmonics. For
@@ -222,20 +222,18 @@ This change is semantics-preserving for those waveforms because their cached
 edge shape does not depend on the saw phase-fit parameter. It does not apply to
 shapes with a nonzero saw component, including selectors between 1 and 3.
 
-**3. Cap periodic sync reconstruction at eight harmonics.** Kept the periodic
-series path but limited its per-sample sum from up to 76 to eight terms. For
-fixed 440 Hz and 880 Hz sync, selector 1.5 improved from 312.5 to 265.4
-ns/sample native and 333.5 to 289.5 WASM; selector 2.5 improved from 311.9 to
-268.7 native and 333.5 to 290.3 WASM. Triangle and square selectors improved
-from 86.9/87.8 to 53.8/54.3 native and 114.2/113.0 to 72.2/67.6 WASM. This
-reduces periodic-sync spectral accuracy by omitting harmonics above eight.
+**3. Cap periodic sync reconstruction at eight harmonics (applied).** The
+periodic series still runs, but its per-sample sum is capped at eight terms
+instead of up to 76. For fixed 440 Hz and 880 Hz sync, the four representative
+selectors improved 14–39% native and 12–39% WASM. This reduces sync spectral
+accuracy by omitting harmonics above eight. Values are best ns/sample:
 
-|         Selector | Native baseline | Native cap 8 | WASM baseline | WASM cap 8 |
-| ---------------: | --------------: | -----------: | ------------: | ---------: |
-| 0.0, sync 880 Hz |            86.9 |         53.8 |         114.2 |       72.2 |
-| 1.5, sync 880 Hz |           312.5 |        265.4 |         333.5 |      289.5 |
-| 2.5, sync 880 Hz |           311.9 |        268.7 |         333.5 |      290.3 |
-| 3.0, sync 880 Hz |            87.8 |         54.3 |         113.0 |       67.6 |
+| Selector | Native before | Native cap 8 | WASM before | WASM cap 8 |
+| -------: | ------------: | -----------: | ----------: | ---------: |
+|      0.0 |          85.8 |         53.7 |       112.9 |       69.1 |
+|      1.5 |         308.5 |        265.3 |       327.0 |      288.3 |
+|      2.5 |         307.7 |        265.7 |       326.5 |      287.0 |
+|      3.0 |          87.5 |         53.4 |       109.5 |       70.0 |
 
 The benchmark tests one change at a time. It does not measure interactions
 between simplifications; retest after selecting any changes for production.

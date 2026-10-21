@@ -1,5 +1,6 @@
 #include "moog_oscillator.h"
 #include "moog_saw.h"
+#include "../src/moog_sync_series.h"
 #include "../src/moog_waveforms.h"
 
 #include <assert.h>
@@ -59,6 +60,28 @@ static void test_generic_instance_state_isolation(void) {
   moog_oscillator_destroy(first);
   moog_oscillator_destroy(second);
   test_rng_enabled = 0;
+}
+
+static void test_periodic_sync_series_harmonic_cap(void) {
+  enum {
+    EXPECTED_HARMONIC_CAP = 8,
+    HIGH_PERIOD_SAMPLES = 100,
+    LOW_PERIOD_SAMPLES = 16,
+    LOW_PERIOD_HARMONICS = 7,
+  };
+  const float frequency_hz = 440.0f;
+  const float waveform = 0.5f;
+  const double phase_increment = 0.01;
+  MoogSyncSeries high_period_series = {0};
+  MoogSyncSeries low_period_series = {0};
+
+  assert(moog_sync_series_prepare(&high_period_series, frequency_hz, waveform,
+                                  phase_increment, HIGH_PERIOD_SAMPLES));
+  assert(high_period_series.harmonic_count == EXPECTED_HARMONIC_CAP);
+
+  assert(moog_sync_series_prepare(&low_period_series, frequency_hz, waveform,
+                                  phase_increment, LOW_PERIOD_SAMPLES));
+  assert(low_period_series.harmonic_count == LOW_PERIOD_HARMONICS);
 }
 
 static void test_generic_set_frequency_and_reset(void) {
@@ -778,6 +801,7 @@ static void test_periodic_sync_stops_predicting_after_sync_disappears(void) {
 int main(void) {
   test_waveform_automation_preserves_phase();
   test_generic_instance_state_isolation();
+  test_periodic_sync_series_harmonic_cap();
   test_generic_set_frequency_and_reset();
   test_generic_process_null_waveform_uses_saw();
   test_uniform_saw_matches_per_sample_path_across_blocks();

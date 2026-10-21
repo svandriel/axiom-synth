@@ -61,6 +61,7 @@ static void insert_breakpoint(double *breakpoints, unsigned int *count,
   ++*count;
 }
 
+/* Accumulate the mean and Fourier coefficients over one quadrature segment. */
 static void integrate_segment(MoogSyncSeries *series, double left, double right,
                               float frequency_hz, float waveform,
                               double phase_increment) {
@@ -93,6 +94,7 @@ static void integrate_segment(MoogSyncSeries *series, double left, double right,
   }
 }
 
+/* Prepare a periodic Fourier approximation of a repeated sync cycle. */
 int moog_sync_series_prepare(MoogSyncSeries *series, float frequency_hz,
                              float waveform, double phase_increment,
                              double period_samples) {
@@ -110,10 +112,11 @@ int moog_sync_series_prepare(MoogSyncSeries *series, float frequency_hz,
   moog_waveform_cache_prepare(&shape, frequency_hz, waveform, phase_increment);
   *series = (MoogSyncSeries){0};
   series->period_samples = period_samples;
-  series->harmonic_count =
+  const unsigned int requested_harmonics =
     (unsigned int)floor(MOOG_WAVEFORM_FOURIER_CUTOFF * period_samples);
-  if (series->harmonic_count > MOOG_SYNC_SERIES_MAX_HARMONICS)
-    return 0;
+  series->harmonic_count = requested_harmonics < MOOG_SYNC_SERIES_MAX_HARMONICS
+                             ? requested_harmonics
+                             : MOOG_SYNC_SERIES_MAX_HARMONICS;
 
   double breakpoints[MOOG_SYNC_SERIES_MAX_BREAKPOINTS] = {0.0, period_samples};
   unsigned int count = 2;
@@ -141,6 +144,7 @@ int moog_sync_series_prepare(MoogSyncSeries *series, float frequency_hz,
   return 1;
 }
 
+/* Reconstruct the truncated periodic series at a sample offset. */
 float moog_sync_series_evaluate(const MoogSyncSeries *series,
                                 double samples_since_event) {
   double position = fmod(samples_since_event, series->period_samples);
