@@ -151,13 +151,13 @@ export class UnisonOscillator implements Destroyable {
   /**
    * Start a new note generation, stopping the previous one first.
    */
-  start(noteHz: number, now: number): void {
+  start(now: number): void {
     if (this.destroyed) return;
     this.stop();
 
     const voices = this.voicesValue;
     if (voices === 1) {
-      this.startDirect(noteHz, now);
+      this.startDirect(now);
       return;
     }
 
@@ -185,7 +185,7 @@ export class UnisonOscillator implements Destroyable {
         this.detuneSource.connect(oscillator.detune);
         path.arm(oscillator);
       });
-      sources.forEach(({ oscillator }) => oscillator.start(noteHz, now));
+      sources.forEach(({ oscillator }) => oscillator.start(now));
     } catch (error) {
       this.finishBundle(bundle);
       this.rollbackPooled(lease, sources);
@@ -273,7 +273,7 @@ export class UnisonOscillator implements Destroyable {
   /**
    * Start the lightweight single-oscillator path.
    */
-  private startDirect(noteHz: number, now: number): void {
+  private startDirect(now: number): void {
     const oscillator = this.oscillatorFactory(this.ctxt);
     let bundle: VoiceBundle;
     const direct = {
@@ -300,7 +300,7 @@ export class UnisonOscillator implements Destroyable {
       this.frequencySource.connect(oscillator.frequency);
       this.detuneSource.connect(oscillator.detune);
       oscillator.connect(this.outputGain);
-      oscillator.start(noteHz, now);
+      oscillator.start(now);
     } catch (error) {
       this.finishBundle(bundle);
       direct.endedSubscription.unsubscribe();

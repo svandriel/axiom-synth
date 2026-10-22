@@ -14,11 +14,15 @@
 
 ### 2) Formatting and Linting
 
-- Formatter: Prettier 3.9.6 + `prettier-plugin-tailwindcss` — `.prettierrc.yaml`
+- Formatter: Prettier 3.9.6 + `prettier-plugin-tailwindcss` for app/workspace
+  files, and clang-format for native C — `.prettierrc.yaml`, `.clang-format`
 - Tooling scope: prettier/husky/lint-staged are **root-only** (root `package.json`); packages ship no prettier config or deps.
 - Linter: none (ESLint not configured). Type-check acts as the static quality gate via `vue-tsc`.
 - Most relevant enforced rules: `singleQuote: true`, `trailingComma: 'all'`, `arrowParens: 'avoid'`, `printWidth: 80`, and Tailwind class sorting (plugin reads `./app/src/style.css`).
-- Run commands: `pnpm format` (`prettier --write .`), `pnpm lint` (`prettier --check .`). Pre-commit automatically runs `pnpm exec lint-staged` which prettier-formats staged `.ts/.js/.vue/.css/.md/.json/.yml/.yaml` (`.lintstagedrc.json`).
+- Run commands: `pnpm format` formats all supported files, `pnpm lint` checks
+  Prettier and clang-format. Pre-commit runs `pnpm exec lint-staged`, which
+  formats staged `.ts/.js/.vue/.css/.md/.json/.yml/.yaml` with Prettier and
+  `.c`/`.h` files with clang-format (`.lintstagedrc.json`).
 
 TypeScript flags (in `app/tsconfig.app.json`): `strict: true`, `noUncheckedIndexedAccess: true`, `noUnusedLocals: true`, `noUnusedParameters: true`, `erasableSyntaxOnly: true`, `noFallthroughCasesInSwitch: true`. `erasableSyntaxOnly` forbids enums and namespaces — use string-literal unions and plain aliases.
 
@@ -36,18 +40,25 @@ TypeScript flags (in `app/tsconfig.app.json`): `strict: true`, `noUncheckedIndex
 
 ### 5) Testing Conventions
 
-- Test framework: Vitest, used by `@axiom/audio-engine`.
+- Test frameworks: Vitest for workspace JavaScript packages, plus native C unit
+  tests in `@axiom/native`; browser E2E uses Playwright and lives in the app
+  package (`app/e2e/`, `app/playwright.config.ts`).
 - Test file naming/location rule: tests sit beside the module under test in
   `packages/audio-engine/src/engine/` and use the `<module>.test.ts` naming
-  pattern.
-- Test command: `pnpm test` runs the audio-engine Vitest suite through the root
-  workspace script.
+  pattern; app E2E specs live in `app/e2e/` as `<feature>.spec.ts`.
+- Test command: `pnpm test` runs all tests through the root workspace script
+  (`pnpm -r --parallel test`): JavaScript package tests, native C tests, and the
+  Playwright browser E2E suite; `pnpm --filter @axiom/app test:e2e` runs only the
+  E2E suite against the app dev server. Build the WASM module (`pnpm build`)
+  before running E2E on a clean checkout.
 - Mocking strategy norm: deterministic engine graph tests use focused fake Web
   Audio nodes and contexts; tests do not require a real browser.
 - Coverage expectation: no coverage threshold is configured. New features and
   behavior changes require automated tests.
-- CI gates: `.github/workflows/test.yml` runs `pnpm test`, `pnpm build`, and
-  `pnpm lint` after frozen dependency installation.
+- CI gates: `.github/workflows/test.yml` builds first, installs the Playwright
+  browser, then runs `pnpm test` (which includes the E2E suite) and `pnpm lint`
+  after frozen dependency installation. Build-capable workflows set up
+  Emscripten SDK `6.0.12` for `emcc`.
 
 ### 6) Evidence
 

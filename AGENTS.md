@@ -10,12 +10,19 @@ Use the ultracave skill.
 
 - `pnpm dev` — Vite dev server on port 4000
 - `pnpm build` — `pnpm -r --sort build` (builds all workspace packages)
-- `pnpm test` — Vitest tests for `@axiom/audio-engine` and `@axiom/axiom-synth`
-- `pnpm lint` — `prettier --check .`
-- `pnpm format` — `prettier --write .`
+- `pnpm test` — all tests: JavaScript packages, native C, and Playwright browser E2E
+- `pnpm --filter @axiom/app test:e2e` — Playwright browser E2E only (starts the app dev server)
+- `pnpm lint` — check Prettier and clang-format output
+- `pnpm format` — format with Prettier and clang-format
 
 Linting runs in the pre-commit hook. New features and behavior changes require
-automated tests. GitHub Actions runs `pnpm test`, `pnpm build`, and `pnpm lint`.
+automated tests. `pnpm build` compiles the native WebAssembly module and needs
+Emscripten (`emcc`) on `PATH`; the E2E suite also needs a built WASM module, so
+run `pnpm build` before `pnpm test` on a clean checkout. GitHub Actions runs
+`pnpm build`, `pnpm test` (which includes the Playwright E2E suite), and
+`pnpm lint`; build workflows install Emscripten SDK `6.0.12`. CI installs
+`clang-format` 18 for native C formatting checks. Use clang-format 18 locally
+as well; newer versions can disagree on C formatting.
 
 ## Way of working
 
@@ -24,6 +31,13 @@ automated tests. GitHub Actions runs `pnpm test`, `pnpm build`, and `pnpm lint`.
 - No magic numbers: every literal with meaning gets a named constant, so
   intent is self-documenting (e.g. `1 / OSCILLATOR_COUNT` in `axiom-voice.ts`).
 - Never commit files under `.superpowers/`; treat them as local agent artifacts.
+
+## Markdown math
+
+- Write mathematical notation in Markdown with KaTeX delimiters: `$...$` inline
+  and `$$...$$` for display equations.
+- Use backticks and fenced blocks for code, identifiers, and literal output,
+  not for mathematical expressions.
 
 ## Repo structure
 
@@ -36,6 +50,7 @@ pnpm workspaces monorepo on branch-based workflow (PRs to `main`):
   internal-only, consumed as source (no build output)
 - `packages/audio-testing/` — fake Web Audio context/nodes shared by tests
   (`@axiom/audio-testing`), internal-only
+- `packages/native/` — native C and WebAssembly audio processor
 - Root owns prettier/husky/lint-staged; packages ship no prettier tooling
 
 ## Codebase docs

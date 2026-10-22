@@ -8,7 +8,7 @@ export interface Oscillator extends Destroyable {
   readonly gain: AudioParam;
   connect(destination: AudioNode | AudioParam): void;
   disconnect(destination?: AudioNode | AudioParam | null): void;
-  start(noteHz: number, now: number): void;
+  start(now: number): void;
   stop(time?: number): void;
   onEnded(subscriber: () => void): OscillatorEndSubscription;
 }

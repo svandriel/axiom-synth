@@ -56,7 +56,7 @@ export class TestOscillator implements Oscillator {
     );
   }
 
-  start(_noteHz: number, now: number): void {
+  start(now: number): void {
     if (this.throwOnStart) throw new Error('TestOscillator start failed');
     this.node.start(now);
     if (this.endSynchronouslyOnStart) this.node.end();
