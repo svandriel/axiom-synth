@@ -4,10 +4,6 @@ import type {
   WorkletMessage,
 } from '../shared/worklet-messages';
 
-export interface MoogOscillatorOptions {
-  // empty for now
-}
-
 export class MoogOscillatorWorkletNode {
   private readonly node: AudioWorkletNode;
   private destroyed = false;
@@ -16,13 +12,9 @@ export class MoogOscillatorWorkletNode {
   private ended = false;
   onended: (() => void) | null = null;
 
-  constructor(
-    ctxt: AudioContext,
-    wasmModule: WebAssembly.Module,
-    _options: Partial<MoogOscillatorOptions> = {},
-  ) {
-    this.node = new AudioWorkletNode(ctxt, 'saw-processor', {
-      numberOfInputs: 0,
+  constructor(ctxt: AudioContext, wasmModule: WebAssembly.Module) {
+    this.node = new AudioWorkletNode(ctxt, 'moog-oscillator-processor', {
+      numberOfInputs: 1,
       numberOfOutputs: 1,
       outputChannelCount: [1],
       parameterData: {},
@@ -63,10 +55,18 @@ export class MoogOscillatorWorkletNode {
     return this.node.parameters.get('detune')!;
   }
 
+  get waveform(): AudioParam {
+    return this.node.parameters.get('waveform')!;
+  }
+
   connect(destination: AudioNode): void;
   connect(destination: AudioParam): void;
   connect(destination: AudioParam | AudioNode): void {
     this.node.connect(destination as AudioNode);
+  }
+
+  get input(): AudioNode {
+    return this.node;
   }
 
   disconnect(): void;

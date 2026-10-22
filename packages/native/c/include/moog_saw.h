@@ -9,6 +9,8 @@ extern "C" {
 
 typedef struct MoogSaw MoogSaw;
 
+/* Saw-only compatibility API. Waveform selection is available via
+ * MoogOscillator. */
 void moog_saw_init(void);
 
 MoogSaw *moog_saw_create(double sample_rate);

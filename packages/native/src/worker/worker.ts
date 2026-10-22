@@ -13,4 +13,4 @@ if (typeof globalThis.location?.href !== 'string') {
     writable: true,
   });
 }
-registerProcessor('saw-processor', MoogOscillatorProcessor);
+registerProcessor('moog-oscillator-processor', MoogOscillatorProcessor);

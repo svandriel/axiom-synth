@@ -11,6 +11,7 @@ export class MoogOscillator implements Oscillator {
   private readonly outputGain: GainNode;
   private readonly frequencySource: ConstantSourceNode;
   private readonly detuneSource: ConstantSourceNode;
+  private readonly waveformSource: ConstantSourceNode;
   private readonly activeNodes: Set<MoogOscillatorWorkletNode> = new Set();
   private readonly stoppedNodes: Set<MoogOscillatorWorkletNode> = new Set();
   private readonly endedSubscribers = new Set<() => void>();
@@ -32,6 +33,10 @@ export class MoogOscillator implements Oscillator {
     this.detuneSource = ctxt.createConstantSource();
     this.detuneSource.offset.value = 0;
     this.detuneSource.start();
+
+    this.waveformSource = ctxt.createConstantSource();
+    this.waveformSource.offset.value = 2.5; // Halfway
+    this.waveformSource.start();
   }
 
   get waveform(): WaveFormType {
@@ -51,6 +56,11 @@ export class MoogOscillator implements Oscillator {
   /** Modulation-input jack only; never schedule on it directly. */
   get detune(): AudioParam {
     return this.detuneSource.offset;
+  }
+
+  /** Modulation-input jack only; never schedule on it directly. */
+  get waveformType(): AudioParam {
+    return this.waveformSource.offset;
   }
 
   /** Modulation-input jack only; never schedule on it directly. */
@@ -136,6 +146,8 @@ export class MoogOscillator implements Oscillator {
     this.frequencySource.stop();
     this.detuneSource.disconnect();
     this.detuneSource.stop();
+    this.waveformSource.disconnect();
+    this.waveformSource.stop();
     this.outputGain.disconnect();
   }
 
@@ -147,6 +159,7 @@ export class MoogOscillator implements Oscillator {
     osc.frequency.setValueAtTime(0, now);
     this.frequencySource.connect(osc.frequency);
     this.detuneSource.connect(osc.detune);
+    this.waveformSource.connect(osc.waveform);
     osc.onended = () => {
       console.log('[moog-oscillator] onended');
       this.frequencySource.disconnect(osc.frequency);

@@ -1,4 +1,4 @@
-import Module, { type MainModule } from '../../c/dist/wasm/moog_saw';
+import Module, { type MainModule } from '../../c/dist/wasm/moog_oscillator';
 
 let mainModulePromise: Promise<MainModule> | undefined;
 
@@ -26,7 +26,7 @@ function createMainModule(wasmModule: WebAssembly.Module): Promise<MainModule> {
       return {};
     },
   }).then(mainModule => {
-    mainModule._moog_saw_wasm_init();
+    mainModule._moog_oscillator_wasm_init();
     return mainModule;
   });
 }

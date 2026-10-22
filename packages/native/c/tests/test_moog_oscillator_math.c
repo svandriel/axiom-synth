@@ -1,4 +1,4 @@
-#include "moog_saw_math.h"
+#include "moog_oscillator_math.h"
 
 #include <assert.h>
 #include <math.h>
@@ -18,16 +18,22 @@ static void test_wrap_phase(void) {
   }
 }
 
+static void test_clamp(void) {
+  assert(clamp(-1.0f, 0.0f, 1.0f) == 0.0f);
+  assert(clamp(0.5f, 0.0f, 1.0f) == 0.5f);
+  assert(clamp(2.0f, 0.0f, 1.0f) == 1.0f);
+}
+
 static void test_cos_poly(void) {
   for (int k = 0; k <= 1000; ++k) {
-    const double r = MOOG_SAW_PI / 4.0 * ((double)k / 1000.0 * 2.0 - 1.0);
+    const double r = MOOG_OSC_PI / 4.0 * ((double)k / 1000.0 * 2.0 - 1.0);
     assert(fabs(cos_poly(r) - cos(r)) < 1e-7);
   }
 }
 
 static void test_sin_poly(void) {
   for (int k = 0; k <= 1000; ++k) {
-    const double r = MOOG_SAW_PI / 4.0 * ((double)k / 1000.0 * 2.0 - 1.0);
+    const double r = MOOG_OSC_PI / 4.0 * ((double)k / 1000.0 * 2.0 - 1.0);
     assert(fabs(sin_poly(r) - sin(r)) < 1e-8);
   }
 }
@@ -40,6 +46,17 @@ static void test_quadrant_cos(void) {
   }
 }
 
+static void test_quadrant_sincos(void) {
+  for (int k = -20000; k <= 20000; ++k) {
+    const double angle = (double)k / 1000.0;
+    double cosine;
+    double sine;
+    quadrant_sincos(angle, &cosine, &sine);
+    assert(fabs(cosine - cos(angle)) < 1e-6);
+    assert(fabs(sine - sin(angle)) < 1e-6);
+  }
+}
+
 static void test_cents_to_ratio(void) {
   assert(fabsf(cents_to_ratio(0.0f) - 1.0f) < 1e-6f);
   assert(fabsf(cents_to_ratio(1200.0f) - 2.0f) < 1e-6f);
@@ -48,10 +65,12 @@ static void test_cents_to_ratio(void) {
 }
 
 int main(void) {
+  test_clamp();
   test_wrap_phase();
   test_cos_poly();
   test_sin_poly();
   test_quadrant_cos();
+  test_quadrant_sincos();
   test_cents_to_ratio();
   puts("all tests passed");
   return 0;

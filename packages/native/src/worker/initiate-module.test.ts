@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const instantiateWasmModule = vi.hoisted(() =>
-  vi.fn(async () => ({ marker: 'main-module' })),
+  vi.fn(async () => ({
+    marker: 'main-module',
+    _moog_oscillator_wasm_init: vi.fn(),
+  })),
 );
 
-vi.mock('../../c/dist/wasm/moog_saw', () => ({
+vi.mock('../../c/dist/wasm/moog_oscillator', () => ({
   default: instantiateWasmModule,
 }));
 
@@ -23,6 +26,7 @@ describe('initializeMainModule', () => {
 
     expect(instantiateWasmModule).toHaveBeenCalledTimes(1);
     expect(second).toBe(first);
+    expect(first._moog_oscillator_wasm_init).toHaveBeenCalledOnce();
   });
 
   it('supplies an instantiateWasm hook to the Emscripten factory', async () => {

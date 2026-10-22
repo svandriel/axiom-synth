@@ -37,7 +37,7 @@ audio processor to WebAssembly with Emscripten.
 | Playwright 1.64             | Browser E2E smoke test (`app/e2e/`) against the app dev server                   | `app/package.json`, `app/playwright.config.ts` |
 | TypeScript ~6.0.2           | `strict`, `noUnusedLocals/Params`, `erasableSyntaxOnly`                          | `app/tsconfig.app.json`                        |
 | Prettier 3.9.6              | JavaScript and documentation formatter (single quotes, trailing commas, 80-char) | `.prettierrc.yaml`                             |
-| clang-format                | Native C formatter (2-space indent, 80-column limit)                             | `.clang-format`                                |
+| clang-format 18             | Native C formatter (2-space indent, 80-column limit)                             | `.clang-format`                                |
 | prettier-plugin-tailwindcss | Tailwind class ordering in Prettier                                              | `.prettierrc.yaml`                             |
 | Husky 9 + lint-staged 17    | Pre-commit auto-format of staged files                                           | `.husky/pre-commit`, `.lintstagedrc.json`      |
 | GitHub Actions              | PR build/test, GitHub Pages deploy, and PR previews; Emscripten setup for builds | `.github/workflows/*.yml`                      |
@@ -58,7 +58,7 @@ pnpm format       # prettier --write .
 pnpm run format:c # clang-format native C sources
 ```
 
-Tooling lives at the workspace root: prettier/husky/lint-staged live in the root `package.json` (packages ship no prettier tooling); `clang-format` formats and checks native C. CI installs it before linting. `pnpm dev`/`pnpm build` run through `pnpm -r --sort`. Workspace builds include `@axiom/native`, whose `make wasm` target requires Emscripten `emcc` on `PATH`. GitHub Actions installs SDK `6.0.12` with `emscripten-core/setup-emsdk@v15`.
+Tooling lives at the workspace root: prettier/husky/lint-staged live in the root `package.json` (packages ship no prettier tooling); `clang-format` 18 formats and checks native C. CI installs it before linting. Use the same major version locally; on macOS with Homebrew LLVM 18, run `PATH="$(brew --prefix llvm@18)/bin:$PATH" pnpm lint`. Other clang-format versions may produce different output. `pnpm dev`/`pnpm build` run through `pnpm -r --sort`. Workspace builds include `@axiom/native`, whose `make wasm` target requires Emscripten `emcc` on `PATH`. GitHub Actions installs SDK `6.0.12` with `emscripten-core/setup-emsdk@v15`.
 
 Testing uses Vitest across the JavaScript packages and native C tests in `packages/native`: `pnpm test` runs `pnpm -r --parallel test`, and the app package's `test` script runs the Playwright E2E suite, so `pnpm test` covers everything. Build the WASM module first (`pnpm build`) because E2E loads it at runtime. Shared fake Web Audio fakes live in `packages/audio-testing`. Browser E2E uses Playwright and lives in the app package (`app/playwright.config.ts`, `app/e2e/`); run only E2E with `pnpm --filter @axiom/app test:e2e`.
 
