@@ -31,6 +31,9 @@ pnpm lint                            # prettier --check .
 - Setup files and where they run: fake Web Audio context helpers live in the
   `@axiom/audio-testing` workspace package (`packages/audio-testing/src/`) and
   are imported by graph tests in every package.
+- Doubles for a package's own modules live under `<package>/src/testing/`
+  (for example `packages/audio-engine/src/testing/`). They are not
+  barrel-exported and not imported by production code.
 
 ### 3) Test Scope Matrix
 
@@ -42,9 +45,11 @@ pnpm lint                            # prettier --check .
 
 ### 4) Mocking and Isolation Strategy
 
-- Main mocking approach: instrumented fake Web Audio nodes record exact
-  connections, disconnections, source stops, and manually dispatched
-  `onended` events.
+- Main mocking approach: two layers of doubles. Web Audio API fakes from
+  `@axiom/audio-testing` (context, nodes, `AudioParam`) instrument connections,
+  disconnections, source stops, and manually dispatched `onended` events.
+  Module doubles from a package's `src/testing/` (for example engine
+  `Oscillator`, `Voice`, and `Synth`) record the seam under test.
 - Isolation guarantees: tests run without real `AudioContext`; each test owns a
   fresh fake context and restores temporary globals.
 - Browser E2E (Playwright) runs the app in headless Chromium with

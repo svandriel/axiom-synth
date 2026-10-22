@@ -130,6 +130,22 @@ type is `Ref<UnwrapRef<T>>`). Pre-existing casts (e.g. the `as FixedArray<…>`
 in `@axiom/axiom-synth`) predate this rule and may be migrated opportunistically;
 new code must not add them.
 
+## Testing
+
+### 10. Test doubles live with the layer they fake
+
+`@axiom/audio-testing` holds doubles for the Web Audio API only (`AudioContext`,
+audio nodes, `AudioParam`, `AudioWorklet` globals) and may use Vitest spies and
+fns. It never imports a domain package (`@axiom/audio-engine`,
+`@axiom/axiom-synth`, `@axiom/native`), so it stays a dependency leaf.
+
+Doubles for a package's own modules live under `<package>/src/testing/`. They
+are never exported from the package barrel and never imported by production
+code, so they cannot reach a production bundle.
+
+Reference: `packages/audio-engine/src/testing/` (engine `Oscillator`, `Voice`,
+and `Synth` doubles).
+
 ## History
 
 - Rule 6 ("New engine modules stay internal") superseded by rule 6

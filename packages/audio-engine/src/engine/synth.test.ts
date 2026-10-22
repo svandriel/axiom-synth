@@ -1,59 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ActivitySink } from './activity-sink';
-import { Synth } from './synth';
-import { Voice } from './voice';
 import { FakeAudioContext, FakeAudioNode } from '@axiom/audio-testing';
-
-class TestVoice extends Voice {
-  readonly label: string;
-  noteOnCalls: Array<{ note: number; velocity: number; now: number }> = [];
-  fastChokeCalls: Array<{ chokeTime: number; now: number }> = [];
-  noteOffCount = 0;
-  silentAt = 0.2;
-
-  constructor(ctxt: AudioContext, audioSink: AudioNode, label: string) {
-    super(ctxt, audioSink);
-    this.label = label;
-  }
-
-  protected internalNoteOn(note: number, velocity: number, now: number): void {
-    this.noteOnCalls.push({ note, velocity, now });
-  }
-
-  protected internalNoteOff(_now: number): { silentAt: number } {
-    this.noteOffCount++;
-    return { silentAt: this.silentAt };
-  }
-
-  protected internalFastChoke(chokeTime: number, now: number): void {
-    this.fastChokeCalls.push({ chokeTime, now });
-  }
-
-  protected onSoundStop(): void {}
-}
-
-class TestSynth extends Synth<TestVoice> {
-  readonly voices: TestVoice[] = [];
-
-  constructor(
-    ctxt: AudioContext,
-    audioSink: AudioNode,
-    maxVoices: number,
-    activity?: ActivitySink,
-  ) {
-    super(ctxt, audioSink, { maxVoices, activity });
-  }
-
-  protected createVoice(): TestVoice {
-    const voice = new TestVoice(
-      this.ctxt,
-      this.audioSink,
-      `v${this.voices.length}`,
-    );
-    this.voices.push(voice);
-    return voice;
-  }
-}
+import { TestSynth } from '../testing/test-synth';
 
 function makeSynth(maxVoices: number) {
   const ctx = new FakeAudioContext();
