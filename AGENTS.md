@@ -21,7 +21,8 @@ Emscripten (`emcc`) on `PATH`; the E2E suite also needs a built WASM module, so
 run `pnpm build` before `pnpm test` on a clean checkout. GitHub Actions runs
 `pnpm build`, `pnpm test` (which includes the Playwright E2E suite), and
 `pnpm lint`; build workflows install Emscripten SDK `6.0.12`. CI installs
-`clang-format` for native C formatting checks.
+`clang-format` 18 for native C formatting checks. Use clang-format 18 locally
+as well; newer versions can disagree on C formatting.
 
 ## Way of working
 
