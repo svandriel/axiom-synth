@@ -397,8 +397,8 @@ static void test_integer_aligned_pulse_sync_has_no_double_step(void) {
   enum {
     TEST_SYNC_EVENT_INDEX = 1,
     TEST_EXTRA_FRAMES = 4,
-    TEST_FRAME_COUNT = MOOG_WAVEFORM_SYNC_CORRECTION_RADIUS_SAMPLES +
-      TEST_EXTRA_FRAMES,
+    TEST_FRAME_COUNT =
+      MOOG_WAVEFORM_SYNC_CORRECTION_RADIUS_SAMPLES + TEST_EXTRA_FRAMES,
   };
   const double sample_rate = 44100.0;
   const float frequency_hz = 55.0f;
