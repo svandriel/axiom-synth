@@ -25,6 +25,11 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v6
 
+      - name: Setup Emscripten
+        uses: emscripten-core/setup-emsdk@v15
+        with:
+          version: 6.0.12
+
       - name: Setup pnpm and Node.js
         uses: pnpm/setup@v2
         with:
@@ -32,11 +37,21 @@ jobs:
           runtime: node@24
           install: false
 
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y clang-format
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Lint
+        run: pnpm lint
+
       - name: Build production site
-        run: pnpm run build:pages
+        env:
+          VITE_BASE_PATH: /axiom-synth/
+        run: pnpm run build
 
       # Preserve only the preview tree. A blanket keep_files=true would also
       # retain obsolete hashed production assets indefinitely.

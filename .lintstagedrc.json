@@ -1,3 +1,4 @@
 {
-  "*.{ts,js,vue,css,md,json,yml,yaml}": ["prettier --write"]
+  "*.{ts,js,vue,css,md,json,yml,yaml}": ["prettier --write"],
+  "*.{c,h}": ["clang-format -i"]
 }
