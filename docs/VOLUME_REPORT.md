@@ -212,3 +212,32 @@ hides how much gain reduction is occurring.
 This order fixes the user-visible volume problem first, makes the remaining
 gain structure measurable, and avoids using compression or oscillator gain as
 a substitute for a master-volume control.
+
+### 6. Revisit the fixed three-oscillator normalization
+
+The fixed $1/3$ factor before the waveshaper is not a generally correct way to
+mix oscillators. It averages the sum as though the goal were to keep the peak
+bounded regardless of how many oscillators are active. That attenuates a
+single active oscillator by 9.54 dB, while phase-aligned oscillators and
+uncorrelated oscillators have different peak and RMS behavior. It also couples
+oscillator count to the waveshaper's drive calibration.
+
+- Prefer summing oscillator signals at their configured oscillator gains, with
+  any pre-shaper gain represented as an explicit, named parameter or calibrated
+  constant.
+- Calibrate the pre-shaper level and drive together by listening and measuring
+  one-, two-, and three-oscillator patches. Do not remove $1/3$ in isolation:
+  the current default drive of 3 approximately cancels that attenuation, so
+  changing only one factor would substantially alter the waveshaper input.
+- Do not introduce $1/\sqrt{N}$ as an automatic replacement without testing.
+  It may be a useful starting point for RMS-oriented normalization, but it
+  cannot guarantee constant loudness for correlated signals, and the
+  waveshaper makes input-level differences change timbre as well as loudness.
+- Let additional oscillators naturally increase level and/or saturation where
+  that is musically useful. Use explicit voice/master gain staging and a safety
+  limiter for headroom rather than silently averaging away oscillator energy.
+
+Treat oscillator-count normalization as a sound-design decision, not a
+mathematical requirement. The preferred default should be selected from
+listening tests across representative patches, with the pre-shaper level and
+resulting distortion documented.
