@@ -120,3 +120,95 @@ notes.
 - Move the fixed values into named constants. `docs/codebase/CONCERNS.md`
   already lists the master 0.5, synth output 0.6 and shaper curve factors as
   undocumented magic numbers.
+
+## Volume-chain recommendations
+
+The goal should be to preserve the synth's intended voice character and effect
+balance, provide a predictable master level, and prevent overload without
+compressing every patch into the same quiet output. Apply these changes in
+priority order.
+
+### 1. Separate patch level from master volume
+
+- Add a user-facing **Master Volume** control, backed by a gain stage near the
+  end of the master chain. Keep it separate from oscillator gain, shaper drive,
+  and per-voice amp level: those controls should continue to shape the sound,
+  not compensate for a global output-level problem.
+- Put the control after the compressor/limiter so turning the listening level
+  down does not change the amount of compression or the effect-send balance.
+  Keep the final safety stage after that control only if it is configured to
+  catch accidental overloads; do not use it as the everyday volume control.
+- Use a named default and document the gain convention. Avoid leaving the
+  current fixed master gain of 0.5 as an unexplained level trim.
+
+### 2. Remove arbitrary attenuation deliberately, not by stacking boosts
+
+The fixed synth.output = 0.6 and master = 0.5 trims cost about 10.5 dB
+before compression. Do not simply raise both to 1.0 and assume the result is
+safe: effects, polyphonic summing, and resonant filter peaks can create
+levels above full scale.
+
+- Make synth.output a documented unity-gain stage by default, or retain a
+  lower value only if tests show it is needed for headroom or effect balance.
+- Keep master listening level independent of that stage.
+- Recheck effect wet/dry levels and polyphonic peaks after changing the trims.
+  Delay and reverb can add energy, and the report's four- and sixteen-voice
+  estimates exceed 0 dBFS before compression.
+
+### 3. Replace the default compressor behavior with an intentional safety stage
+
+The current Web Audio compressor defaults (threshold -24 dB, ratio 12:1, no
+makeup gain) explain why hot signals end up around -22 dBFS. This is acting as
+a loudness reducer rather than a transparent peak-safety stage.
+
+- Start by testing a higher threshold (around -6 dB) and a gentler ratio
+  (around 4:1), as a baseline rather than a final calibrated setting.
+- If the product requirement is strictly to prevent output clipping, consider
+  a dedicated limiter with a ceiling below 0 dBFS instead of relying on the
+  default compressor. Validate its attack/release behavior and transient
+  handling at the actual sample rate.
+- Avoid automatic makeup gain until measured output levels and headroom are
+  understood; makeup gain can restore loudness but cannot recover dynamics or
+  prevent overload by itself.
+
+### 4. Make the level observable at useful points
+
+Expose separate metering for at least the signal before the safety compressor/
+limiter and the final output after it. The existing post-compressor meter alone
+hides how much gain reduction is occurring.
+
+- Show peak level in dBFS and, where useful, RMS or short-term level.
+- If practical, show gain reduction so users can distinguish a quiet patch from
+  one being heavily compressed.
+- Add tests for a single sustained note, coherent multi-voice peaks, high-Q
+  resonance, maximum shaper drive, and wet delay/reverb. Assert finite samples
+  and verify that the final safety stage keeps the output within its intended
+  ceiling.
+
+### 5. Preserve musical gain staging inside the voice
+
+- Keep the shaper's normalization behavior documented: drive is primarily a
+  timbre control because the curve is normalized to ±1, not a reliable output
+  volume control.
+- Do not compensate for the three-oscillator normalization by blindly raising
+  every upstream gain. In particular, the report shows that default drive
+  currently cancels the 1/3 normalization; changing either side can alter
+  distortion and input level substantially.
+- Treat the amp envelope sustain and filter/resonance as patch-level tone and
+  dynamics controls. Their level changes are expected and should not be
+  counteracted by a global compressor that flattens every note.
+
+### Recommended implementation order
+
+1. Add a master-volume parameter and post-compressor gain stage, with a
+   documented default and UI control.
+2. Make compressor/limiter settings explicit and choose them from listening
+   tests plus peak measurements, rather than browser defaults.
+3. Revisit the fixed 0.6 synth-output trim and effect levels using pre/post
+   meters; change it only after confirming headroom across polyphony.
+4. Add automated level tests and document expected peak ranges for a default
+   patch, high resonance, and multi-voice playback.
+
+This order fixes the user-visible volume problem first, makes the remaining
+gain structure measurable, and avoids using compression or oscillator gain as
+a substitute for a master-volume control.
