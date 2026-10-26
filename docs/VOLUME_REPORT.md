@@ -1,0 +1,122 @@
+# Volume report
+
+Where the signal level goes in the current Axiom chain, with the max gain of
+every stage read from the source.
+
+## Summary
+
+The oscillators and the voice are not quiet. The per-voice shaper output already
+peaks at full scale. The loss happens afterwards: two fixed attenuators,
+`synth.output` at 0.6 and the master gain at 0.5, produce a combined factor of
+0.3 (about $-10.5$ dB), and the master compressor runs on the Web Audio defaults
+(threshold $-24$ dB, ratio $12{:}1$, no makeup gain). The compressor pulls hot
+material down to roughly $-22$ dBFS. The app has no master volume control.
+
+## Signal chain
+
+```text
+osc 1 ─► gain ─► unison ─┐
+osc 2 ─► gain ─► unison ─┼─► ×1/3 ─► ×(1 + drive) ─► shaper ─► filter
+osc 3 ─► gain ─► unison ─┘                                   ─► amp env
+                                                            ─► amp mod
+                                                            ─► synth.output (0.6)
+
+synth.output ─► masterInput (1.0) ─► delay ─► reverb ─► idle gate
+              ─► master (0.5) ─► compressor ─► destination
+```
+
+The analyser and the meter are leaf taps off the compressor. The audible path
+is `compressor -> destination`.
+
+## Per-voice stages
+
+| Stage                       | Code                                               | Max gain                        | Max dB                   | Default                      |
+| --------------------------- | -------------------------------------------------- | ------------------------------- | ------------------------ | ---------------------------- |
+| Oscillator waveform         | `moog_saw.c`, `web-audio-oscillator.ts`            | $\pm 1$ peak                    | 0 dBFS                   | $\pm 1$                      |
+| Unison blend, $V$ subvoices | `blend-curve-cache.ts:25-42`                       | $\sqrt{V}$ coherent peak, RMS 1 | up to $+12$ dB at $V=16$ | $V=2$ on osc 1               |
+| Osc gain knob               | `OscillatorPanel.vue:6-15`                         | 2                               | $+6$ dB                  | 1 / 0.4 / 1                  |
+| Three-oscillator normalize  | `axiom-voice.ts:77-78`                             | $1/3$                           | $-9.5$ dB                | $1/3$                        |
+| Shaper drive                | `waveshaper.ts:14-18`, `WaveshaperPanel.vue:16-24` | $1 + 4 = 5$                     | $+14$ dB                 | $1 + 2 = 3$                  |
+| Shaper curve                | `waveshaper-curve.ts:71-97`                        | output capped at $\pm 1$        | 0 dBFS                   | hard clip, amount 70         |
+| Filter passband             | `filter.ts`                                        | 1 per stage                     | 0 dB                     | LP24, 1300 Hz                |
+| Filter resonance            | `filter-resonance.ts:60-66`                        | composite peak equals $Q$       | up to $+26$ dB at $Q=20$ | $+15.6$ dB at $Q=6$          |
+| Amp envelope                | `envelope.ts:22-61`                                | $v/127 \times$ sustain          | 0 dB peak                | $v=127 \to 1.0$, sustain 0.6 |
+| Amp mod                     | `axiom-voice.ts:106-108`                           | 5 (four LFOs at $+1$)           | $+14$ dB                 | 1.0                          |
+
+Details that matter for level:
+
+- The unison blend keeps total power at 1 (`sum(gain_i^2) = 1`). RMS stays flat
+  as voices are added, while coherent attack peaks grow as $\sqrt{V}$.
+- The shaper is a full-scale limiter. At the default drive of 3 the
+  $1/3$ oscillator normalize is cancelled exactly, so a raw oscillator sum of
+  up to 2.4 arrives at the curve. For the default hard clipper at amount 70,
+  $k = 1 - 0.95 \times 0.70 = 0.335$. The curve divides by $k$, so small signals
+  get about $+9.5$ dB and anything above $0.335$ clips to $\pm 1$.
+- Every shaper type in `waveshaper-curve.ts` normalizes its output to $\pm 1$.
+  Raising drive makes the sound more distorted, not louder.
+- The resonance curve is built as $Q_{\text{stage}} = Q^{1/N}$ for $N$ stages,
+  so the composite peak at the cutoff equals the Q knob value.
+- The keyboard sends velocity 127 (`Keyboard.vue:80`), so the envelope target is
+  1.0. The default sustain of 0.6 costs $-4.4$ dB after the decay.
+
+## Master stages
+
+| Stage          | Code                                   | Max gain            | Max dB                | Default                   |
+| -------------- | -------------------------------------- | ------------------- | --------------------- | ------------------------- |
+| Synth output   | `axiom-synth.ts:214-215`               | 0.6                 | $-4.4$ dB             | 0.6                       |
+| Master input   | `engine.ts:29-30`                      | 1.0                 | 0 dB                  | 1.0                       |
+| Feedback delay | `feedback-delay.ts`, `engine.ts:40-42` | dry 1 + wet 0.2     | about $+1.6$ dB       | wet 0.2                   |
+| Reverb         | `reverb.ts`, `engine.ts:44-45`         | dry 1 + wet 0.4     | about $+2.9$ dB       | wet 0.4                   |
+| Idle gate      | `idle-gate.ts`                         | 1.0                 | 0 dB                  | 1.0                       |
+| Master gain    | `engine.ts:31-32`                      | 0.5                 | $-6.0$ dB             | 0.5                       |
+| Compressor     | `engine.ts:37`                         | defaults, no makeup | limits above $-24$ dB | threshold $-24$, ratio 12 |
+
+The compressor keeps the Web Audio defaults because the constructor never sets
+a parameter: threshold $-24$ dB, knee 30 dB, ratio $12{:}1$, attack 3 ms,
+release 250 ms. With no makeup gain, a $0$ dBFS input comes out around
+$-22$ dBFS. The VU meter reads after the compressor (`comp -> meter.input`), so
+it shows the squashed level, not the level the synth produces.
+
+## End-to-end level
+
+For one voice at the default patch, with the envelope at sustain:
+
+$$
+1.0\ \text{(shaper)} \times 0.6\ \text{(sustain)} \times 0.6\ \text{(synth)}
+\times 0.5\ \text{(master)} = 0.18 \approx -14.9\ \text{dBFS}
+$$
+
+At the envelope peak (before decay) the same chain gives $0.3$ or
+$-10.5$ dBFS. Both values are before the filter, which removes shaper harmonics
+and lowers the level further in practice.
+
+Polyphony sums before the master gain. Four voices at sustain reach $0.72$
+($-2.9$ dBFS) and sixteen reach $2.88$ ($+9.2$ dBFS). The compressor flattens
+all of that to around $-22$ dBFS, so the synth cannot get louder by playing more
+notes.
+
+## Findings
+
+1. The compressor causes most of the perceived quietness. It is a $-24$ dB
+   threshold, $12{:}1$ limiter with no makeup gain, so loud material comes out
+   near $-22$ dBFS.
+2. The fixed attenuators cost $10.5$ dB together. Neither value is exposed in
+   the UI.
+3. The LP24 filter at 1300 Hz removes most of the shaper harmonics. That is the
+   intended tone, but it also drops perceived loudness while the peak level
+   stays high.
+4. The amp sustain of 0.6 costs another $4.4$ dB in steady state.
+5. The three-oscillator normalize is not a loss today because the default drive
+   exactly cancels it. Setting drive to 0 would remove about $9.5$ dB of input.
+
+## Suggested changes
+
+- Raise the master gain from 0.5 to about 0.8 ($+4.1$ dB), or raise
+  `synth.output` from 0.6 to 1.0 ($+4.4$ dB).
+- Treat the compressor as a safety limiter: threshold around $-6$ dB and ratio
+  around $4{:}1$, or add a makeup gain stage after it.
+- Add a master volume control. No component in `app/src` touches
+  `engine.master` or `synth.output` today.
+- Move the fixed values into named constants. `docs/codebase/CONCERNS.md`
+  already lists the master 0.5, synth output 0.6 and shaper curve factors as
+  undocumented magic numbers.
