@@ -28,6 +28,8 @@ as well; newer versions can disagree on C formatting.
 
 - Work on a feature branch; ask the user if a worktree is needed.
 - Never commit to `main` directly; always go through a pull request.
+- Do not run Prettier manually (no `prettier --write`, no `pnpm format`). The
+  pre-commit hook runs it on staged files and fixes formatting automatically.
 - No magic numbers: every literal with meaning gets a named constant, so
   intent is self-documenting (e.g. `1 / OSCILLATOR_COUNT` in `axiom-voice.ts`).
 - Never commit files under `.superpowers/`; treat them as local agent artifacts.
