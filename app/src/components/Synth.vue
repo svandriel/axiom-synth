@@ -2,8 +2,9 @@
   <div
     class="synth b-3 min-h-100 rounded-2xl bg-default p-3 shadow-out dark:bg-default-dark dark:shadow-out-dark"
   >
+    <TabPanel :items="tabItems" v-model="selectedTab" />
     <div
-      class="grid grid-cols-12 grid-rows-9 gap-3 sm:grid-rows-6 lg:grid-rows-3"
+      class="mt-3 grid grid-cols-12 grid-rows-9 gap-3 sm:grid-rows-6 lg:grid-rows-3"
     >
       <OscillatorPanel
         class="col-span-12 row-start-1 sm:col-span-6 lg:col-span-4"
@@ -64,6 +65,7 @@ import Keyboard from './Keyboard.vue';
 import LfoPanel from './LfoPanel.vue';
 import OscillatorPanel from './OscillatorPanel.vue';
 import ScopePanel from './ScopePanel.vue';
+import TabPanel from './TabPanel.vue';
 import WaveshaperPanel from './WaveshaperPanel.vue';
 
 const { env } = defineProps<{
@@ -98,6 +100,27 @@ const lfoConfigs = [
 
 let ampEnvelope = reactive({ ...synth.ampEnvelope });
 let filterEnvelope = reactive({ ...synth.filterEnvelope });
+
+const tabItems = [
+  {
+    id: 'oscillators',
+    label: 'Oscillators',
+  },
+  {
+    id: 'filter-shape',
+    label: 'Filter/Shape',
+  },
+  {
+    id: 'modulation',
+    label: 'Modulation',
+  },
+  {
+    id: 'effects',
+    label: 'Effects',
+  },
+];
+
+const selectedTab = ref('oscillators');
 
 watch(
   ampEnvelope,
