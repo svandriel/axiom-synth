@@ -65,7 +65,7 @@ import Keyboard from './Keyboard.vue';
 import LfoPanel from './LfoPanel.vue';
 import OscillatorPanel from './OscillatorPanel.vue';
 import ScopePanel from './ScopePanel.vue';
-import TabPanel from './TabPanel.vue';
+import TabPanel, { type TabItem } from './TabPanel.vue';
 import WaveshaperPanel from './WaveshaperPanel.vue';
 
 const { env } = defineProps<{
@@ -101,22 +101,26 @@ const lfoConfigs = [
 let ampEnvelope = reactive({ ...synth.ampEnvelope });
 let filterEnvelope = reactive({ ...synth.filterEnvelope });
 
-const tabItems = [
+const tabItems: TabItem[] = [
   {
     id: 'oscillators',
     label: 'Oscillators',
+    icon: 'oscillator',
   },
   {
     id: 'filter-shape',
     label: 'Filter/Shape',
+    icon: 'filter',
   },
   {
     id: 'modulation',
     label: 'Modulation',
+    icon: 'modulation',
   },
   {
     id: 'effects',
     label: 'Effects',
+    icon: 'effects',
   },
 ];
 

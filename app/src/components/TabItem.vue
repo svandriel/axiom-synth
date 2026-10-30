@@ -1,18 +1,25 @@
 <template>
   <button
-    class="cursor-pointer rounded-lg p-3 font-mono text-xs text-primary-400 uppercase shadow-in-xs transition-colors duration-150 hover:bg-primary-300 dark:shadow-in-xs-dark dark:hover:bg-primary-800"
+    class="flex cursor-pointer flex-row items-center gap-3 rounded-lg p-3 font-mono text-xs text-primary-400 uppercase shadow-in-xs transition-colors duration-150 hover:bg-primary-300 dark:shadow-in-xs-dark dark:hover:bg-primary-800"
     :class="{ active }"
     @click="$emit('click')"
+    :aria-pressed="active"
+    role="tab"
+    :aria-label="label"
   >
+    <Icon v-if="icon" :name="icon" size="md" />
     <div class="label transition-transform duration-150">
       {{ label }}
     </div>
   </button>
 </template>
 <script setup lang="ts">
+import Icon, { type IconName } from './Icon.vue';
+
 defineProps<{
   label: string;
   active?: boolean;
+  icon?: IconName;
 }>();
 
 defineEmits<{
