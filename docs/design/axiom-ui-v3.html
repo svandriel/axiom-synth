@@ -1,0 +1,2100 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>axiom xs » poly — UI v3</title>
+<style>
+  :root {
+    --p: #37476a;
+    --ln: #4a5b82;
+    --tx: #d0d8ea;
+    --lb: #a3b0cb;
+    --ac: #f4895f;
+    --bl: #7f86ff;
+    --dp: #27324a;
+  }
+  * {
+    box-sizing: border-box;
+    margin: 0;
+  }
+  body {
+    width: 1330px;
+    margin: 0 auto;
+    font:
+      600 11px/1.15 'DejaVu Sans Condensed',
+      'DejaVu Sans',
+      system-ui,
+      sans-serif;
+    color: var(--tx);
+    background: radial-gradient(120% 90% at 50% 0, #3b4a6b, #263047) fixed
+      #263047;
+    padding: 20px 24px 22px;
+    letter-spacing: 0.06em;
+    user-select: none;
+  }
+  html {
+    background: #263047;
+  }
+  .top {
+    display: flex;
+    align-items: center;
+    height: 50px;
+    margin-bottom: 10px;
+  }
+  .logo {
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #d5dcec;
+    width: 300px;
+  }
+  .logo b {
+    color: var(--ac);
+  }
+  .logo i {
+    color: #8a98b8;
+    font-style: normal;
+    font-weight: 400;
+  }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+    justify-content: center;
+    margin-left: -30px;
+  }
+  .tab {
+    cursor: pointer;
+    white-space: nowrap;
+    padding: 12px 18px;
+    border-radius: 9px 9px 0 0;
+    color: var(--lb);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    background: #2f3c58;
+    border: 1px solid #3b4a6c;
+    border-bottom: 0;
+    position: relative;
+  }
+  .tab:hover {
+    color: #fff;
+  }
+  .tab.on {
+    background: var(--p);
+    color: #fff;
+    border-color: var(--ln);
+  }
+  .tab.on:after {
+    content: '';
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    top: 0;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: var(--ac);
+    box-shadow: 0 0 10px var(--ac);
+  }
+  .tab small {
+    display: block;
+    font-size: 9px;
+    color: #98a6c4;
+    margin-top: 5px;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+  .bd {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    min-width: 15px;
+    height: 15px;
+    border-radius: 8px;
+    background: var(--ac);
+    color: #1c2438;
+    font: 700 9px/15px sans-serif;
+    text-align: center;
+    font-style: normal;
+    letter-spacing: 0;
+  }
+  .bd:empty {
+    display: none;
+  }
+  .right {
+    width: 330px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+  }
+  .pre {
+    white-space: nowrap;
+    background: var(--dp);
+    border: 1px solid var(--ln);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #dbe2f1;
+  }
+  .pre em {
+    color: var(--ac);
+    font-style: normal;
+  }
+  .seg {
+    display: inline-flex;
+    background: var(--dp);
+    border: 1px solid #435374;
+    border-radius: 7px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .seg span {
+    cursor: pointer;
+    padding: 6px 9px;
+    border-radius: 5px;
+    color: #a3b0cb;
+    font-size: 10px;
+    text-align: center;
+  }
+  .seg span:hover {
+    color: #fff;
+  }
+  .seg span.on {
+    background: #3c4c6f;
+    color: var(--ac);
+    box-shadow: inset 0 0 0 1px #556792;
+  }
+  .seg.v {
+    flex-direction: column;
+    width: 70px;
+    flex: none;
+  }
+  .seg.v {
+    gap: 1px;
+    padding: 3px;
+  }
+  .seg.v span {
+    padding: 3px 4px;
+    font-size: 9px;
+  }
+  .panel {
+    background: linear-gradient(#3a4a6d, #34436a);
+    border: 1px solid var(--ln);
+    border-radius: 0 12px 12px 12px;
+    padding: 14px;
+    box-shadow:
+      0 12px 30px #0003,
+      inset 0 1px 0 #ffffff14;
+  }
+  .sec {
+    display: none;
+    min-height: 568px;
+  }
+  .sec.on {
+    display: block;
+  }
+  .row {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+    background: #35456a;
+    border: 1px solid #435377;
+    border-radius: 11px;
+    padding: 12px 14px;
+    height: 172px;
+    margin-bottom: 12px;
+    transition: 0.15s;
+  }
+  .row:last-child {
+    margin-bottom: 0;
+  }
+  .row.off .disp,
+  .row.off .g {
+    opacity: 0.4;
+  }
+  .id {
+    flex: none;
+    width: 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .pw {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #2c3956;
+    border: 1px solid #4a5b82;
+    border-radius: 8px;
+    padding: 8px 11px;
+    color: #a3b0cb;
+    font: inherit;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+  }
+  .pw i {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #1f2940;
+    box-shadow: inset 0 1px 2px #000a;
+  }
+  .pw:hover {
+    border-color: #6b7aa0;
+  }
+  .pw.on {
+    color: #fff;
+    background: #3d4d73;
+    border-color: #6b7aa0;
+  }
+  .pw.on i {
+    background: var(--ac);
+    box-shadow:
+      0 0 9px var(--ac),
+      inset 0 0 2px #fff8;
+  }
+  .pw.sm {
+    font-size: 9px;
+    padding: 6px 9px;
+  }
+  .disp {
+    flex: 1;
+    min-width: 250px;
+    background: var(--dp);
+    border-radius: 9px;
+    border: 1px solid #2b3650;
+    box-shadow: inset 0 2px 8px #0005;
+    position: relative;
+    overflow: hidden;
+    cursor: crosshair;
+    touch-action: none;
+  }
+  .pl {
+    width: 100%;
+    height: 100%;
+    min-height: 120px;
+  }
+  .pl svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .l {
+    position: absolute;
+    left: 9px;
+    top: 8px;
+    font-size: 9px;
+    color: #8e9cbc;
+    letter-spacing: 0.12em;
+  }
+  .l.r {
+    left: auto;
+    right: 9px;
+    color: var(--ac);
+  }
+  .l.bt {
+    top: auto;
+    bottom: 7px;
+    color: #7d8cac;
+    font-weight: 500;
+    font-size: 8px;
+  }
+  .l.br {
+    top: auto;
+    bottom: 7px;
+    left: auto;
+    right: 9px;
+    color: #7f86ff;
+    font-weight: 500;
+    font-size: 8px;
+  }
+  .g {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sh {
+    width: 300px;
+  }
+  .er {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .ek {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+  }
+  .ek p {
+    font-weight: 500;
+    font-size: 10px;
+    color: #8e9cbc;
+    line-height: 1.5;
+    padding-top: 14px;
+  }
+  .sc2 {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .sc2 > div {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .un {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .un > .st {
+    margin-right: 6px;
+  }
+  .ks {
+    display: flex;
+    gap: 10px;
+  }
+  .k {
+    width: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: ns-resize;
+    touch-action: none;
+  }
+  .k .ko {
+    width: 50px;
+    height: 50px;
+  }
+  .k svg {
+    width: 50px;
+    height: 50px;
+    display: block;
+  }
+  .k span {
+    font-size: 9px;
+    color: var(--lb);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+  .k em {
+    white-space: nowrap;
+    font-style: normal;
+    font-size: 9px;
+    background: var(--dp);
+    border-radius: 5px;
+    padding: 3px 6px;
+    color: #e2e8f5;
+    box-shadow: inset 0 1px 3px #0006;
+  }
+  .k.act em {
+    color: var(--ac);
+  }
+  .st span {
+    font-size: 9px;
+    color: var(--lb);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .st div {
+    display: flex;
+    align-items: center;
+    background: var(--dp);
+    border-radius: 7px;
+    box-shadow: inset 0 1px 3px #0007;
+  }
+  .st b {
+    width: 22px;
+    text-align: center;
+    padding: 7px 0;
+    cursor: pointer;
+    color: #a3b0cb;
+    font-size: 13px;
+  }
+  .st b:hover {
+    color: var(--ac);
+  }
+  .st em {
+    flex: 1;
+    min-width: 36px;
+    text-align: center;
+    font-style: normal;
+    color: #e2e8f5;
+    font-size: 11px;
+    padding: 7px 0;
+  }
+  .sep {
+    flex: none;
+    width: 1px;
+    background: #4a5b82;
+    opacity: 0.6;
+  }
+  .ws {
+    outline: 0;
+  }
+  .ws:focus-visible .th {
+    border-color: var(--ac);
+  }
+  .wsh {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: var(--lb);
+    margin-bottom: 5px;
+  }
+  .wsh b {
+    color: var(--ac);
+    font-weight: 600;
+  }
+  .ic {
+    position: relative;
+    height: 19px;
+    margin: 0 16px;
+  }
+  .ic svg {
+    position: absolute;
+    top: 0;
+    width: 30px;
+    height: 18px;
+    transform: translateX(-50%);
+    color: #8090b0;
+    opacity: 0.7;
+  }
+  .ic svg.on {
+    color: var(--ac);
+    opacity: 1;
+  }
+  .ic path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+  }
+  .tk {
+    position: relative;
+    height: 22px;
+    margin: 5px 16px 0;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .tk:before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    right: -6px;
+    top: 8px;
+    height: 7px;
+    background: #232d44;
+    border-radius: 4px;
+    box-shadow:
+      inset 0 1px 3px #000a,
+      0 1px 0 #ffffff14;
+  }
+  .fl {
+    position: absolute;
+    left: -6px;
+    top: 8px;
+    height: 7px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #b95a38, var(--ac));
+  }
+  .tk u {
+    position: absolute;
+    top: 4px;
+    width: 2px;
+    height: 15px;
+    background: #56658a;
+    margin-left: -1px;
+    border-radius: 1px;
+  }
+  .th {
+    position: absolute;
+    top: 0;
+    width: 16px;
+    height: 22px;
+    margin-left: -8px;
+    border-radius: 5px;
+    background: linear-gradient(#7482a3, #47557a 60%, #3a4767);
+    border: 1px solid #6b7aa0;
+    box-shadow:
+      0 3px 6px #0007,
+      inset 0 1px 0 #ffffff33;
+  }
+  .th:after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 4px;
+    width: 2px;
+    height: 12px;
+    background: var(--ac);
+    border-radius: 1px;
+    box-shadow: 0 0 6px var(--ac);
+  }
+  .mod {
+    background: #35456a;
+    border: 1px solid #435377;
+    border-radius: 11px;
+    padding: 14px;
+  }
+  .mh {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .mh h3 {
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    color: #e0e6f4;
+  }
+  .mb {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+  }
+  .mb > .pl {
+    flex: 1;
+    height: 170px;
+    background: var(--dp);
+    border-radius: 9px;
+    border: 1px solid #2b3650;
+    box-shadow: inset 0 2px 8px #0005;
+  }
+  .mb .ks {
+    flex-wrap: wrap;
+    gap: 12px 10px;
+  }
+  .w4 {
+    width: 270px;
+  }
+  .w2 {
+    width: 122px;
+  }
+  .cols {
+    display: grid;
+    gap: 12px;
+  }
+  .c2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .c3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .stack {
+    display: grid;
+    gap: 12px;
+  }
+  .mr {
+    display: grid;
+    grid-template-columns: 1fr 20px 1fr 2fr 56px;
+    gap: 12px;
+    align-items: center;
+    padding: 6px 0;
+    border-top: 1px solid #435377;
+  }
+  .mr.z {
+    opacity: 0.55;
+  }
+  .mr > span {
+    color: #8e9cbc;
+    text-align: center;
+  }
+  .mr em {
+    font-style: normal;
+    color: #e2e8f5;
+    text-align: right;
+  }
+  select {
+    background: var(--dp);
+    color: #e2e8f5;
+    border: 1px solid #435374;
+    border-radius: 6px;
+    padding: 7px 8px;
+    font: inherit;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+  input[type='range'] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 22px;
+    background: none;
+    width: 100%;
+  }
+  input[type='range']::-webkit-slider-runnable-track {
+    height: 7px;
+    border-radius: 4px;
+    background: #232d44;
+    box-shadow: inset 0 1px 3px #000a;
+  }
+  input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 22px;
+    margin-top: -8px;
+    border-radius: 5px;
+    background: linear-gradient(#7482a3, #47557a 60%, #3a4767);
+    border: 1px solid #6b7aa0;
+    box-shadow: 0 3px 6px #0007;
+  }
+  input[type='range']::-moz-range-track {
+    height: 7px;
+    border-radius: 4px;
+    background: #232d44;
+  }
+  input[type='range']::-moz-range-thumb {
+    width: 14px;
+    height: 22px;
+    border-radius: 5px;
+    background: #47557a;
+    border: 1px solid #6b7aa0;
+  }
+  .chain {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 12px 14px;
+    background: #35456a;
+    border: 1px solid #435377;
+    border-radius: 11px;
+  }
+  .chain span {
+    padding: 8px 12px;
+    border-radius: 7px;
+    background: var(--dp);
+    color: #8090b0;
+    font-size: 10px;
+  }
+  .chain span.on {
+    color: #fff;
+    box-shadow: inset 0 0 0 1px #6b7aa0;
+  }
+  .chain span.on:before {
+    content: '● ';
+    color: var(--ac);
+  }
+  .chain b {
+    color: #6b7aa0;
+  }
+  .vd {
+    display: flex;
+    gap: 6px;
+  }
+  .vd i {
+    flex: 1;
+    height: 26px;
+    border-radius: 5px;
+    background: var(--dp);
+    box-shadow: inset 0 1px 3px #0007;
+  }
+  .vd i.on {
+    background: linear-gradient(#ffa27c, #e0663f);
+    box-shadow: 0 0 10px #f4895f88;
+  }
+  .strip {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .sc {
+    flex: 1;
+    background: linear-gradient(#37476a, #33426a);
+    border: 1px solid var(--ln);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 12px;
+    height: 152px;
+  }
+  .sc h3,
+  .out h3 {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: #d5dcec;
+  }
+  .meta {
+    width: 84px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .meta p {
+    font-size: 9px;
+    color: #98a6c4;
+    line-height: 1.7;
+    font-weight: 500;
+    margin-top: 6px;
+  }
+  .meta .seg {
+    flex-direction: column;
+    gap: 1px;
+  }
+  .meta .seg span {
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+  .screen svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .screen {
+    overflow: hidden;
+    flex: 1;
+    background: var(--dp);
+    border-radius: 9px;
+    border: 1px solid #2b3650;
+    box-shadow: inset 0 2px 8px #0005;
+  }
+  .out {
+    width: 300px;
+    background: linear-gradient(#37476a, #33426a);
+    border: 1px solid var(--ln);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 152px;
+  }
+  .out .in {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex: 1;
+  }
+  .meter {
+    width: 9px;
+    height: 92px;
+    background: var(--dp);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px #0007;
+  }
+  .meter i {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(#e8e56a, #3fd36b 40%);
+    transition: height 0.14s;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    font-size: 9px;
+    color: var(--lb);
+    flex: 1;
+  }
+  .stat b {
+    color: #e2e8f5;
+    font-size: 12px;
+    margin-left: 4px;
+  }
+  .stat b.hot {
+    color: #ff6b5e;
+  }
+  .kb {
+    margin-top: 12px;
+    background: #34436a;
+    border: 1px solid var(--ln);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+  .kh {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .hint {
+    font:
+      500 10px 'DejaVu Sans Mono',
+      monospace;
+    color: #98a6c4;
+    letter-spacing: 0.08em;
+  }
+  .kd {
+    display: flex;
+    gap: 14px;
+    margin-top: 10px;
+  }
+  .kb.min .kd {
+    display: none;
+  }
+  .wls {
+    display: flex;
+    gap: 8px;
+    flex: none;
+  }
+  .wh {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 36px;
+  }
+  .wh span {
+    font-size: 8px;
+    color: var(--lb);
+  }
+  .wt {
+    position: relative;
+    width: 34px;
+    flex: 1;
+    background: #232d44;
+    border-radius: 7px;
+    box-shadow: inset 0 1px 4px #000a;
+    touch-action: none;
+  }
+  .wt i {
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    height: 14px;
+    border-radius: 4px;
+    background: linear-gradient(#8593b3, #47557a);
+    box-shadow: 0 2px 4px #0008;
+  }
+  .keys {
+    position: relative;
+    height: 148px;
+    flex: 1;
+  }
+  .w {
+    position: absolute;
+    top: 0;
+    height: 148px;
+    background: linear-gradient(#fbfaf6, #e9e7e0 92%, #cfccc3);
+    border-radius: 0 0 7px 7px;
+    border: 1px solid #b9b6ad;
+    color: #6d7080;
+    font-size: 10px;
+    text-align: center;
+  }
+  .w span {
+    position: absolute;
+    bottom: 9px;
+    left: 0;
+    right: 0;
+  }
+  .w u {
+    position: absolute;
+    top: 8px;
+    left: 0;
+    right: 0;
+    text-decoration: none;
+    color: #7a7d8c;
+    font-size: 9px;
+  }
+  .w.h {
+    background: linear-gradient(#ffd9c7, #f6b697 92%, #e49a78);
+  }
+  .bk {
+    position: absolute;
+    top: 0;
+    height: 92px;
+    background: linear-gradient(#2a2d3a, #0d0e14);
+    border-radius: 0 0 5px 5px;
+    color: #c8cddc;
+    font-size: 9px;
+    text-align: center;
+    box-shadow: 0 3px 5px #0006;
+  }
+  .bk span {
+    position: absolute;
+    bottom: 6px;
+    left: 0;
+    right: 0;
+  }
+  .bk.h {
+    background: linear-gradient(#a8502e, #e0663f);
+  }
+</style>
+<svg width="0" height="0" style="position: absolute">
+  <defs>
+    <radialGradient id="kg" cx="40%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#6e7c9c" />
+      <stop offset=".6" stop-color="#3f4c69" />
+      <stop offset="1" stop-color="#2a3550" />
+    </radialGradient>
+  </defs>
+</svg>
+<div class="top">
+  <div class="logo">
+    axiom
+    <b>xs</b>
+    <i>»</i>
+    poly
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="right">
+    <div class="pre">
+      <em>◂</em>
+      &nbsp;WARM SYNC LEAD &nbsp;
+      <em>▸</em>
+    </div>
+    <div class="seg">
+      <span class="on">DARK</span>
+      <span>LIGHT</span>
+    </div>
+  </div>
+</div>
+<div id="main"></div>
+<div class="strip">
+  <div class="sc">
+    <div class="meta">
+      <div><h3>SCOPE</h3></div>
+      <div id="src"></div>
+    </div>
+    <div class="screen" id="scope"></div>
+  </div>
+  <div class="out">
+    <h3>OUTPUT</h3>
+    <div class="in" id="out"></div>
+  </div>
+</div>
+<div class="kb" id="kb">
+  <div class="kh">
+    <span class="hint">
+      CONTROL WITH COMPUTER KEYS (Z–I, S–7) · OCTAVE WITH − AND =
+    </span>
+    <span id="kt"></span>
+  </div>
+  <div class="kd">
+    <div class="wls" id="wls"></div>
+    <div class="keys" id="keys"></div>
+  </div>
+</div>
+<script>
+  const $ = h => {
+    const d = document.createElement('div');
+    d.innerHTML = h.trim();
+    return d.firstElementChild;
+  };
+  const syncs = [],
+    sync = () => syncs.forEach(f => f()),
+    cl = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const pt = (a, r) => {
+    const t = ((a - 90) * Math.PI) / 180;
+    return [24 + r * Math.cos(t), 24 + r * Math.sin(t)];
+  };
+  const arc = (a0, a1, r) => {
+    if (a1 < a0) [a0, a1] = [a1, a0];
+    const [x0, y0] = pt(a0, r),
+      [x1, y1] = pt(a1, r);
+    return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+  };
+  const ksvg = (v, o) => {
+    const a = -135 + 270 * v,
+      c = o.c == 'b' ? '#7f86ff' : '#f4895f',
+      [x, y] = pt(a, 13),
+      [x2, y2] = pt(a, 5);
+    return `<svg viewBox="0 0 48 48"><path d="${arc(-135, 135, 19)}" stroke="#232d44" stroke-width="3.4" fill="none" stroke-linecap="round"/><path d="${o.bi ? arc(0, a, 19) : arc(-135, a, 19)}" stroke="${c}" stroke-width="3.4" fill="none" stroke-linecap="round"/><circle cx="24" cy="25.5" r="15" fill="#141b2b" opacity=".5"/><circle cx="24" cy="24" r="15" fill="url(#kg)" stroke="#56658a" stroke-width=".8"/><line x1="${x2}" y1="${y2}" x2="${x}" y2="${y}" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/>${o.bi ? '<path d="M24 .8v2.6" stroke="#a3b0cb" stroke-width="1.2"/>' : ''}</svg>`;
+  };
+  function knob(l, o) {
+    const e = $(
+        `<div class="k"><div class="ko"></div><span>${l}</span><em></em></div>`,
+      ),
+      [ko, sp, em] = e.children;
+    syncs.push(() => {
+      const hid = o.h && o.h();
+      e.style.display = hid ? 'none' : '';
+      if (hid) return;
+      const v = o.g();
+      ko.innerHTML = ksvg(v, o);
+      if (o.l) sp.textContent = o.l();
+      em.style.display = o.f ? '' : 'none';
+      if (o.f) em.textContent = o.f(v);
+    });
+    let y0 = null,
+      v0 = 0;
+    e.onpointerdown = ev => {
+      e.setPointerCapture(ev.pointerId);
+      y0 = ev.clientY;
+      v0 = o.g();
+      e.classList.add('act');
+    };
+    e.onpointermove = ev => {
+      if (y0 == null) return;
+      o.s(cl(v0 + (y0 - ev.clientY) / (ev.shiftKey ? 700 : 170)));
+      sync();
+    };
+    e.onpointerup = () => {
+      y0 = null;
+      e.classList.remove('act');
+    };
+    e.ondblclick = () => {
+      o.s(o.d ?? 0);
+      sync();
+    };
+    return e;
+  }
+  function seg(items, g, s, cls = '') {
+    const e = $(
+      `<div class="seg ${cls}">${items.map(t => `<span>${t}</span>`).join('')}</div>`,
+    );
+    [...e.children].forEach(
+      (c, i) =>
+        (c.onclick = () => {
+          s(i);
+          sync();
+        }),
+    );
+    syncs.push(() =>
+      [...e.children].forEach((c, i) => c.classList.toggle('on', i == g())),
+    );
+    return e;
+  }
+  function tog(t, g, s, cls = '') {
+    const e = $(`<button class="pw ${cls}"><i></i><span>${t}</span></button>`);
+    e.onclick = () => {
+      s(g() ? 0 : 1);
+      sync();
+    };
+    syncs.push(() => e.classList.toggle('on', !!g()));
+    return e;
+  }
+  function stepper(l, o) {
+    const e = $(
+        `<div class="st"><span>${l}</span><div><b>−</b><em></em><b>+</b></div></div>`,
+      ),
+      [m, t, p] = e.children[1].children;
+    const set = v => {
+      o.s(cl(v, o.min, o.max));
+      sync();
+    };
+    m.onclick = () => set(o.g() - 1);
+    p.onclick = () => set(o.g() + 1);
+    t.ondblclick = () => set(o.d ?? 0);
+    e.onwheel = ev => {
+      ev.preventDefault();
+      set(o.g() + (ev.deltaY < 0 ? 1 : -1));
+    };
+    syncs.push(() => {
+      t.textContent = o.f ? o.f(o.g()) : o.g();
+    });
+    return e;
+  }
+  function plot(el, ss, o = {}) {
+    const W = 300,
+      H = 140,
+      N = 220;
+    let g = '';
+    for (let i = 1; i < 8; i++) g += `<path d="M${(i * W) / 8} 0V${H}"/>`;
+    g += `<path d="M0 ${H / 2}H${W}"/>`;
+    let h = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g stroke="#3a4868" stroke-width=".8" opacity=".7" vector-effect="non-scaling-stroke">${g}</g>`;
+    const base = o.b ? H * 0.94 : H / 2;
+    for (const s of ss) {
+      let d = '';
+      for (let i = 0; i <= N; i++) {
+        const y = s.f(i / N);
+        d +=
+          (i ? 'L' : 'M') +
+          ((i / N) * W).toFixed(1) +
+          ' ' +
+          (o.b
+            ? H * 0.94 - ((y + 1) / 2) * H * 0.86
+            : H / 2 - y * H * 0.4
+          ).toFixed(1);
+      }
+      if (s.k == 'main')
+        h += `<path d="${d}L${W} ${base}L0 ${base}Z" fill="rgba(244,137,95,.2)"/><path d="${d}" stroke="#f4895f" stroke-width="6" opacity=".4" fill="none" style="filter:blur(3px)" vector-effect="non-scaling-stroke"/><path d="${d}" stroke="#ff9a72" stroke-width="2" fill="none" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+      else
+        h += `<path d="${d}" stroke="${s.k == 'u' ? '#7f86ff' : '#8e9cbc'}" stroke-width="1.3" ${s.k == 'dry' ? 'stroke-dasharray="3 4"' : ''} fill="none" opacity=".65" vector-effect="non-scaling-stroke"/>`;
+    }
+    el.innerHTML = h + '</svg>';
+  }
+  const pl = () => $('<div class="pl"></div>');
+  function mod(t, r, cls = '') {
+    const m = $(
+      `<div class="mod ${cls}"><div class="mh"><h3>${t}</h3></div><div class="mb"></div></div>`,
+    );
+    if (r) m.children[0].append(r);
+    return m;
+  }
+  /* ---- waveforms ---- */
+  const stops = [
+      p => 2 * p - 1,
+      p => (p < 0.75 ? -1 + 2 * Math.pow(p / 0.75, 2) : 1 - 8 * (p - 0.75)),
+      p => (p < 0.5 ? 1 : -1),
+      p => (p < 0.2 ? 1 : -1),
+      p => (p < 0.8 ? 1 : -1),
+    ],
+    SL = ['SAW', 'SHARK', 'P50', 'P20', 'P80'];
+  const B = (v, p) => {
+    const x = Math.min(v, 0.9999) * 4,
+      i = Math.floor(x),
+      f = x - i;
+    return stops[i](p) * (1 - f) + stops[i + 1](p) * f;
+  };
+  const lab = v => {
+    const x = Math.min(v, 0.9999) * 4,
+      i = Math.floor(x),
+      f = x - i;
+    return f < 0.03
+      ? SL[i]
+      : f > 0.97
+        ? SL[i + 1]
+        : SL[i] + ' › ' + SL[i + 1] + ' ' + Math.round(f * 100) + '%';
+  };
+  const pc = v => Math.round(v * 100) + '%',
+    bp = v => (v >= 0.5 ? '+' : '') + Math.round((v - 0.5) * 200) + '%';
+  const EN = ['CLASSIC', 'SYNC', 'PD', 'SPEC'],
+    EP = [
+      [],
+      [
+        ['RATIO', v => (1 + 7 * v).toFixed(2) + '×'],
+        ['AMOUNT', pc],
+        ['SMOOTH', pc],
+      ],
+      [
+        ['BEND', v => v.toFixed(2)],
+        ['SKEW', bp],
+        ['MIX', pc],
+      ],
+      [
+        ['TILT', v => ((v - 0.5) * 24).toFixed(0) + ' dB'],
+        ['SHIFT', v => 'H' + Math.round(1 + v * 15)],
+        ['MIX', pc],
+      ],
+    ];
+  function shape(o, m) {
+    const v = o.wave,
+      e = o.e[o.eng],
+      y0 = B(v, m);
+    if (o.eng == 1) return y0 + (B(v, (m * (1 + 7 * e[0])) % 1) - y0) * e[1];
+    if (o.eng == 2) {
+      const k = cl(e[0] + (e[1] - 0.5) * 0.3, 0.03, 0.97),
+        p = m < k ? (0.5 * m) / k : 0.5 + (0.5 * (m - k)) / (1 - k);
+      return y0 + (B(v, p) - y0) * e[2];
+    }
+    if (o.eng == 3) {
+      const d = Math.abs(e[0] - 0.5) * 0.12 + 0.001;
+      let a = 0;
+      for (let j = -2; j <= 2; j++)
+        a += B(v, (((m + (j * d) / 2) % 1) + 1) % 1);
+      a /= 5;
+      return y0 + ((e[0] < 0.5 ? a : y0 + (y0 - a) * 0.8) - y0) * e[2];
+    }
+    return y0;
+  }
+  /* ---- state ---- */
+  const mk = (w, oct, eng, g, vo) => ({
+    on: 1,
+    wave: w,
+    oct,
+    semi: 0,
+    det: 0.5,
+    gain: g,
+    voices: vo,
+    ud: 0.4,
+    dp: 0.55,
+    bl: 0.6,
+    eng,
+    e: [[], [0.55, 0.72, 0.3], [0.22, 0.5, 0.8], [0.5, 0.4, 0.7]],
+  });
+  const S = {
+    tab: 0,
+    src: 3,
+    keys: 1,
+    osc: [
+      mk(0.12, 0, 0, 0.8, 3),
+      mk(0.62, -1, 1, 0.65, 1),
+      mk(0.3, 1, 2, 0.5, 1),
+    ],
+  };
+  const F = { type: 1, cut: 0.55, res: 0.4, env: 0.75, trk: 0.95 },
+    SH = { type: 0, dist: 0.5, drive: 0.35 },
+    EV = {
+      sel: 0,
+      a: [
+        [0.1, 0.4, 0.6, 0.35],
+        [0.05, 0.5, 0.3, 0.4],
+      ],
+    },
+    LF = {
+      sel: 0,
+      l: [0, 1, 2, 3].map(i => ({ w: i % 4, rate: 0.35, dep: 0.6 })),
+    };
+  const FX = {
+      ch: { on: 1, r: 0.3, d: 0.5, m: 0.4 },
+      dl: { on: 1, t: 0.4, f: 0.35, m: 0.25 },
+      rv: { on: 0, s: 0.5, dc: 0.5, m: 0.3 },
+    },
+    V = {
+      mode: 0,
+      poly: 8,
+      glide: 0.15,
+      bend: 2,
+      tune: 0.5,
+      arp: { on: 0, mode: 0, oct: 1, rate: 1, gate: 0.6, hold: 0 },
+    };
+  const SRC = [
+      'LFO 1',
+      'LFO 2',
+      'LFO 3',
+      'LFO 4',
+      'ENV AMP',
+      'ENV FILTER',
+      'VELOCITY',
+      'MOD WHEEL',
+      'KEY TRACK',
+    ],
+    DST = [
+      'VCO1 WAVE',
+      'VCO2 WAVE',
+      'VCO3 WAVE',
+      'VCO1 PITCH',
+      'VCO2 PITCH',
+      'VCO3 PITCH',
+      'CUTOFF',
+      'RESONANCE',
+      'SHAPER DRIVE',
+      'AMP LEVEL',
+      'DELAY MIX',
+    ];
+  const MX = [
+    { s: 0, d: 0, a: 35 },
+    { s: 5, d: 6, a: 50 },
+    { s: 1, d: 8, a: -20 },
+    { s: 7, d: 6, a: 40 },
+    { s: 6, d: 9, a: 25 },
+    { s: 2, d: 4, a: 0 },
+  ];
+  /* ---- WAVE slider ---- */
+  const icon = i => {
+    let d = '';
+    for (let k = 0; k <= 32; k++) {
+      const p = k / 32,
+        y = stops[i](p >= 1 ? 0.9999 : p);
+      d +=
+        (k ? 'L' : 'M') +
+        (1 + p * 28).toFixed(1) +
+        ' ' +
+        (9 - y * 6.5).toFixed(1);
+    }
+    return `<svg viewBox="0 0 30 18" style="left:${i * 25}%"><path d="${d}"/></svg>`;
+  };
+  function wsl(o) {
+    const r5 = [0, 1, 2, 3, 4],
+      e = $(
+        `<div class="ws" tabindex="0"><div class="wsh"><span>WAVE</span><b></b></div><div class="ic">${r5.map(icon).join('')}</div><div class="tk">${r5.map(i => `<u style="left:${i * 25}%"></u>`).join('')}<div class="fl"></div><div class="th"></div></div></div>`,
+      );
+    const tk = e.querySelector('.tk'),
+      th = e.querySelector('.th'),
+      fl = e.querySelector('.fl'),
+      ic = [...e.querySelectorAll('.ic svg')],
+      bb = e.querySelector('b');
+    const at = ev => {
+      const r = tk.getBoundingClientRect();
+      let v = cl((ev.clientX - r.left) / r.width);
+      const sn = Math.round(v * 4) / 4;
+      if (!ev.shiftKey && Math.abs(v - sn) < 0.035) v = sn;
+      o.wave = v;
+      sync();
+    };
+    let dn = 0;
+    e.onpointerdown = ev => {
+      dn = 1;
+      e.setPointerCapture(ev.pointerId);
+      at(ev);
+    };
+    e.onpointermove = ev => {
+      if (dn) at(ev);
+    };
+    e.onpointerup = () => (dn = 0);
+    e.ondblclick = () => {
+      o.wave = 0;
+      sync();
+    };
+    e.onkeydown = ev => {
+      const k = { ArrowRight: 1, ArrowLeft: -1 }[ev.key];
+      if (k) {
+        o.wave = cl(o.wave + k * (ev.shiftKey ? 0.01 : 0.05));
+        sync();
+        ev.preventDefault();
+      }
+    };
+    syncs.push(() => {
+      th.style.left = o.wave * 100 + '%';
+      fl.style.width = `calc(${o.wave * 100}% + 6px)`;
+      ic.forEach((s, i) =>
+        s.classList.toggle('on', Math.abs(i / 4 - o.wave) < 0.125),
+      );
+      bb.textContent = lab(o.wave);
+    });
+    return e;
+  }
+  /* ---- OSC tab ---- */
+  const gdb = v =>
+    (20 * Math.log10(Math.max(0.001, v / 0.8))).toFixed(1) + ' dB';
+  function oscRow(n) {
+    const o = S.osc[n],
+      r = $(
+        '<div class="row"><div class="id"></div><div class="disp"></div><div class="g sh"></div><div class="sep"></div><div class="g"><div class="sc2"></div></div><div class="sep"></div><div class="g un"></div></div>',
+      );
+    const [id, dp, sh, , pg, , un] = r.children;
+    id.append(
+      tog(
+        `VCO${n + 1}`,
+        () => o.on,
+        v => (o.on = v),
+      ),
+      knob('GAIN', { g: () => o.gain, s: v => (o.gain = v), d: 0.8, f: gdb }),
+    );
+    dp.innerHTML =
+      '<div class="pl"></div><b class="l"></b><b class="l r"></b><b class="l bt">DRAG ⇔ WAVE · ⇕ AMOUNT</b><b class="l br"></b>';
+    const [p, l1, l2, , l4] = dp.children;
+    let d = null;
+    dp.onpointerdown = e => {
+      dp.setPointerCapture(e.pointerId);
+      d = [e.clientX, e.clientY, o.wave, o.e[o.eng][0]];
+    };
+    dp.onpointermove = e => {
+      if (!d) return;
+      const rc = dp.getBoundingClientRect();
+      o.wave = cl(d[2] + (e.clientX - d[0]) / rc.width);
+      if (o.eng) o.e[o.eng][0] = cl(d[3] - (e.clientY - d[1]) / rc.height);
+      sync();
+    };
+    dp.onpointerup = () => (d = null);
+    syncs.push(() => {
+      const ss = [];
+      if (o.eng) ss.push({ k: 'dry', f: x => B(o.wave, (x * 2) % 1) });
+      if (o.voices > 1)
+        for (const s of [-1, 1])
+          ss.push({
+            k: 'u',
+            f: x => shape(o, (x * 2 * (1 + s * o.ud * 0.03)) % 1),
+          });
+      ss.push({ k: 'main', f: x => shape(o, (x * 2) % 1) });
+      plot(p, ss);
+      l1.textContent = EN[o.eng];
+      l2.textContent = lab(o.wave);
+      l4.textContent = o.voices > 1 ? '┈ UNISON' : '';
+      r.classList.toggle('off', !o.on);
+    });
+    sh.append(wsl(o));
+    const er = $('<div class="er"></div>'),
+      ek = $('<div class="ek"></div>');
+    er.append(
+      seg(
+        EN,
+        () => o.eng,
+        v => (o.eng = v),
+        'v',
+      ),
+      ek,
+    );
+    for (let i = 0; i < 3; i++)
+      ek.append(
+        knob('', {
+          g: () => o.e[o.eng][i],
+          s: v => (o.e[o.eng][i] = v),
+          d: [0.55, 0.72, 0.3][i],
+          l: () => (EP[o.eng][i] || [''])[0],
+          f: v => EP[o.eng][i][1](v),
+          h: () => !o.eng,
+          bi: 0,
+        }),
+      );
+    const hn = $('<p>Unmodified<br>band-limited wave</p>');
+    ek.append(hn);
+    syncs.push(() => (hn.style.display = o.eng ? 'none' : ''));
+    sh.append(er);
+    const sc = pg.firstChild,
+      c1 = $('<div></div>');
+    c1.append(
+      stepper('OCT', {
+        g: () => o.oct,
+        s: v => (o.oct = v),
+        min: -3,
+        max: 3,
+        f: v => (v > 0 ? '+' : '') + v,
+      }),
+      stepper('SEMI', {
+        g: () => o.semi,
+        s: v => (o.semi = v),
+        min: -12,
+        max: 12,
+        f: v => (v > 0 ? '+' : '') + v,
+      }),
+    );
+    sc.append(
+      c1,
+      knob('DETUNE', {
+        bi: 1,
+        g: () => o.det,
+        s: v => (o.det = v),
+        d: 0.5,
+        f: v =>
+          ((v - 0.5) * 100 > 0 ? '+' : '') +
+          Math.round((v - 0.5) * 100) +
+          ' ct',
+      }),
+    );
+    un.append(
+      stepper('UNISON', {
+        g: () => o.voices,
+        s: v => (o.voices = v),
+        min: 1,
+        max: 8,
+        d: 1,
+        f: v => v + (v > 1 ? ' voices' : ' voice'),
+      }),
+    );
+    [
+      ['DETUNE', 'ud'],
+      ['DEPTH', 'dp'],
+      ['BLEND', 'bl'],
+    ].forEach(([a, k]) =>
+      un.append(
+        knob(a, {
+          c: 'b',
+          g: () => o[k],
+          s: v => (o[k] = v),
+          d: 0.5,
+          f: pc,
+          h: () => o.voices < 2,
+        }),
+      ),
+    );
+    return r;
+  }
+  /* ---- build sections ---- */
+  const main = document.getElementById('main'),
+    secs = [];
+  const sec = () => {
+    const s = $('<section class="sec panel"></section>');
+    main.append(s);
+    secs.push(s);
+    return s;
+  };
+  sec().append(oscRow(0), oscRow(1), oscRow(2));
+  /* FILTER */
+  const hz = v => 20 * Math.pow(1000, v),
+    hzs = v => {
+      const f = Math.round(hz(v));
+      return f >= 1000 ? (f / 1000).toFixed(2) + ' kHz' : f + ' Hz';
+    };
+  const sF = sec(),
+    fm = mod(
+      'VCF',
+      seg(
+        ['LP12', 'LP24', 'HP12', 'HP24', 'BP', 'NOTCH'],
+        () => F.type,
+        v => (F.type = v),
+      ),
+    ),
+    fk = $('<div class="ks w4"></div>'),
+    fp = pl();
+  fk.append(
+    knob('CUTOFF', { g: () => F.cut, s: v => (F.cut = v), d: 0.55, f: hzs }),
+    knob('RES', { g: () => F.res, s: v => (F.res = v), d: 0.3, f: pc }),
+    knob('ENV AMT', {
+      bi: 1,
+      g: () => F.env,
+      s: v => (F.env = v),
+      d: 0.5,
+      f: bp,
+    }),
+    knob('TRACKING', { g: () => F.trk, s: v => (F.trk = v), d: 1, f: pc }),
+  );
+  fm.children[1].append(fk, fp);
+  const resp = x => {
+    const r = hz(x) / hz(F.cut),
+      n = [2, 4, 2, 4][F.type];
+    let m;
+    if (F.type < 2) m = 1 / Math.sqrt(1 + Math.pow(r, 2 * n));
+    else if (F.type < 4) m = 1 / Math.sqrt(1 + Math.pow(1 / r, 2 * n));
+    else {
+      const q = F.type == 4 ? 1 + F.res * 8 : 1.5,
+        z = q * (r - 1 / r);
+      m =
+        F.type == 4
+          ? 1 / Math.sqrt(1 + z * z)
+          : Math.abs(z) / Math.sqrt(1 + z * z);
+    }
+    if (F.type < 4)
+      m *= 1 + F.res * 4 * Math.exp(-Math.pow(Math.log2(r), 2) / 0.05);
+    return cl(((20 * Math.log10(Math.max(m, 1e-4)) + 48) / 66) * 2 - 1, -1, 1);
+  };
+  syncs.push(() => plot(fp, [{ k: 'main', f: resp }], { b: 1 }));
+  const shm = mod(
+      'SHAPER',
+      seg(
+        ['SOFT', 'ATAN', 'TUBE', 'CLIP', 'SINE', 'CHEB'],
+        () => SH.type,
+        v => (SH.type = v),
+      ),
+    ),
+    sk = $('<div class="ks w4"></div>'),
+    sp = pl();
+  sk.append(
+    knob('DISTORTION', {
+      g: () => SH.dist,
+      s: v => (SH.dist = v),
+      d: 0.5,
+      f: pc,
+    }),
+    knob('DRIVE', {
+      g: () => SH.drive,
+      s: v => (SH.drive = v),
+      d: 0.35,
+      f: v => (v * 24).toFixed(1) + ' dB',
+    }),
+  );
+  shm.children[1].append(sk, sp);
+  const xfer = x => {
+    const u = cl((x * 2 - 1) * (1 + SH.drive * 2), -1, 1),
+      k = 1 + SH.dist * 8,
+      t = SH.type;
+    return cl(
+      [
+        Math.tanh(k * u) / Math.tanh(k),
+        Math.atan(k * u) / Math.atan(k),
+        (Math.sign(u) * (1 - Math.exp(-k * Math.abs(u)))) / (1 - Math.exp(-k)),
+        cl(k * u, -1, 1),
+        Math.sin(((u * Math.PI) / 2) * (1 + SH.dist * 2)),
+        u + SH.dist * (4 * u * u * u - 3 * u) * 0.6,
+      ][t],
+      -1,
+      1,
+    );
+  };
+  syncs.push(() =>
+    plot(sp, [
+      { k: 'dry', f: x => x * 2 - 1 },
+      { k: 'main', f: xfer },
+    ]),
+  );
+  sF.append(...[fm, shm]);
+  sF.firstChild.style.marginBottom = '12px';
+  /* MOD */
+  const tm = s => {
+    const ms = 2 + s * s * 4000;
+    return ms >= 1000 ? (ms / 1000).toFixed(2) + ' s' : Math.round(ms) + ' ms';
+  };
+  const sM = sec(),
+    em = mod(
+      'ENVELOPE',
+      seg(
+        ['AMP', 'FILTER'],
+        () => EV.sel,
+        v => (EV.sel = v),
+      ),
+    ),
+    ek2 = $('<div class="ks w2"></div>'),
+    ep = pl();
+  [
+    ['ATTACK', 0, tm],
+    ['DECAY', 1, tm],
+    ['SUSTAIN', 2, pc],
+    ['RELEASE', 3, tm],
+  ].forEach(([n, i, f]) =>
+    ek2.append(
+      knob(n, {
+        g: () => EV.a[EV.sel][i],
+        s: v => (EV.a[EV.sel][i] = v),
+        d: 0.5,
+        f,
+      }),
+    ),
+  );
+  em.children[1].append(ek2, ep);
+  syncs.push(() => {
+    const [a, d, s, r] = EV.a[EV.sel].map((v, i) =>
+        i == 2 ? v : 0.02 + v * v * 0.6,
+      ),
+      tot = a + d + 0.25 + r;
+    plot(
+      ep,
+      [
+        {
+          k: 'main',
+          f: x => {
+            const t = x * tot;
+            let y;
+            if (t < a) y = t / a;
+            else if (t < a + d) y = 1 - ((1 - s) * (t - a)) / d;
+            else if (t < a + d + 0.25) y = s;
+            else y = s * (1 - (t - a - d - 0.25) / r);
+            return 2 * cl(y) - 1;
+          },
+        },
+      ],
+      { b: 1 },
+    );
+  });
+  const lm = mod(
+      'LFO',
+      seg(
+        ['LFO1', 'LFO2', 'LFO3', 'LFO4'],
+        () => LF.sel,
+        v => (LF.sel = v),
+      ),
+    ),
+    lk = $('<div class="ks w2"></div>'),
+    lp = pl(),
+    L = () => LF.l[LF.sel];
+  lk.append(
+    knob('RATE', {
+      g: () => L().rate,
+      s: v => (L().rate = v),
+      d: 0.35,
+      f: v => (0.05 * Math.pow(400, v)).toFixed(2) + ' Hz',
+    }),
+    knob('DEPTH', { g: () => L().dep, s: v => (L().dep = v), d: 0.6, f: pc }),
+  );
+  const lw = seg(
+    ['SIN', 'TRI', 'SQR', 'SAW'],
+    () => L().w,
+    v => (L().w = v),
+  );
+  lm.children[0].append(lw);
+  lm.children[1].append(lk, lp);
+  syncs.push(() =>
+    plot(lp, [
+      {
+        k: 'main',
+        f: x => {
+          const p = (x * 3) % 1;
+          return (
+            L().dep *
+            [
+              Math.sin(2 * Math.PI * p),
+              p < 0.5 ? 4 * p - 1 : 3 - 4 * p,
+              p < 0.5 ? 1 : -1,
+              2 * p - 1,
+            ][L().w]
+          );
+        },
+      },
+    ]),
+  );
+  const mxm = mod('MOD MATRIX'),
+    mb = mxm.children[1];
+  mb.style.display = 'block';
+  MX.forEach(r => {
+    const e = $(
+        `<div class="mr"><select>${SRC.map(x => `<option>${x}</option>`).join('')}</select><span>›</span><select>${DST.map(x => `<option>${x}</option>`).join('')}</select><input type="range" min="-100" max="100"><em></em></div>`,
+      ),
+      [a, , b, i, t] = e.children;
+    a.selectedIndex = r.s;
+    b.selectedIndex = r.d;
+    i.value = r.a;
+    a.onchange = () => {
+      r.s = a.selectedIndex;
+    };
+    b.onchange = () => {
+      r.d = b.selectedIndex;
+    };
+    i.oninput = () => {
+      r.a = +i.value;
+      sync();
+    };
+    i.ondblclick = () => {
+      r.a = 0;
+      i.value = 0;
+      sync();
+    };
+    syncs.push(() => {
+      t.textContent = (r.a > 0 ? '+' : '') + r.a + '%';
+      e.classList.toggle('z', !r.a);
+    });
+    mb.append(e);
+  });
+  const tp = $('<div class="cols c2"></div>');
+  tp.append(em, lm);
+  sM.append(tp, mxm);
+  mxm.style.marginTop = '12px';
+  /* FX */
+  const sX = sec(),
+    cols = $('<div class="cols c3"></div>'),
+    fxm = (t, k, ks, pf) => {
+      const m = mod(
+          t,
+          tog(
+            'ON',
+            () => FX[k].on,
+            v => (FX[k].on = v),
+            'sm',
+          ),
+        ),
+        kk = $('<div class="ks" style="justify-content:space-between"></div>'),
+        p = pl();
+      p.style.height = '215px';
+      p.style.background = 'var(--dp)';
+      p.style.borderRadius = '9px';
+      p.style.border = '1px solid #2b3650';
+      ks.forEach(([n, key, f]) =>
+        kk.append(
+          knob(n, { g: () => FX[k][key], s: v => (FX[k][key] = v), d: 0.4, f }),
+        ),
+      );
+      m.children[1].style.cssText = 'display:block';
+      m.children[1].append(kk, $('<div style="height:12px"></div>'), p);
+      syncs.push(() => {
+        plot(p, [{ k: 'main', f: pf }]);
+        m.style.opacity = FX[k].on ? 1 : 0.55;
+      });
+      return m;
+    };
+  cols.append(
+    fxm(
+      'CHORUS',
+      'ch',
+      [
+        ['RATE', 'r', v => (0.1 + v * 5).toFixed(1) + ' Hz'],
+        ['DEPTH', 'd', pc],
+        ['MIX', 'm', pc],
+      ],
+      x =>
+        0.5 * Math.sin(2 * Math.PI * (x * 3 + 0)) +
+        0.4 * Math.sin(2 * Math.PI * (x * 3 * (1 + FX.ch.d * 0.1) + 0.25)),
+    ),
+    fxm(
+      'DELAY',
+      'dl',
+      [
+        ['TIME', 't', v => Math.round(40 + v * 960) + ' ms'],
+        ['FEEDBACK', 'f', pc],
+        ['MIX', 'm', pc],
+      ],
+      x => {
+        const s = x * 5,
+          f = s % 1;
+        return f < 0.07 ? 2 * Math.pow(FX.dl.f, Math.floor(s)) - 1 : -1;
+      },
+    ),
+    fxm(
+      'REVERB',
+      'rv',
+      [
+        ['SIZE', 's', pc],
+        ['DECAY', 'dc', v => (0.3 + v * 9).toFixed(1) + ' s'],
+        ['MIX', 'm', pc],
+      ],
+      x =>
+        Math.exp(-x * (7 - 5 * FX.rv.dc)) *
+        Math.sin(x * 140 + Math.sin(x * 70)) *
+        0.95,
+    ),
+  );
+  const ch = $('<div class="chain"></div>');
+  const CH = [
+    ['VOICES', () => 1],
+    ['SHAPER', () => SH.dist > 0],
+    ['CHORUS', () => FX.ch.on],
+    ['DELAY', () => FX.dl.on],
+    ['REVERB', () => FX.rv.on],
+    ['OUT', () => 1],
+  ].map(([t, g], i) => {
+    const s = $(`<span>${t}</span>`);
+    ch.append(...(i ? [$('<b>→</b>'), s] : [s]));
+    return [s, g];
+  });
+  syncs.push(() => CH.forEach(([s, g]) => s.classList.toggle('on', !!g())));
+  sX.append(cols, ch);
+  /* VOICE */
+  const sV = sec(),
+    pm = mod('PLAY'),
+    pk = $('<div class="ks" style="gap:14px;align-items:flex-start"></div>');
+  pm.children[1].style.cssText = 'display:block';
+  const pr = $('<div style="margin-bottom:16px"></div>');
+  pr.append(
+    seg(
+      ['POLY', 'MONO', 'LEGATO'],
+      () => V.mode,
+      v => (V.mode = v),
+    ),
+  );
+  pk.append(
+    stepper('VOICES', {
+      g: () => V.poly,
+      s: v => (V.poly = v),
+      min: 1,
+      max: 8,
+      d: 8,
+    }),
+    knob('GLIDE', {
+      g: () => V.glide,
+      s: v => (V.glide = v),
+      d: 0,
+      f: v => (v ? Math.round(v * v * 2000) + ' ms' : 'OFF'),
+    }),
+    stepper('BEND RANGE', {
+      g: () => V.bend,
+      s: v => (V.bend = v),
+      min: 1,
+      max: 12,
+      d: 2,
+      f: v => '±' + v + ' st',
+    }),
+    knob('MASTER TUNE', {
+      bi: 1,
+      g: () => V.tune,
+      s: v => (V.tune = v),
+      d: 0.5,
+      f: v => ((v - 0.5) * 100).toFixed(0) + ' ct',
+    }),
+  );
+  const vd = $('<div class="vd" style="margin-top:20px"></div>');
+  for (let i = 0; i < 8; i++) vd.append($('<i></i>'));
+  syncs.push(() =>
+    [...vd.children].forEach((c, i) =>
+      c.classList.toggle('on', i < (V.mode ? 1 : Math.min(V.poly, 5))),
+    ),
+  );
+  pm.children[1].append(
+    pr,
+    pk,
+    $('<div class="hint" style="margin-top:22px">VOICE ALLOCATION</div>'),
+    vd,
+  );
+  const A = V.arp,
+    am = mod(
+      'ARPEGGIATOR',
+      tog(
+        'ON',
+        () => A.on,
+        v => (A.on = v),
+        'sm',
+      ),
+    ),
+    ak = $(
+      '<div class="ks" style="gap:14px;align-items:flex-start;margin-top:16px"></div>',
+    );
+  am.children[1].style.cssText = 'display:block';
+  ak.append(
+    stepper('OCTAVES', {
+      g: () => A.oct,
+      s: v => (A.oct = v),
+      min: 1,
+      max: 4,
+      d: 1,
+    }),
+    knob('GATE', { g: () => A.gate, s: v => (A.gate = v), d: 0.6, f: pc }),
+    tog(
+      'HOLD',
+      () => A.hold,
+      v => (A.hold = v),
+      'sm',
+    ),
+  );
+  const rt = $('<div style="margin-top:16px"></div>');
+  rt.append(
+    seg(
+      ['1/4', '1/8', '1/16', '1/32'],
+      () => A.rate,
+      v => (A.rate = v),
+    ),
+  );
+  am.children[1].append(
+    seg(
+      ['UP', 'DOWN', 'UP/DN', 'RANDOM'],
+      () => A.mode,
+      v => (A.mode = v),
+    ),
+    rt,
+    ak,
+  );
+  syncs.push(() => (am.style.opacity = A.on ? 1 : 0.6));
+  const vc = $('<div class="cols c2"></div>');
+  vc.append(pm, am);
+  sV.append(vc);
+  /* ---- tabs ---- */
+  const TB = [
+      ['OSC', '3 × ENGINE'],
+      ['FILTER', 'VCF · SHAPER'],
+      ['MOD', 'ENV · LFO · MATRIX'],
+      ['FX', 'CHORUS · DELAY · REVERB'],
+      ['VOICE', 'POLY · GLIDE · ARP'],
+    ],
+    tabs = document.getElementById('tabs');
+  const bds = [
+    () => '',
+    () => '',
+    () => MX.filter(r => r.a).length || '',
+    () => Object.values(FX).filter(f => f.on).length || '',
+    () => (A.on ? 'ARP' : ''),
+  ];
+  const tel = TB.map(([a, b], i) => {
+    const e = $(
+      `<div class="tab">${a}<small>${b}</small><em class="bd"></em></div>`,
+    );
+    e.onclick = () => {
+      S.tab = i;
+      sync();
+      fit();
+    };
+    tabs.append(e);
+    return e;
+  });
+  syncs.push(() => {
+    tel.forEach((e, i) => {
+      e.classList.toggle('on', i == S.tab);
+      e.querySelector('.bd').textContent = bds[i]();
+    });
+    secs.forEach((s, i) => s.classList.toggle('on', i == S.tab));
+  });
+  /* ---- scope + output ---- */
+  const oy = (o, t) =>
+      o.on
+        ? shape(o, (t * 3 * Math.pow(2, o.oct + o.semi / 12)) % 1) * o.gain
+        : 0,
+    mixf = t => S.osc.reduce((a, o) => a + oy(o, t), 0) / 2.2;
+  const scopeF = x => {
+    const t = x * 2;
+    if (S.src < 3) return cl(oy(S.osc[S.src], t) * 1.1, -1, 1);
+    if (S.src == 3) return cl(mixf(t), -1, 1);
+    const w = (1 - F.cut) * 0.05 + 0.0005;
+    let a = 0;
+    for (let j = -3; j <= 3; j++) a += mixf(t + (j * w) / 3);
+    return Math.tanh((a / 7) * (1 + SH.drive * 3));
+  };
+  document.getElementById('src').append(
+    seg(
+      ['OSC1', 'OSC2', 'OSC3', 'MIX', 'OUT'],
+      () => S.src,
+      v => (S.src = v),
+    ),
+  );
+  const scEl = document.getElementById('scope');
+  syncs.push(() => plot(scEl, [{ k: 'main', f: scopeF }]));
+  const mt = [0, 1].map(() =>
+      $('<div class="meter"><i style="height:60%"></i></div>'),
+    ),
+    cpuB = $('<b>0%</b>');
+  const out = document.getElementById('out');
+  out.append(
+    ...mt,
+    knob('MASTER', {
+      g: () => S.m ?? 0.72,
+      s: v => (S.m = v),
+      d: 0.72,
+      f: v => (20 * Math.log10(Math.max(v, 0.001) / 0.8)).toFixed(1) + ' dB',
+    }),
+  );
+  const st = $(
+    '<div class="stat"><div>VOICES<b>5 / 8</b></div><div>CPU </div><div>OCTAVE<b>C3</b></div></div>',
+  );
+  st.children[1].append(cpuB);
+  out.append(st);
+  syncs.push(() => {
+    const c = Math.round(
+      6 +
+        S.osc.reduce(
+          (a, o) => a + (o.on ? o.voices * [1, 1.6, 1.8, 7][o.eng] : 0),
+          0,
+        ) *
+          1.4,
+    );
+    cpuB.textContent = c + '%';
+    cpuB.classList.toggle('hot', c > 70);
+  });
+  setInterval(
+    () =>
+      mt.forEach(
+        m => (m.firstChild.style.height = 48 + Math.random() * 30 + '%'),
+      ),
+    140,
+  );
+  /* ---- keyboard ---- */
+  const wl = 'ZXCVBNMQWERTYUI',
+    nm = 'CDEFGAB',
+    bkL = ['S', 'D', 'G', 'H', 'J', '2', '3', '5', '6', '7'],
+    bpos = [0, 1, 3, 4, 5, 7, 8, 10, 11, 12],
+    kmap = {},
+    ww = 100 / 15,
+    keys = document.getElementById('keys');
+  for (let i = 0; i < 15; i++) {
+    const e = $(
+      `<div class="w" style="left:${i * ww}%;width:${ww}%"><u>${nm[i % 7]}</u><span>${wl[i]}</span></div>`,
+    );
+    kmap[wl[i]] = e;
+    keys.append(e);
+  }
+  bpos.forEach((p, j) => {
+    const e = $(
+      `<div class="bk" style="left:${(p + 1) * ww - ww * 0.3}%;width:${ww * 0.6}%"><span>${bkL[j]}</span></div>`,
+    );
+    kmap[bkL[j]] = e;
+    keys.append(e);
+  });
+  Object.values(kmap).forEach(e => {
+    e.onpointerdown = () => e.classList.add('h');
+    e.onpointerup = e.onpointerleave = () => e.classList.remove('h');
+  });
+  addEventListener('keydown', e => {
+    const k = kmap[e.key.toUpperCase()];
+    if (k && !e.repeat && e.target.tagName != 'SELECT') k.classList.add('h');
+  });
+  addEventListener('keyup', e => {
+    const k = kmap[e.key.toUpperCase()];
+    if (k) k.classList.remove('h');
+  });
+  function wheel(l, spring) {
+    const e = $(
+        `<div class="wh"><div class="wt"><i></i></div><span>${l}</span></div>`,
+      ),
+      t = e.firstChild,
+      i = t.firstChild;
+    let v = spring ? 0.5 : 0,
+      dn = 0;
+    const draw = () =>
+        (i.style.top = `calc(${(1 - v) * 100}% - ${(1 - v) * 14}px)`),
+      at = ev => {
+        const r = t.getBoundingClientRect();
+        v = cl(1 - (ev.clientY - r.top) / r.height);
+        draw();
+      };
+    t.onpointerdown = ev => {
+      dn = 1;
+      t.setPointerCapture(ev.pointerId);
+      at(ev);
+    };
+    t.onpointermove = ev => {
+      if (dn) at(ev);
+    };
+    t.onpointerup = () => {
+      dn = 0;
+      if (spring) {
+        v = 0.5;
+        draw();
+      }
+    };
+    draw();
+    return e;
+  }
+  document.getElementById('wls').append(wheel('PITCH', 1), wheel('MOD', 0));
+  const kb = document.getElementById('kb'),
+    kt = tog(
+      'KEYBOARD',
+      () => S.keys,
+      v => {
+        S.keys = v;
+        kb.classList.toggle('min', !v);
+        setTimeout(fit, 0);
+      },
+      'sm',
+    );
+  document.getElementById('kt').append(kt);
+  /* ---- fit to viewport ---- */
+  function fit() {
+    const b = document.body;
+    b.style.zoom = 1;
+    b.style.zoom = Math.max(
+      0.5,
+      Math.min(1, innerWidth / 1330, innerHeight / (b.scrollHeight + 8)),
+    );
+  }
+  addEventListener('resize', fit);
+  sync();
+  fit();
+</script>
